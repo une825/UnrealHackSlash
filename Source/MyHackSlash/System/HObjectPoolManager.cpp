@@ -2,6 +2,8 @@
 
 
 #include "System/HObjectPoolManager.h"
+#include "Unit/HBaseCharacter.h"
+#include "System/HMonsterAIController.h"
 #include "GameFramework/Character.h"
 
 AActor* UHObjectPoolManager::SpawnFromPool(UClass* ActorClass, FVector Location, FRotator Rotation)
@@ -15,7 +17,6 @@ AActor* UHObjectPoolManager::SpawnFromPool(UClass* ActorClass, FVector Location,
 	}
 	else
 	{
-		// Ç®¿¡ ¾øÀ¸¸é »õ·Î »ı¼º
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		PooledActor = GetWorld()->SpawnActor<AActor>(ActorClass, Location, Rotation, SpawnParams);
@@ -42,35 +43,38 @@ void UHObjectPoolManager::ActivateActor(AActor* Actor, FVector Location, FRotato
 {
 	Actor->SetActorLocationAndRotation(Location, Rotation);
 
-	// 1. ¹°¸® ¹× ·»´õ¸µ È°¼ºÈ­
+	// 1. ê¸°ë³¸ ì•¡í„° í™œì„±í™”
 	Actor->SetActorHiddenInGame(false);
 	Actor->SetActorEnableCollision(true);
 	Actor->SetActorTickEnabled(true);
 
-	//// 2. GAS ¸®¼Â (Áß¿ä)
-	//if (IAbilitySystemInterface* ASCHolder = Cast<IAbilitySystemInterface>(Actor))
-	//{
-	//	UAbilitySystemComponent* ASC = ASCHolder->GetAbilitySystemComponent();
-	//	if (ASC)
-	//	{
-	//		// ¸ğµç ÀÌÆåÆ® Á¦°Å ¹× ÅÂ±× Á¤¸®
-	//		ASC->RemoveAllGameplayEffects();
-	//		// ½ºÅÈ(Attribute)Àº º°µµÀÇ ÃÊ±âÈ­ ÇÔ¼ö¸¦ È£ÃâÇÏ´Â °ÍÀÌ ÁÁ½À´Ï´Ù.
-	//	}
-	//}
+	// 2. ìºë¦­í„° íŠ¹í™” ì´ˆê¸°í™” (HBaseCharacterì¸ ê²½ìš°)
+	if (AHBaseCharacter* BaseChar = Cast<AHBaseCharacter>(Actor))
+	{
+		BaseChar->ResetCharacter();
+		
+		// AI ë‹¤ì‹œ ì‹œì‘
+		if (AHMonsterAIController* AICon = Cast<AHMonsterAIController>(BaseChar->GetController()))
+		{
+			AICon->RunAI();
+		}
+	}
 }
 
 void UHObjectPoolManager::DeactivateActor(AActor* Actor)
 {
-	// 1. ¹°¸® ¹× ·»´õ¸µ ºñÈ°¼ºÈ­
+	// 1. ìºë¦­í„° íŠ¹í™” ë¹„í™œì„±í™”
+	if (AHBaseCharacter* BaseChar = Cast<AHBaseCharacter>(Actor))
+	{
+		// AI ì¤‘ì§€
+		if (AHMonsterAIController* AICon = Cast<AHMonsterAIController>(BaseChar->GetController()))
+		{
+			AICon->StopAI();
+		}
+	}
+
+	// 2. ê¸°ë³¸ ì•¡í„° ë¹„í™œì„±í™”
 	Actor->SetActorHiddenInGame(true);
 	Actor->SetActorEnableCollision(false);
 	Actor->SetActorTickEnabled(false);
-
-	// 2. ·¢µ¹ ÇØÁ¦ (ÇÊ¿ä ½Ã)
-	if (ACharacter* Char = Cast<ACharacter>(Actor))
-	{
-		Char->GetMesh()->SetSimulatePhysics(false);
-		// ¸Ş½¬¸¦ ´Ù½Ã Ä¸½¶¿¡ ºÙ¿©ÁÖ´Â ÀÛ¾÷ µîÀÌ ÇÊ¿äÇÒ ¼ö ÀÖÀ½
-	}
 }

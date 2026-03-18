@@ -3,6 +3,8 @@
 
 #include "Unit/HBaseCharacter.h"
 
+#include "AbilitySystemComponent.h"
+#include "DataAsset/HUnitProfileData.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Components/DecalComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -34,6 +36,8 @@ AHBaseCharacter::AHBaseCharacter()
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
+
+	AbilitySystemComponent = nullptr;
 }
 
 void AHBaseCharacter::Attack()
@@ -41,17 +45,68 @@ void AHBaseCharacter::Attack()
 	ProcessAttack();
 }
 
+void AHBaseCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// ì‹œìž‘ ì‹œ ì„¤ì •ëœ ë ˆë²¨ë¡œ ìŠ¤íƒ¯ ì´ˆê¸°í™”
+	InitializeStat(Level);
+}
+
+void AHBaseCharacter::InitializeStat(int32 NewLevel)
+{
+	Level = NewLevel;
+
+	if (UnitProfileData)
+	{
+		if (FMonsterStatRow* StatRow = UnitProfileData->GetStatRowByLevel(Level))
+		{
+			CurrentStat = *StatRow;
+
+			// ì´ë™ ì†ë„ ì ìš©
+			GetCharacterMovement()->MaxWalkSpeed = CurrentStat.MovementSpeed;
+
+			UE_LOG(LogTemp, Log, TEXT("%s Level %d Initialized (HP: %f, Attack: %f)"), *GetName(), Level, CurrentStat.MaxHP, CurrentStat.AttackDamage);
+		}
+	}
+}
+
+void AHBaseCharacter::ResetCharacter()
+{
+	IsDead = false;
+	Attackable = true;
+	LastDamageCauser = nullptr;
+
+	// ì´ë™ ë° ë¬¼ë¦¬ ìƒíƒœ ë³µêµ¬
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+	GetCharacterMovement()->SetComponentTickEnabled(true);
+	
+	// ì¶©ëŒ ì„¤ì • ë³µêµ¬
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("HCapsule"));
+	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Block); // ê¸°ë³¸ì ìœ¼ë¡œ ë¸”ë¡
+
+	// ë©”ì‹œ ë¬¼ë¦¬ ë³µêµ¬
+	GetMesh()->SetSimulatePhysics(false);
+	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh"));
+	GetMesh()->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+	GetMesh()->SetRelativeLocation(FVector(0, 0, -GetCapsuleComponent()->GetScaledCapsuleHalfHeight()));
+	GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
+}
 
 UAbilitySystemComponent* AHBaseCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
 }
 
+void AHBaseCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+}
+
 bool AHBaseCharacter::CanJumpInternal_Implementation() const
 {
-	// ±âº» Á¶°Ç (°øÁß¿¡ ¶°ÀÖ´ÂÁö µî) È®ÀÎ
 	bool bCanJump = Super::CanJumpInternal_Implementation();
-
 	return bCanJump;
 }
 
@@ -65,7 +120,7 @@ float AHBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 
 void AHBaseCharacter::ProcessAttack()
 {
-	if (Attackable)
+	if (Attackable && !IsDead)
 	{
 		Attackable = false;
 		AttackBegin();
@@ -74,24 +129,32 @@ void AHBaseCharacter::ProcessAttack()
 
 void AHBaseCharacter::AttackBegin()
 {
-	//// ÀÌµ¿ ±â´É È¦µå
-	//GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-
-	const float AttackSpeedRate = 1.0f;
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance != nullptr)
-		AnimInstance->Montage_Play(AttackMontage, AttackSpeedRate);
+	if (AnimInstance && UnitProfileData && UnitProfileData->AttackMontage)
+	{
+		const float AttackSpeedRate = CurrentStat.AttackSpeedRate;
+		AnimInstance->Montage_Play(UnitProfileData->AttackMontage, AttackSpeedRate);
 
-	FOnMontageEnded EndDelegate;
-	EndDelegate.BindUObject(this, &AHBaseCharacter::AttackEnd);
-	AnimInstance->Montage_SetEndDelegate(EndDelegate, AttackMontage);
-
+		FOnMontageEnded EndDelegate;
+		EndDelegate.BindUObject(this, &AHBaseCharacter::AttackEnd);
+		AnimInstance->Montage_SetEndDelegate(EndDelegate, UnitProfileData->AttackMontage);
+	}
+	else
+	{
+		// ì• ë‹ˆë©”ì´ì…˜ì´ ì—†ê±°ë‚˜ ìž¬ìƒí•  ìˆ˜ ì—†ëŠ” ê²½ìš° ì¦‰ì‹œ ê³µê²© ì¢…ë£Œ ì²˜ë¦¬í•˜ì—¬ AIê°€ ë©ˆì¶”ì§€ ì•Šê²Œ í•¨
+		AttackEnd(nullptr, false);
+	}
 }
 
 void AHBaseCharacter::AttackEnd(UAnimMontage* InAnimMontage, bool bInInterrupted)
 {
 	Attackable = true;
-	//GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+	NotifyAttackEnd();
+}
+
+void AHBaseCharacter::NotifyAttackEnd()
+{
+	// ìƒì†ë°›ì€ í´ëž˜ìŠ¤(Monster ë“±)ì—ì„œ AI íƒœìŠ¤í¬ ì¢…ë£Œ ì•Œë¦¼ ë“±ì„ ì²˜ë¦¬
 }
 
 void AHBaseCharacter::UpdateWalkSpeed(const float InNewWalkSpeed)
@@ -101,34 +164,40 @@ void AHBaseCharacter::UpdateWalkSpeed(const float InNewWalkSpeed)
 
 void AHBaseCharacter::SetDead()
 {
+	if (IsDead) return;
+
+	IsDead = true;
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+	
 	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
 	{
 		AnimInstance->StopAllMontages(0.0f);
-		AnimInstance->Montage_Play(DeadMontage, 1.0f);
+		if (UnitProfileData && UnitProfileData->DeadMontage)
+		{
+			AnimInstance->Montage_Play(UnitProfileData->DeadMontage, 1.0f);
+		}
 	}
 }
 
 void AHBaseCharacter::AttackHitCheck()
 {
-	const float AttackRange = 40.0f;
-	const float AttackDamage = 30.0f;
+	if (IsDead) return;
+
+	const float AttackRange = CurrentStat.AttackRange;
+	const float AttackDamage = CurrentStat.AttackDamage;
 
 	const FVector Start = GetMesh()->GetSocketLocation(WeaponSocketName);
-	// const FVector End = Start; // Á¤ÀûÀÎ À§Ä¡ Ã¼Å©¶ó¸é µ¿ÀÏÇÏ°Ô, ÀÌÀü ÇÁ·¹ÀÓ À§Ä¡¸¦ ÀúÀåÇØ ¼±Çü Ã¼Å©µµ °¡´É
-	//const FVector Start = GetActorLocation() + GetActorForwardVector() * GetCapsuleComponent()->GetScaledCapsuleRadius();
 	const FVector End = Start + GetActorForwardVector() * AttackRange;
 
 	TArray<FHitResult> HitResults;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack));
-	Params.AddIgnoredActor(this); // ³ª ÀÚ½ÅÀº Á¦¿Ü
+	Params.AddIgnoredActor(this); 
 	
-	// ±¸Ã¼ ÇüÅÂ(Sphere)·Î Ãæµ¹ °Ë»ç
 	bool bHit = GetWorld()->SweepMultiByChannel(
 		HitResults,
 		Start, End,
 		FQuat::Identity,
-		ECC_GameTraceChannel1, // Àü¿ë °ø°Ý Ã¤³Î ¼³Á¤ ±ÇÀå
+		ECC_GameTraceChannel1, 
 		FCollisionShape::MakeSphere(HitRadius),
 		Params
 	);
@@ -140,24 +209,18 @@ void AHBaseCharacter::AttackHitCheck()
 			AActor* TargetActor = Hit.GetActor();
 			if (TargetActor && !WasAlreadyHit(TargetActor))
 			{
-				AddHitActor(TargetActor); // ÇÑ ¹øÀÇ ½ºÀ®¿¡ Áßº¹ Å¸°Ý ¹æÁö
+				AddHitActor(TargetActor);
 	
 				FDamageEvent DamageEvent;
 				TargetActor->TakeDamage(AttackDamage, DamageEvent, GetController(), this);
-
-				//// GAS¸¦ »ç¿ëÇÑ´Ù¸é ¿©±â¼­ GameplayEffect Àû¿ë
-				//ApplyDamageToTarget(TargetActor);
 			}
 		}
 	}
 
 #if ENABLE_DRAW_DEBUG
-
 	FVector CapsuleOrigin = Start + (End - Start) * 0.5f;
 	float CapsuleHalfHeight = AttackRange * 0.5f;
 	FColor DrawColor = bHit ? FColor::Green : FColor::Red;
-
 	DrawDebugCapsule(GetWorld(), CapsuleOrigin, CapsuleHalfHeight, HitRadius, FRotationMatrix::MakeFromZ(GetActorForwardVector()).ToQuat(), DrawColor, false, 1.0f);
-
 #endif
 }

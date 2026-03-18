@@ -2,6 +2,7 @@
 
 #include "Mode/MyHackSlashGameMode.h"
 #include "MyHackSlashPlayerController.h"
+#include "Unit/Player/HPlayerState.h"
 #include "UObject/ConstructorHelpers.h"
 #include "System/HMonsterSpawnerDataAsset.h"
 #include <System/HMonsterSpawnManager.h>
@@ -27,6 +28,7 @@ AMyHackSlashGameMode::AMyHackSlashGameMode()
 		PlayerControllerClass = PlayerControllerBPClass.Class;
 	}
 
+	PlayerStateClass = AHPlayerState::StaticClass();
 }
 
 void AMyHackSlashGameMode::BeginPlay()
@@ -38,18 +40,6 @@ void AMyHackSlashGameMode::BeginPlay()
 
 void AMyHackSlashGameMode::Tick(float InDeltaSeconds)
 {
-	//test
-	if (LoadHandle.IsValid())
-	{
-		if (LoadHandle->IsLoadingInProgress()) {
-			float Progress = LoadHandle->GetProgress(); // 0.0 ~ 1.0 (다만 단일 에셋은 보통 0 아니면 1로 튑니다)
-			UE_LOG(LogTemp, Warning, TEXT("Loading... %f%%"), Progress * 100.f);
-		}
-
-		if (LoadHandle->HasLoadCompleted()) {
-			UE_LOG(LogTemp, Log, TEXT("Handle says: Load Done!"));
-		}
-	}
 }
 
 void AMyHackSlashGameMode::SetMonsterSpawnManager()

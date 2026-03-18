@@ -6,6 +6,8 @@
 #include "Unit/HBaseCharacter.h"
 #include "HPlayerCharacter.generated.h"
 
+class UInputAction;
+
 /**
  * 
  */
@@ -22,6 +24,23 @@ public:
 	FORCEINLINE class UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent; }
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
+
+public:
+	virtual void PossessedBy(AController* NewController);
+	virtual void SetupPlayerInputComponent(class UInputComponent* InPlayerInputComponent) override;
+
+protected:
+	void SetupGASInputComponent();
+	void GASInputPressed(const int32 InInputID);
+	void GASInputReleased(const int32 InInputID);
+
+protected:
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	TMap<int32, TSubclassOf<class UGameplayAbility>> StartInputAbilities;
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* JumpAction;
 
 private:
 	/** Top down camera */

@@ -21,16 +21,16 @@ protected:
 	virtual void SetDead() override;
 	
 	void EnableRagdoll();
+	void ReturnToPool();
 
 protected:
-	virtual float GetAIPatrolRadius() override;
-	virtual float GetAIDetectRange() override;
-	virtual float GetAIAttackRange() override;
-	virtual float GetAITurnSpeed() override;
+	virtual void PostInitializeComponents() override;
 
-	virtual void SetAIAttackDelegate(const FAICharacterAttackFinished& InOnAttackFinished) override;
+protected:
+	virtual void SetAIAttackDelegate(const FAIMonsterAttackFinished& InOnAttackFinished) override;
 	virtual void AttackByAI() override;
+	virtual void NotifyAttackEnd() override;
 
-	FAICharacterAttackFinished OnAttackFinished;
+	FAIMonsterAttackFinished OnAttackFinished;
 
 };

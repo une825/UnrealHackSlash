@@ -42,12 +42,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* WASDMoveAction;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputAction* JumpAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputAction* AttackAction;
-
 protected:
 	/** True if the controlled character should navigate to the mouse cursor. */
 	uint32 bMoveToMouseCursor : 1;
@@ -63,9 +57,6 @@ protected:
 	void OnDestinationReleased();
 
 	void OnWASDMove(const FInputActionValue& Value);
-
-	void OnJumpTriggered();
-	void OnJumpReleased();
 
 	void OnAttackTriggered();
 

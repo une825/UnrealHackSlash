@@ -52,13 +52,6 @@ void AMyHackSlashPlayerController::SetupInputComponent()
 
 		// Setup WASD Move events
 		EnhancedInputComponent->BindAction(WASDMoveAction, ETriggerEvent::Triggered, this, &AMyHackSlashPlayerController::OnWASDMove);
-		
-		// Setup Jump events
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &AMyHackSlashPlayerController::OnJumpTriggered);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &AMyHackSlashPlayerController::OnJumpReleased);
-
-		// Setup Attack events
-		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Completed, this, &AMyHackSlashPlayerController::OnAttackTriggered);
 	}
 	else
 	{
@@ -141,29 +134,11 @@ void AMyHackSlashPlayerController::OnWASDMove(const FInputActionValue& Value)
 	}
 }
 
-void AMyHackSlashPlayerController::OnJumpTriggered()
-{
-	ACharacter* ControlledCharacter = Cast<ACharacter>(GetPawn());
-	if (ControlledCharacter != nullptr)
-	{
-		ControlledCharacter->Jump();
-	}
-}
-
-void AMyHackSlashPlayerController::OnJumpReleased()
-{
-	ACharacter* ControlledCharacter = Cast<ACharacter>(GetPawn());
-	if (ControlledCharacter != nullptr)
-	{
-		ControlledCharacter->StopJumping();
-	}
-}
-
 void AMyHackSlashPlayerController::OnAttackTriggered()
 {
 	AHBaseCharacter* ControlledCharacter = Cast<AHBaseCharacter>(GetPawn());
 	if (ControlledCharacter != nullptr)
 	{
-		ControlledCharacter->Attack();
+		//ControlledCharacter->Attack();
 	}
 }

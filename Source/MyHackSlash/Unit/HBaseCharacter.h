@@ -6,8 +6,11 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "Skill/HCombatInterface.h"
+#include "DataAsset/HMonsterStatRow.h"
 
 #include "HBaseCharacter.generated.h"
+
+class UInputAction;
 
 UCLASS()
 class MYHACKSLASH_API AHBaseCharacter : public ACharacter, public IAbilitySystemInterface, public IHCombatInterface
@@ -19,23 +22,37 @@ public:
 	AHBaseCharacter();
 
 public:
-	void Attack();
+	// ë ˆë²¨ì„ ì„¤ì •í•˜ê³  í•´ë‹¹ ë ˆë²¨ì— ë§ëŠ” ìŠ¤íƒ¯ì„ ì ìš©í•©ë‹ˆë‹¤.
+	UFUNCTION(BlueprintCallable, Category = "Stat")
+	virtual void InitializeStat(int32 NewLevel);
+
+	// ìºë¦­í„° ìƒíƒœë¥¼ ì´ˆê¸°í™”í•©ë‹ˆë‹¤ (ì˜¤ë¸Œì íŠ¸ í’€ìš©)
+	virtual void ResetCharacter();
+
+	int32 GetLevel() const { return Level; }
+
+	class UHUnitProfileData* GetUnitProfileData() const { return UnitProfileData; }
+
+	const FMonsterStatRow& GetCurrentStat() const { return CurrentStat; }
 
 public:
-	//~ IAbilitySystemInterface ½ÃÀÛ
-	/** ¾îºô¸®Æ¼ ½Ã½ºÅÛ ÄÄÆ÷³ÍÆ®¸¦ ¹İÈ¯ÇÕ´Ï´Ù. */
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	//~ IAbilitySystemInterface ³¡
+
+public:
+	void Attack();
 
 protected:
+	virtual void BeginPlay() override;
+	virtual void PostInitializeComponents() override;
+	
 	virtual bool CanJumpInternal_Implementation() const override;
-
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 protected:
 	void ProcessAttack();
 	void AttackBegin();
 	void AttackEnd(UAnimMontage* InAnimMontage, bool bInInterrupted);
+	virtual void NotifyAttackEnd();
 
 	UFUNCTION(BlueprintCallable)
 	void UpdateWalkSpeed(const float InNewWalkSpeed);
@@ -47,19 +64,30 @@ protected:
 	virtual void AttackHitCheck() override;
 
 protected:
-	/** ¾îºô¸®Æ¼ ½Ã½ºÅÛ ÄÄÆ÷³ÍÆ®ÀÔ´Ï´Ù. °ÔÀÓÇÃ·¹ÀÌ ¾îÆ®¸®ºäÆ® ¹× °ÔÀÓÇÃ·¹ÀÌ ¾îºô¸®Æ¼¸¦ »ç¿ëÇÏ·Á¸é ÇÊ¿äÇÕ´Ï´Ù. */
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	UAbilitySystemComponent* AbilitySystemComponent;
+	
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	TArray<TSubclassOf<class UGameplayAbility>> StartAbilities;
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animation)
-	TObjectPtr<class UAnimMontage> AttackMontage;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = DataAsset)
+	TObjectPtr<class UHUnitProfileData> UnitProfileData;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animation)
-	TObjectPtr<class UAnimMontage> DeadMontage;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stat")
+	int32 Level = 1;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
+	FMonsterStatRow CurrentStat;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* AttackAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = "true"))
 	bool Attackable = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Dead, Meta = (AllowPrivateAccess = "true"))
+	bool IsDead = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Dead, Meta = (AllowPrivateAccess = "true"))
 	float DeadEventDelayTime = 5.0f;
