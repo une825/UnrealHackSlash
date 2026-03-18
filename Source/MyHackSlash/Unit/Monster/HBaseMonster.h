@@ -17,6 +17,10 @@ class MYHACKSLASH_API AHBaseMonster : public AHBaseCharacter, public IHMonsterAI
 public:
 	AHBaseMonster();
 
+public:
+	// 스탯 및 초기화
+	virtual void InitializeStat(int32 NewLevel) override;
+
 protected:
 	virtual void SetDead() override;
 	
@@ -33,4 +37,7 @@ protected:
 
 	FAIMonsterAttackFinished OnAttackFinished;
 
+protected:
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
+	FMonsterStatRow CurrentMonsterStat;
 };

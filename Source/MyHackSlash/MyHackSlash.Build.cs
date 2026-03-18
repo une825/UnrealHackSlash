@@ -21,6 +21,10 @@ public class MyHackSlash : ModuleRules
 		"EnhancedInput", 
 		"GameplayAbilities", 
 		"GameplayTags", 
-		"GameplayTasks"});
+		"GameplayTasks",
+        "UMG",
+		"Slate",
+		"SlateCore"
+		});
     }
 }

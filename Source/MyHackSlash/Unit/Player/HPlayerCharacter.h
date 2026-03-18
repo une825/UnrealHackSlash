@@ -9,7 +9,7 @@
 class UInputAction;
 
 /**
- * 
+ * 플레이어 전용 캐릭터 클래스입니다. 경험치 및 레벨업 시스템을 포함합니다.
  */
 UCLASS()
 class MYHACKSLASH_API AHPlayerCharacter : public AHBaseCharacter
@@ -29,18 +29,41 @@ public:
 	virtual void PossessedBy(AController* NewController);
 	virtual void SetupPlayerInputComponent(class UInputComponent* InPlayerInputComponent) override;
 
+	// 플레이어 스탯 및 경험치 초기화
+	virtual void InitializeStat(int32 NewLevel) override;
+
+	// 경험치 추가 및 레벨업 체크
+	UFUNCTION(BlueprintCallable, Category = "Stat")
+	void AddExp(float InExp);
+
+	float GetCurrentExp() const { return CurrentExp; }
+	float GetMaxExp() const { return MaxExp; }
+
 protected:
 	void SetupGASInputComponent();
 	void GASInputPressed(const int32 InInputID);
 	void GASInputReleased(const int32 InInputID);
 
+	// 레벨업 시 호출되는 이벤트
+	void OnLevelUp();
+
 protected:
 	UPROPERTY(EditAnywhere, Category = "GAS")
 	TMap<int32, TSubclassOf<class UGameplayAbility>> StartInputAbilities;
 
-protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* JumpAction;
+
+protected:
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
+	FPlayerStatRow CurrentPlayerStat;
+
+	// 플레이어 경험치 정보
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
+	float CurrentExp = 0.0f;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
+	float MaxExp = 100.0f;
 
 private:
 	/** Top down camera */

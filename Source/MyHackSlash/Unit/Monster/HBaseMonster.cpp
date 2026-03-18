@@ -1,9 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Unit/Monster/HBaseMonster.h"
+#include "Unit/Player/HPlayerCharacter.h"
 #include "System/HMonsterAIController.h"
-#include "System/HObjectPoolManager.h" // 오브젝트 풀 매니저 포함
+#include "System/HObjectPoolManager.h"
 #include "DataAsset/HUnitProfileData.h"
+#include "DataAsset/HMonsterStatRow.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine/EngineTypes.h"
@@ -11,6 +13,23 @@
 
 AHBaseMonster::AHBaseMonster()
 {
+}
+
+void AHBaseMonster::InitializeStat(int32 NewLevel)
+{
+	Super::InitializeStat(NewLevel);
+
+	if (UnitProfileData && UnitProfileData->UnitType == EUnitType::Monster)
+	{
+		if (FMonsterStatRow* StatRow = UnitProfileData->GetMonsterStatRowByLevel(Level))
+		{
+			CurrentStat = *StatRow;
+			CurrentMonsterStat = *StatRow;
+
+			GetCharacterMovement()->MaxWalkSpeed = CurrentStat.MovementSpeed;
+			UE_LOG(LogTemp, Log, TEXT("Monster Initialized Level %d"), Level);
+		}
+	}
 }
 
 void AHBaseMonster::SetDead()
@@ -26,6 +45,15 @@ void AHBaseMonster::SetDead()
 	}
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
 	GetCharacterMovement()->DisableMovement();
+
+	// 가해자가 플레이어인 경우 경험치 지급
+	if (LastDamageCauser.IsValid())
+	{
+		if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(LastDamageCauser.Get()))
+		{
+			Player->AddExp(CurrentMonsterStat.ExpReward);
+		}
+	}
 
 	// 래그돌 활성화
 	EnableRagdoll();
@@ -52,7 +80,7 @@ void AHBaseMonster::SetDead()
 	ImpulseDir.Normalize();
 	GetMesh()->AddImpulse(ImpulseDir * FinalImpulseForce, NAME_None, true);
 
-	// 일정 시간 후 오브젝트 풀로 반납 (HBaseCharacter에 정의된 DeadEventDelayTime 사용)
+	// 일정 시간 후 오브젝트 풀로 반납
 	FTimerHandle ReturnTimerHandle;
 	GetWorldTimerManager().SetTimer(ReturnTimerHandle, FTimerDelegate::CreateUObject(this, &AHBaseMonster::ReturnToPool), DeadEventDelayTime, false);
 }
@@ -65,7 +93,6 @@ void AHBaseMonster::ReturnToPool()
 	}
 	else
 	{
-		// 풀 매니저가 없으면 그냥 파괴
 		Destroy();
 	}
 }

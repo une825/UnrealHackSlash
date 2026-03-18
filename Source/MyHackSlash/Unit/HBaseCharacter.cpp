@@ -18,22 +18,18 @@
 // Sets default values
 AHBaseCharacter::AHBaseCharacter()
 {
-	// Set size for player capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("HCapsule"));
 
-	// Don't rotate character to camera direction
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
-	// Configure character movement
-	GetCharacterMovement()->bOrientRotationToMovement = true; // Rotate character to moving direction
+	GetCharacterMovement()->bOrientRotationToMovement = true; 
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 640.f, 0.f);
 	GetCharacterMovement()->bConstrainToPlane = true;
 	GetCharacterMovement()->bSnapToPlaneAtStart = true;
 
-	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
 
@@ -48,27 +44,14 @@ void AHBaseCharacter::Attack()
 void AHBaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// 시작 시 설정된 레벨로 스탯 초기화
 	InitializeStat(Level);
 }
 
 void AHBaseCharacter::InitializeStat(int32 NewLevel)
 {
+	// 기본 클래스에서는 레벨 변수만 갱신합니다.
+	// 하위 클래스(Player, Monster)에서 상세 로직을 구현합니다.
 	Level = NewLevel;
-
-	if (UnitProfileData)
-	{
-		if (FMonsterStatRow* StatRow = UnitProfileData->GetStatRowByLevel(Level))
-		{
-			CurrentStat = *StatRow;
-
-			// 이동 속도 적용
-			GetCharacterMovement()->MaxWalkSpeed = CurrentStat.MovementSpeed;
-
-			UE_LOG(LogTemp, Log, TEXT("%s Level %d Initialized (HP: %f, Attack: %f)"), *GetName(), Level, CurrentStat.MaxHP, CurrentStat.AttackDamage);
-		}
-	}
 }
 
 void AHBaseCharacter::ResetCharacter()
@@ -77,16 +60,13 @@ void AHBaseCharacter::ResetCharacter()
 	Attackable = true;
 	LastDamageCauser = nullptr;
 
-	// 이동 및 물리 상태 복구
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 	GetCharacterMovement()->SetComponentTickEnabled(true);
 	
-	// 충돌 설정 복구
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("HCapsule"));
-	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Block); // 기본적으로 블록
+	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Block);
 
-	// 메시 물리 복구
 	GetMesh()->SetSimulatePhysics(false);
 	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh"));
 	GetMesh()->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
@@ -99,6 +79,21 @@ UAbilitySystemComponent* AHBaseCharacter::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
+UAnimMontage* AHBaseCharacter::GetAttackMontage() const
+{
+	return UnitProfileData ? UnitProfileData->AttackMontage : nullptr;
+}
+
+float AHBaseCharacter::GetAIPatrolRadius() const
+{
+	return UnitProfileData ? UnitProfileData->PatrolRadius : 800.0f;
+}
+
+float AHBaseCharacter::GetAIDetectRadius() const
+{
+	return UnitProfileData ? UnitProfileData->DetectRadius : 600.0f;
+}
+
 void AHBaseCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
@@ -106,8 +101,7 @@ void AHBaseCharacter::PostInitializeComponents()
 
 bool AHBaseCharacter::CanJumpInternal_Implementation() const
 {
-	bool bCanJump = Super::CanJumpInternal_Implementation();
-	return bCanJump;
+	return Super::CanJumpInternal_Implementation();
 }
 
 float AHBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -141,7 +135,6 @@ void AHBaseCharacter::AttackBegin()
 	}
 	else
 	{
-		// 애니메이션이 없거나 재생할 수 없는 경우 즉시 공격 종료 처리하여 AI가 멈추지 않게 함
 		AttackEnd(nullptr, false);
 	}
 }
@@ -154,7 +147,6 @@ void AHBaseCharacter::AttackEnd(UAnimMontage* InAnimMontage, bool bInInterrupted
 
 void AHBaseCharacter::NotifyAttackEnd()
 {
-	// 상속받은 클래스(Monster 등)에서 AI 태스크 종료 알림 등을 처리
 }
 
 void AHBaseCharacter::UpdateWalkSpeed(const float InNewWalkSpeed)

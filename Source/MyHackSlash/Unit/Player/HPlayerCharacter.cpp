@@ -7,22 +7,67 @@
 #include "EnhancedInputComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "DataAsset/HUnitProfileData.h"
+#include "DataAsset/HPlayerStatRow.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 AHPlayerCharacter::AHPlayerCharacter()
 {
 	// Create a camera boom...
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->SetUsingAbsoluteRotation(true); // Don't want arm to rotate when character does
+	CameraBoom->SetUsingAbsoluteRotation(true); 
 	CameraBoom->TargetArmLength = 800.f;
 	CameraBoom->SetRelativeRotation(FRotator(-60.f, 0.f, 0.f));
-	CameraBoom->bDoCollisionTest = false; // Don't want to pull camera in when it collides with level
+	CameraBoom->bDoCollisionTest = false; 
 
 	// Create a camera...
 	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	TopDownCameraComponent->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+	TopDownCameraComponent->bUsePawnControlRotation = false; 
+}
 
+void AHPlayerCharacter::InitializeStat(int32 NewLevel)
+{
+	Level = NewLevel;
+
+	if (UnitProfileData && UnitProfileData->UnitType == EUnitType::Player)
+	{
+		if (FPlayerStatRow* StatRow = UnitProfileData->GetPlayerStatRowByLevel(Level))
+		{
+			// 공통 스탯 복사
+			CurrentStat = *StatRow;
+			CurrentPlayerStat = *StatRow;
+
+			// 플레이어 특화 스탯 (경험치)
+			MaxExp = StatRow->MaxExp;
+			
+			GetCharacterMovement()->MaxWalkSpeed = CurrentStat.MovementSpeed;
+			
+			UE_LOG(LogTemp, Warning, TEXT("Player Initialized Level %d (HP: %f, MaxExp: %f)"), Level, CurrentStat.MaxHP, MaxExp);
+		}
+	}
+}
+
+void AHPlayerCharacter::AddExp(float InExp)
+{
+	if (IsDead) return;
+
+	CurrentExp += InExp;
+	UE_LOG(LogTemp, Log, TEXT("Player gained %f EXP. (Total: %f / %f)"), InExp, CurrentExp, MaxExp);
+
+	while (CurrentExp >= MaxExp && MaxExp > 0)
+	{
+		CurrentExp -= MaxExp;
+		Level++;
+		OnLevelUp();
+	}
+}
+
+void AHPlayerCharacter::OnLevelUp()
+{
+	InitializeStat(Level);
+	UE_LOG(LogTemp, Warning, TEXT("Player LEVELED UP! Now Level %d"), Level);
 }
 
 void AHPlayerCharacter::PossessedBy(AController* NewController)
@@ -60,7 +105,6 @@ void AHPlayerCharacter::PossessedBy(AController* NewController)
 void AHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* InPlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(InPlayerInputComponent);
-
 	SetupGASInputComponent();
 }
 
@@ -70,17 +114,15 @@ void AHPlayerCharacter::SetupGASInputComponent()
 	{
 		UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent);
 
-		// Setup Jump events
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &AHPlayerCharacter::GASInputPressed, 0);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &AHPlayerCharacter::GASInputReleased, 0);
-
-		// Setup Attack events
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &AHPlayerCharacter::GASInputPressed, 1);
 	}
 }
 
 void AHPlayerCharacter::GASInputPressed(const int32 InInputID)
 {
+	if (!AbilitySystemComponent) return;
 	FGameplayAbilitySpec* Spec = AbilitySystemComponent->FindAbilitySpecFromInputID(InInputID);
 	if (Spec)
 	{
@@ -98,6 +140,7 @@ void AHPlayerCharacter::GASInputPressed(const int32 InInputID)
 
 void AHPlayerCharacter::GASInputReleased(const int32 InInputID)
 {
+	if (!AbilitySystemComponent) return;
 	FGameplayAbilitySpec* Spec = AbilitySystemComponent->FindAbilitySpecFromInputID(InInputID);
 	if (Spec)
 	{
@@ -108,4 +151,3 @@ void AHPlayerCharacter::GASInputReleased(const int32 InInputID)
 		}
 	}
 }
-

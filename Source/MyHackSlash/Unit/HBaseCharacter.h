@@ -6,7 +6,8 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "Skill/HCombatInterface.h"
-#include "DataAsset/HMonsterStatRow.h"
+#include "DataAsset/HUnitStatRow.h"
+#include "DataAsset/HUnitProfileData.h"
 
 #include "HBaseCharacter.generated.h"
 
@@ -18,25 +19,24 @@ class MYHACKSLASH_API AHBaseCharacter : public ACharacter, public IAbilitySystem
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	AHBaseCharacter();
 
 public:
-	// 레벨을 설정하고 해당 레벨에 맞는 스탯을 적용합니다.
+	// 유닛의 스탯을 초기화합니다. 하위 클래스에서 각자의 타입에 맞게 구현합니다.
 	UFUNCTION(BlueprintCallable, Category = "Stat")
 	virtual void InitializeStat(int32 NewLevel);
 
-	// 캐릭터 상태를 초기화합니다 (오브젝트 풀용)
 	virtual void ResetCharacter();
 
 	int32 GetLevel() const { return Level; }
-
 	class UHUnitProfileData* GetUnitProfileData() const { return UnitProfileData; }
-
-	const FMonsterStatRow& GetCurrentStat() const { return CurrentStat; }
+	const FUnitStatRow& GetCurrentStat() const { return CurrentStat; }
 
 public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	UAnimMontage* GetAttackMontage() const;
+	float GetAIPatrolRadius() const;
+	float GetAIDetectRadius() const;
 
 public:
 	void Attack();
@@ -44,7 +44,6 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
-	
 	virtual bool CanJumpInternal_Implementation() const override;
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -58,9 +57,6 @@ protected:
 	void UpdateWalkSpeed(const float InNewWalkSpeed);
 
 	virtual void SetDead();
-
-	// Attack Hit Section
-protected:
 	virtual void AttackHitCheck() override;
 
 protected:
@@ -77,8 +73,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stat")
 	int32 Level = 1;
 
+	// 공통적으로 사용되는 런타임 스탯 데이터
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
-	FMonsterStatRow CurrentStat;
+	FUnitStatRow CurrentStat;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* AttackAction;

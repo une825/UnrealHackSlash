@@ -4,23 +4,23 @@
 
 #include "CoreMinimal.h"
 #include "DataAsset/HUnitStatRow.h"
-#include "HMonsterStatRow.generated.h"
+#include "HPlayerStatRow.generated.h"
 
 /**
- * 몬스터 전용 스탯 구조체입니다. (기본 스탯 + 처치 경험치 보상)
+ * 플레이어 전용 스탯 구조체입니다. (기본 스탯 + 필요 경험치)
  */
 USTRUCT(BlueprintType)
-struct FMonsterStatRow : public FUnitStatRow
+struct FPlayerStatRow : public FUnitStatRow
 {
 	GENERATED_BODY()
 
 public:
-	FMonsterStatRow()
+	FPlayerStatRow()
 		: FUnitStatRow()
-		, ExpReward(50.0f)
+		, MaxExp(100.0f)
 	{}
 
-	// 처치 시 플레이어에게 지급할 경험치
+	// 다음 레벨로 가기 위한 필요 경험치
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
-	float ExpReward;
+	float MaxExp;
 };

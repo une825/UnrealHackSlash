@@ -10,6 +10,7 @@
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
 #include "EnhancedInputSubsystems.h"
+#include "System/HUIManager.h"
 #include "Engine/LocalPlayer.h"
 #include <Unit/HBaseCharacter.h>
 #include <Kismet/KismetMathLibrary.h>
@@ -28,6 +29,12 @@ void AMyHackSlashPlayerController::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
+
+	//test
+	if (UHUIManager* UIMgr = GetGameInstance()->GetSubsystem<UHUIManager>())
+	{
+		UIMgr->ShowWidgetByName(TEXT("MainHUD"));
+	}
 }
 
 void AMyHackSlashPlayerController::SetupInputComponent()
