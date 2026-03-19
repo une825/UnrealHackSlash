@@ -10,6 +10,7 @@
 #include "DataAsset/HUnitProfileData.h"
 #include "DataAsset/HPlayerStatRow.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include <Kismet/GameplayStatics.h>
 
 AHPlayerCharacter::AHPlayerCharacter()
 {
@@ -27,9 +28,9 @@ AHPlayerCharacter::AHPlayerCharacter()
 	TopDownCameraComponent->bUsePawnControlRotation = false; 
 }
 
-void AHPlayerCharacter::InitializeStat(int32 NewLevel)
+void AHPlayerCharacter::InitializeStat(int32 InNewLevel)
 {
-	Level = NewLevel;
+	Level = InNewLevel;
 
 	if (UnitProfileData && UnitProfileData->UnitType == EUnitType::Player)
 	{
@@ -39,12 +40,19 @@ void AHPlayerCharacter::InitializeStat(int32 NewLevel)
 			CurrentStat = *StatRow;
 			CurrentPlayerStat = *StatRow;
 
+			// 체력 초기화
+			MaxHP = StatRow->MaxHP;
+			CurrentHP = MaxHP;
+
 			// 플레이어 특화 스탯 (경험치)
 			MaxExp = StatRow->MaxExp;
-			
+
 			GetCharacterMovement()->MaxWalkSpeed = CurrentStat.MovementSpeed;
-			
-			UE_LOG(LogTemp, Warning, TEXT("Player Initialized Level %d (HP: %f, MaxExp: %f)"), Level, CurrentStat.MaxHP, MaxExp);
+
+			OnExpChanged.Broadcast(Level, CurrentExp, MaxExp);
+			OnHPChanged.Broadcast(CurrentHP, MaxHP);
+
+			UE_LOG(LogTemp, Warning, TEXT("Player Initialized Level %d (HP: %f, MaxExp: %f)"), Level, MaxHP, MaxExp);
 		}
 	}
 }
@@ -62,12 +70,33 @@ void AHPlayerCharacter::AddExp(float InExp)
 		Level++;
 		OnLevelUp();
 	}
+
+	OnExpChanged.Broadcast(Level, CurrentExp, MaxExp);
 }
 
 void AHPlayerCharacter::OnLevelUp()
 {
 	InitializeStat(Level);
+
+	// 레벨업 시 체력을 충전한다.
+	CurrentHP = MaxHP;
+	OnHPChanged.Broadcast(CurrentHP, MaxHP);
+
 	UE_LOG(LogTemp, Warning, TEXT("Player LEVELED UP! Now Level %d"), Level);
+}
+
+void AHPlayerCharacter::SetDead()
+{
+	Super::SetDead();
+
+	FAttachmentTransformRules AttachmentRules(EAttachmentRule::KeepWorld, false);
+	CameraBoom->AttachToComponent(GetMesh(), AttachmentRules, TEXT("Pelvis"));
+	
+	// 1. 아주 짧은 정지 (강한 타격감)
+	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.01f);
+
+	// 2. 잠시 후 슬로우 모션으로 전환 (Timer 사용)
+	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.2f);
 }
 
 void AHPlayerCharacter::PossessedBy(AController* NewController)
@@ -98,7 +127,7 @@ void AHPlayerCharacter::PossessedBy(AController* NewController)
 
 	if (APlayerController* PlayerController = Cast<APlayerController>(NewController))
 	{
-		PlayerController->ConsoleCommand(TEXT("showdebug abilitysystem"));
+		//PlayerController->ConsoleCommand(TEXT("showdebug abilitysystem"));
 	}
 }
 

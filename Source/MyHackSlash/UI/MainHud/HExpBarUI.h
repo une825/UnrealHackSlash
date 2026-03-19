@@ -22,14 +22,16 @@ protected:
 public:
 	// 경험치 바의 퍼센트와 텍스트를 업데이트합니다.
 	UFUNCTION(BlueprintCallable, Category = "UI")
-	void UpdateExpBar(float CurrentExp, float MaxExp);
+	void UpdateExpBar(const int InLevel, const float InCurrentExp, const float InMaxExp);
 
 protected:
-	// 블루프린트의 ProgressBar 이름이 "ExpProgressBar"여야 합니다.
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UProgressBar> ExpProgressBar;
 
-	// 블루프린트의 TextBlock 이름이 "ExpText"여야 합니다.
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> ExpText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> LevelText;
+	
 };

@@ -6,6 +6,8 @@
 #include "Abilities/GameplayAbility.h"
 #include "HGA_Attack.generated.h"
 
+class UNiagaraSystem;
+
 /**
  * 
  */
@@ -16,6 +18,10 @@ class MYHACKSLASH_API UHGA_Attack : public UGameplayAbility
 
 public:
 	UHGA_Attack();
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effect")
+	TObjectPtr<UNiagaraSystem> AttackEffect;
 
 public:
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;

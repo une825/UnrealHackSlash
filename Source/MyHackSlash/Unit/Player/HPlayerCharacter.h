@@ -8,6 +8,8 @@
 
 class UInputAction;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnExpChanged, int, CurrentLevel, float, CurrentExp, float, MaxExp);
+
 /**
  * 플레이어 전용 캐릭터 클래스입니다. 경험치 및 레벨업 시스템을 포함합니다.
  */
@@ -20,6 +22,11 @@ public:
 	AHPlayerCharacter();
 
 public:
+	// 경험치 변경 시 호출되는 델리게이트
+	UPROPERTY(BlueprintAssignable, Category = "Stat")
+	FOnExpChanged OnExpChanged;
+
+public:
 	/** Returns TopDownCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent; }
 	/** Returns CameraBoom subobject **/
@@ -30,7 +37,7 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* InPlayerInputComponent) override;
 
 	// 플레이어 스탯 및 경험치 초기화
-	virtual void InitializeStat(int32 NewLevel) override;
+	virtual void InitializeStat(int32 InNewLevel) override;
 
 	// 경험치 추가 및 레벨업 체크
 	UFUNCTION(BlueprintCallable, Category = "Stat")
@@ -46,6 +53,8 @@ protected:
 
 	// 레벨업 시 호출되는 이벤트
 	void OnLevelUp();
+
+	virtual void SetDead() override;
 
 protected:
 	UPROPERTY(EditAnywhere, Category = "GAS")

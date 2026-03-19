@@ -30,7 +30,7 @@ void AMyHackSlashPlayerController::BeginPlay()
 	// Call the base class  
 	Super::BeginPlay();
 
-	//test
+	// test
 	if (UHUIManager* UIMgr = GetGameInstance()->GetSubsystem<UHUIManager>())
 	{
 		UIMgr->ShowWidgetByName(TEXT("MainHUD"));

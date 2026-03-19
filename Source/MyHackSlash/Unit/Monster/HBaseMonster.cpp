@@ -15,70 +15,51 @@ AHBaseMonster::AHBaseMonster()
 {
 }
 
-void AHBaseMonster::InitializeStat(int32 NewLevel)
+float AHBaseMonster::GetExpReward() const
 {
-	Super::InitializeStat(NewLevel);
+	return CurrentMonsterStat.ExpReward;
+}
+
+void AHBaseMonster::InitializeStat(int32 InNewLevel)
+{
+	Super::InitializeStat(InNewLevel);
 
 	if (UnitProfileData && UnitProfileData->UnitType == EUnitType::Monster)
 	{
 		if (FMonsterStatRow* StatRow = UnitProfileData->GetMonsterStatRowByLevel(Level))
 		{
+			// 공통 스탯 복사
 			CurrentStat = *StatRow;
 			CurrentMonsterStat = *StatRow;
 
+			// 체력 초기화
+			MaxHP = StatRow->MaxHP;
+			CurrentHP = MaxHP;
+
 			GetCharacterMovement()->MaxWalkSpeed = CurrentStat.MovementSpeed;
-			UE_LOG(LogTemp, Log, TEXT("Monster Initialized Level %d"), Level);
+			
+			OnHPChanged.Broadcast(CurrentHP, MaxHP);
+
+			UE_LOG(LogTemp, Log, TEXT("Monster Initialized Level %d (HP: %f)"), Level, MaxHP);
 		}
 	}
 }
 
 void AHBaseMonster::SetDead()
 {
-	if (IsDead) return;
-
-	IsDead = true;
+	Super::SetDead();
 
 	// AI 및 이동 로직 중지
 	if (auto* AICon = Cast<AAIController>(GetController()))
 	{
 		AICon->StopMovement();
 	}
-	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-	GetCharacterMovement()->DisableMovement();
 
-	// 가해자가 플레이어인 경우 경험치 지급
+	// 가해자가 있는 경우 델리게이트 호출 (QuestManager 등에서 처리)
 	if (LastDamageCauser.IsValid())
 	{
-		if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(LastDamageCauser.Get()))
-		{
-			Player->AddExp(CurrentMonsterStat.ExpReward);
-		}
+		OnMonsterDead.Broadcast(LastDamageCauser.Get(), this);
 	}
-
-	// 래그돌 활성화
-	EnableRagdoll();
-
-	// 공격자(가해자) 정보를 기반으로 임펄스 적용
-	float FinalImpulseForce = 500.0f; 
-	FVector ImpulseDir = -GetActorForwardVector(); 
-
-	if (LastDamageCauser.IsValid())
-	{
-		if (AHBaseCharacter* Attacker = Cast<AHBaseCharacter>(LastDamageCauser.Get()))
-		{
-			if (UHUnitProfileData* AttackerProfile = Attacker->GetUnitProfileData())
-			{
-				FinalImpulseForce = AttackerProfile->DeathImpulseForce;
-			}
-		}
-
-		ImpulseDir = GetActorLocation() - LastDamageCauser->GetActorLocation();
-		ImpulseDir.Normalize();
-	}
-
-	ImpulseDir.Z = 0.5f; 
-	ImpulseDir.Normalize();
-	GetMesh()->AddImpulse(ImpulseDir * FinalImpulseForce, NAME_None, true);
 
 	// 일정 시간 후 오브젝트 풀로 반납
 	FTimerHandle ReturnTimerHandle;
@@ -94,22 +75,6 @@ void AHBaseMonster::ReturnToPool()
 	else
 	{
 		Destroy();
-	}
-}
-
-void AHBaseMonster::EnableRagdoll()
-{
-	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
-
-	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
-	GetMesh()->SetSimulatePhysics(true);
-	GetMesh()->SetAllBodiesSimulatePhysics(true);
-	GetMesh()->SetAllBodiesBelowSimulatePhysics(TEXT("pelvis"), true, true);
-	
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
-	{
-		AnimInstance->StopAllMontages(0.0f);
 	}
 }
 

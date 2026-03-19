@@ -12,6 +12,9 @@
 #include "HBaseCharacter.generated.h"
 
 class UInputAction;
+class UNiagaraSystem;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHPChanged, float, CurrentHP, float, MaxHP);
 
 UCLASS()
 class MYHACKSLASH_API AHBaseCharacter : public ACharacter, public IAbilitySystemInterface, public IHCombatInterface
@@ -22,14 +25,20 @@ public:
 	AHBaseCharacter();
 
 public:
+	// HP 변경 시 호출되는 델리게이트
+	UPROPERTY(BlueprintAssignable, Category = "Stat")
+	FOnHPChanged OnHPChanged;
+
+public:
 	// 유닛의 스탯을 초기화합니다. 하위 클래스에서 각자의 타입에 맞게 구현합니다.
 	UFUNCTION(BlueprintCallable, Category = "Stat")
-	virtual void InitializeStat(int32 NewLevel);
+	virtual void InitializeStat(int32 InNewLevel);
 
 	virtual void ResetCharacter();
 
-	int32 GetLevel() const { return Level; }
-	class UHUnitProfileData* GetUnitProfileData() const { return UnitProfileData; }
+	const int32 GetLevel() const { return Level; }
+	const int32 GetCurrentHP() const { return CurrentHP; }
+	const UHUnitProfileData* GetUnitProfileData() const { return UnitProfileData; }
 	const FUnitStatRow& GetCurrentStat() const { return CurrentStat; }
 
 public:
@@ -45,7 +54,7 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
 	virtual bool CanJumpInternal_Implementation() const override;
-	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	virtual float TakeDamage(float InDamageAmount, FDamageEvent const& InDamageEvent, AController* InEventInstigator, AActor* InDamageCauser) override;
 
 protected:
 	void ProcessAttack();
@@ -58,6 +67,10 @@ protected:
 
 	virtual void SetDead();
 	virtual void AttackHitCheck() override;
+
+	void PlayHittedEffect();
+	void EnableRagdoll();
+	void SetDeadImpulse();
 
 protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "GAS")
@@ -77,6 +90,13 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
 	FUnitStatRow CurrentStat;
 
+	// 실시간 체력 정보
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
+	float CurrentHP = 0.0f;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
+	float MaxHP = 100.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* AttackAction;
 
@@ -92,4 +112,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Dead, Meta = (AllowPrivateAccess = "true"))
 	TWeakObjectPtr<AActor> LastDamageCauser;
 
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effect")
+	TObjectPtr<UNiagaraSystem> HittedEffect;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effect")
+	TObjectPtr<UNiagaraSystem> HittedBodyEffect;
 };

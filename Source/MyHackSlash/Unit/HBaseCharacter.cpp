@@ -13,6 +13,7 @@
 #include "Materials/Material.h"
 #include "Engine/World.h"
 #include "Engine/DamageEvents.h"
+#include <NiagaraFunctionLibrary.h>
 
 
 // Sets default values
@@ -47,11 +48,11 @@ void AHBaseCharacter::BeginPlay()
 	InitializeStat(Level);
 }
 
-void AHBaseCharacter::InitializeStat(int32 NewLevel)
+void AHBaseCharacter::InitializeStat(int32 InNewLevel)
 {
 	// 기본 클래스에서는 레벨 변수만 갱신합니다.
 	// 하위 클래스(Player, Monster)에서 상세 로직을 구현합니다.
-	Level = NewLevel;
+	Level = InNewLevel;
 }
 
 void AHBaseCharacter::ResetCharacter()
@@ -104,12 +105,25 @@ bool AHBaseCharacter::CanJumpInternal_Implementation() const
 	return Super::CanJumpInternal_Implementation();
 }
 
-float AHBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+float AHBaseCharacter::TakeDamage(float InDamageAmount, FDamageEvent const& InDamageEvent, AController* InEventInstigator, AActor* InDamageCauser)
 {
-	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-	LastDamageCauser = DamageCauser;
-	SetDead();
-	return DamageAmount;
+	float ActualDamage = Super::TakeDamage(InDamageAmount, InDamageEvent, InEventInstigator, InDamageCauser);
+	
+	if (IsDead) return ActualDamage;
+
+	CurrentHP = FMath::Clamp(CurrentHP - ActualDamage, 0.0f, MaxHP);
+	OnHPChanged.Broadcast(CurrentHP, MaxHP);
+
+	LastDamageCauser = InDamageCauser;
+
+	PlayHittedEffect();
+
+	if (CurrentHP <= 0.0f)
+	{
+		SetDead();
+	}
+
+	return ActualDamage;
 }
 
 void AHBaseCharacter::ProcessAttack()
@@ -157,18 +171,13 @@ void AHBaseCharacter::UpdateWalkSpeed(const float InNewWalkSpeed)
 void AHBaseCharacter::SetDead()
 {
 	if (IsDead) return;
-
 	IsDead = true;
-	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-	
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
-	{
-		AnimInstance->StopAllMontages(0.0f);
-		if (UnitProfileData && UnitProfileData->DeadMontage)
-		{
-			AnimInstance->Montage_Play(UnitProfileData->DeadMontage, 1.0f);
-		}
-	}
+
+	GetCharacterMovement()->DisableMovement();
+
+	// 래그돌 활성화
+	EnableRagdoll();
+	SetDeadImpulse();
 }
 
 void AHBaseCharacter::AttackHitCheck()
@@ -210,9 +219,75 @@ void AHBaseCharacter::AttackHitCheck()
 	}
 
 #if ENABLE_DRAW_DEBUG
-	FVector CapsuleOrigin = Start + (End - Start) * 0.5f;
-	float CapsuleHalfHeight = AttackRange * 0.5f;
-	FColor DrawColor = bHit ? FColor::Green : FColor::Red;
-	DrawDebugCapsule(GetWorld(), CapsuleOrigin, CapsuleHalfHeight, HitRadius, FRotationMatrix::MakeFromZ(GetActorForwardVector()).ToQuat(), DrawColor, false, 1.0f);
+	//if (UnitProfileData && UnitProfileData->UnitType == EUnitType::Player)
+	//{
+	//	FVector CapsuleOrigin = Start + (End - Start) * 0.5f;
+	//	float CapsuleHalfHeight = AttackRange * 0.5f;
+	//	FColor DrawColor = bHit ? FColor::Green : FColor::Red;
+	//	DrawDebugCapsule(GetWorld(), CapsuleOrigin, CapsuleHalfHeight, HitRadius, FRotationMatrix::MakeFromZ(GetActorForwardVector()).ToQuat(), DrawColor, false, 0.1f);
+	//}
 #endif
+}
+
+void AHBaseCharacter::PlayHittedEffect()
+{
+	if (HittedBodyEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAttached(
+			HittedBodyEffect,
+			GetMesh(),
+			TEXT("pelvis"),
+			FVector::ZeroVector,
+			FRotator::ZeroRotator,
+			EAttachLocation::SnapToTarget,
+			true
+		);
+	}
+
+	if (HittedEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), HittedEffect,
+			GetActorLocation(), GetActorRotation());
+	}
+}
+
+void AHBaseCharacter::EnableRagdoll()
+{
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
+
+	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+	GetMesh()->SetSimulatePhysics(true);
+	GetMesh()->SetAllBodiesSimulatePhysics(true);
+	GetMesh()->SetAllBodiesBelowSimulatePhysics(TEXT("pelvis"), true, true);
+
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->StopAllMontages(0.0f);
+	}
+}
+
+void AHBaseCharacter::SetDeadImpulse()
+{
+	// 공격자(가해자) 정보를 기반으로 임펄스 적용
+	float FinalImpulseForce = 5000.0f;
+	FVector ImpulseDir = -GetActorForwardVector();
+
+	if (LastDamageCauser.IsValid())
+	{
+		if (AHBaseCharacter* Attacker = Cast<AHBaseCharacter>(LastDamageCauser.Get()))
+		{
+			if (const UHUnitProfileData* AttackerProfile = Attacker->GetUnitProfileData())
+			{
+				FinalImpulseForce = AttackerProfile->DeathImpulseForce;
+			}
+		}
+
+		ImpulseDir = GetActorLocation() - LastDamageCauser->GetActorLocation();
+		ImpulseDir.Normalize();
+	}
+
+	ImpulseDir.Z = 0.5f;
+	ImpulseDir.Normalize();
+	GetMesh()->AddImpulse(ImpulseDir * FinalImpulseForce, NAME_None, true);
 }

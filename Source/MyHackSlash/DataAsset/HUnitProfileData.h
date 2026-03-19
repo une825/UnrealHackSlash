@@ -53,7 +53,7 @@ public:
 
 	// 사망 시 밀려나는 힘
 	UPROPERTY(EditAnywhere, Category = "Effects")
-	float DeathImpulseForce = 500.0f;
+	float DeathImpulseForce = 8000.0f;
 
 	// --- 헬퍼 함수 ---
 	// 특정 레벨의 몬스터 스탯 정보를 반환

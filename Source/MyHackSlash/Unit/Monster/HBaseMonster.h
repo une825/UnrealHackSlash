@@ -7,6 +7,8 @@
 #include "AI/HMonsterAIInerface.h"
 #include "HBaseMonster.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnMonsterDead, AActor*, InAttacker, AHBaseMonster*, InDeadMonster);
+
 /**
  * 
  */
@@ -18,13 +20,19 @@ public:
 	AHBaseMonster();
 
 public:
-	// ���� �� �ʱ�ȭ
-	virtual void InitializeStat(int32 NewLevel) override;
+	// 사망 시 호출되는 델리게이트
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnMonsterDead OnMonsterDead;
+
+	float GetExpReward() const;
+
+public:
+	// 스탯 및 초기화
+	virtual void InitializeStat(int32 InNewLevel) override;
 
 protected:
 	virtual void SetDead() override;
 	
-	void EnableRagdoll();
 	void ReturnToPool();
 
 protected:

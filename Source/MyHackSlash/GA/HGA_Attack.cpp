@@ -5,30 +5,46 @@
 #include "Unit/HBaseCharacter.h"
 #include "DataAsset/HUnitProfileData.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 
 UHGA_Attack::UHGA_Attack()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 }
 
-void UHGA_Attack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+void UHGA_Attack::ActivateAbility(const FGameplayAbilitySpecHandle InHandle, const FGameplayAbilityActorInfo* InActorInfo, const FGameplayAbilityActivationInfo InActivationInfo, const FGameplayEventData* InTriggerEventData)
 {
-	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	Super::ActivateAbility(InHandle, InActorInfo, InActivationInfo, InTriggerEventData);
 
-	if (ActorInfo == nullptr || !ActorInfo->AvatarActor.IsValid())
+	if (InActorInfo == nullptr || !InActorInfo->AvatarActor.IsValid())
 	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		EndAbility(InHandle, InActorInfo, InActivationInfo, true, true);
 		return;
 	}
 
-	AHBaseCharacter* BaseCharacter = Cast<AHBaseCharacter>(ActorInfo->AvatarActor.Get());
+	AHBaseCharacter* BaseCharacter = Cast<AHBaseCharacter>(InActorInfo->AvatarActor.Get());
 	if (nullptr == BaseCharacter)
 	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		EndAbility(InHandle, InActorInfo, InActivationInfo, true, true);
 		return;
 	}
 
-	UHUnitProfileData* Profile = BaseCharacter->GetUnitProfileData();
+	// 공격 이펙트 재생
+	if (AttackEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAttached(
+			AttackEffect, 
+			BaseCharacter->GetMesh(), 
+			TEXT("hand_r"), 
+			FVector::ZeroVector, 
+			FRotator::ZeroRotator, 
+			EAttachLocation::SnapToTarget, 
+			true
+		);
+	}
+
+	const UHUnitProfileData* Profile = BaseCharacter->GetUnitProfileData();
 	if (Profile && Profile->AttackMontage)
 	{
 		// 유닛 프로필에 설정된 공격 애니메이션 재생
@@ -50,23 +66,23 @@ void UHGA_Attack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 	{
 		// 몽타주가 없는 경우 캐릭터의 기본 공격 로직 실행 시도
 		BaseCharacter->Attack();
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		EndAbility(InHandle, InActorInfo, InActivationInfo, true, false);
 	}
 }
 
-void UHGA_Attack::InputPressed(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo)
+void UHGA_Attack::InputPressed(const FGameplayAbilitySpecHandle InHandle, const FGameplayAbilityActorInfo* InActorInfo, const FGameplayAbilityActivationInfo InActivationInfo)
 {
-	Super::InputPressed(Handle, ActorInfo, ActivationInfo);
+	Super::InputPressed(InHandle, InActorInfo, InActivationInfo);
 }
 
-void UHGA_Attack::CancelAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateCancelAbility)
+void UHGA_Attack::CancelAbility(const FGameplayAbilitySpecHandle InHandle, const FGameplayAbilityActorInfo* InActorInfo, const FGameplayAbilityActivationInfo InActivationInfo, bool bInReplicateCancelAbility)
 {
-	Super::CancelAbility(Handle, ActorInfo, ActivationInfo, bReplicateCancelAbility);
+	Super::CancelAbility(InHandle, InActorInfo, InActivationInfo, bInReplicateCancelAbility);
 }
 
-void UHGA_Attack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+void UHGA_Attack::EndAbility(const FGameplayAbilitySpecHandle InHandle, const FGameplayAbilityActorInfo* InActorInfo, const FGameplayAbilityActivationInfo InActivationInfo, bool bInReplicateEndAbility, bool bInWasCancelled)
 {
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+	Super::EndAbility(InHandle, InActorInfo, InActivationInfo, bInReplicateEndAbility, bInWasCancelled);
 }
 
 void UHGA_Attack::OnCompleteCallback()

@@ -24,7 +24,7 @@ void UBTS_Detect::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory,
     AHBaseCharacter* Character = Cast<AHBaseCharacter>(ControllingPawn);
     if (nullptr == Character) return;
 
-    UHUnitProfileData* Profile = Character->GetUnitProfileData();
+    const UHUnitProfileData* Profile = Character->GetUnitProfileData();
     if (nullptr == Profile) return;
 
     // DataAsset에서 직접 탐색 범위를 가져옵니다.
