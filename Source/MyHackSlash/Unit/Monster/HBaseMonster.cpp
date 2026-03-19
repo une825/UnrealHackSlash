@@ -24,7 +24,7 @@ void AHBaseMonster::InitializeStat(int32 InNewLevel)
 {
 	Super::InitializeStat(InNewLevel);
 
-	if (UnitProfileData && UnitProfileData->UnitType == EUnitType::Monster)
+	if (UnitProfileData && UnitProfileData->UnitType == EHUnitType::Monster)
 	{
 		if (FMonsterStatRow* StatRow = UnitProfileData->GetMonsterStatRowByLevel(Level))
 		{

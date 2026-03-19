@@ -24,7 +24,11 @@ public:
 
 	// UI 이름을 기반으로 위젯을 띄웁니다.
 	UFUNCTION(BlueprintCallable, Category = "UI")
-	UUserWidget* ShowWidgetByName(FName WidgetName, int32 ZOrder = 0);
+	UUserWidget* ShowWidgetByName(FName InWidgetName, int32 InZOrder = 0);
+
+	// 활성화된 위젯 중 특정 이름을 가진 위젯을 찾아 반환합니다.
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	UUserWidget* GetWidgetByName(FName InWidgetName) const;
 
 	// 기존 ShowWidget (클래스를 직접 넘기는 경우)
 	UFUNCTION(BlueprintCallable, Category = "UI")
@@ -42,9 +46,9 @@ public:
 	template <typename T>
 	T* GetWidget() const
 	{
-		for (UUserWidget* Widget : ActiveWidgets)
+		for (auto& Pair : ActiveWidgets)
 		{
-			if (T* TypedWidget = Cast<T>(Widget))
+			if (T* TypedWidget = Cast<T>(Pair.Value))
 			{
 				return TypedWidget;
 			}
@@ -57,7 +61,7 @@ private:
 	UPROPERTY()
 	TObjectPtr<UHUIDataAsset> UIDataAsset;
 
-	// 현재 화면에 출력 중인 위젯 목록을 관리합니다.
+	// 현재 화면에 출력 중인 위젯 목록을 이름(Key)과 함께 관리합니다.
 	UPROPERTY()
-	TArray<TObjectPtr<UUserWidget>> ActiveWidgets;
+	TMap<FName, TObjectPtr<UUserWidget>> ActiveWidgets;
 };

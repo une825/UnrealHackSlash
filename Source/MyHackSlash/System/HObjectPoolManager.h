@@ -10,13 +10,15 @@
  * 
  */
 
+class UNiagaraSystem;
+
 USTRUCT()
 struct FObjectPoolArray
 {
 	GENERATED_BODY()
 
 	UPROPERTY()
-	TArray<AActor*> InactiveActors;
+	TArray<TObjectPtr<AActor>> InactiveActors;
 };
 
 UCLASS()
@@ -25,16 +27,31 @@ class MYHACKSLASH_API UHObjectPoolManager : public UWorldSubsystem
 	GENERATED_BODY()
 
 public:
-	// Ç®¿¡¼­ ¾×ÅÍ¸¦ °¡Á®¿À°Å³ª »õ·Î »ı¼ºÇÕ´Ï´Ù.
-	AActor* SpawnFromPool(UClass* ActorClass, FVector Location, FRotator Rotation);
+	// í’€ì—ì„œ ì•¡í„°ë¥¼ ê°€ì ¸ì˜¤ê±°ë‚˜ ìƒì„±í•˜ì—¬ ë°˜í™˜í•©ë‹ˆë‹¤.
+	UFUNCTION(BlueprintCallable, Category = "ObjectPool")
+	AActor* SpawnFromPool(UClass* InActorClass, FVector InLocation, FRotator InRotation);
 
-	// »ç¿ëÀÌ ³¡³­ ¾×ÅÍ¸¦ Ç®·Î ¹İ³³ÇÕ´Ï´Ù.
-	void ReturnToPool(AActor* Actor);
+	// Niagara ì´í™íŠ¸ë¥¼ í’€ì—ì„œ ê°€ì ¸ì™€ ì¬ìƒí•©ë‹ˆë‹¤.
+	UFUNCTION(BlueprintCallable, Category = "ObjectPool")
+	class UNiagaraComponent* SpawnNiagaraFromPool(UNiagaraSystem* InNiagaraSystem, FVector InLocation, FRotator InRotation);
+// ì‚¬ìš©ì´ ëë‚œ ì•¡í„°ë¥¼ í’€ì— ë°˜ë‚©í•©ë‹ˆë‹¤.
+UFUNCTION(BlueprintCallable, Category = "ObjectPool")
+void ReturnToPool(AActor* InActor);
 
 private:
-	UPROPERTY()
+UFUNCTION()
+void OnNiagaraFinished(class UNiagaraComponent* InPSystem);
+
+private:
+UPROPERTY()
+
 	TMap<UClass*, FObjectPoolArray> ObjectPools;
 
-	void DeactivateActor(AActor* Actor);
-	void ActivateActor(AActor* Actor, FVector Location, FRotator Rotation);
+	// Niagara ì „ìš© í’€ (Systemë³„ë¡œ ê´€ë¦¬)
+	UPROPERTY()
+	TMap<TObjectPtr<UNiagaraSystem>, FObjectPoolArray> NiagaraPools;
+
+	void DeactivateActor(AActor* InActor);
+	void ActivateActor(AActor* InActor, FVector InLocation, FRotator InRotation);
 };
+

@@ -11,6 +11,7 @@
 #include "DataAsset/HPlayerStatRow.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include <Kismet/GameplayStatics.h>
+#include "System/HUIManager.h"
 
 AHPlayerCharacter::AHPlayerCharacter()
 {
@@ -32,7 +33,7 @@ void AHPlayerCharacter::InitializeStat(int32 InNewLevel)
 {
 	Level = InNewLevel;
 
-	if (UnitProfileData && UnitProfileData->UnitType == EUnitType::Player)
+	if (UnitProfileData && UnitProfileData->UnitType == EHUnitType::Player)
 	{
 		if (FPlayerStatRow* StatRow = UnitProfileData->GetPlayerStatRowByLevel(Level))
 		{
@@ -83,6 +84,12 @@ void AHPlayerCharacter::OnLevelUp()
 	OnHPChanged.Broadcast(CurrentHP, MaxHP);
 
 	UE_LOG(LogTemp, Warning, TEXT("Player LEVELED UP! Now Level %d"), Level);
+
+	// 팝업 띄우기
+	if (UHUIManager* UIManager = GetGameInstance()->GetSubsystem<UHUIManager>())
+	{
+		UIManager->ShowWidgetByName(TEXT("SelectAbilityPopupUI"));
+	}
 }
 
 void AHPlayerCharacter::SetDead()

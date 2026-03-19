@@ -7,8 +7,7 @@
 UHUIManager::UHUIManager()
 {
 	// 생성자에서 UI 데이터 에셋을 자동으로 찾아서 할당합니다.
-	// 경로: /Game/Blueprint/DataAsset/DA_UIConfig (없을 경우를 대비해 나중에 블루프린트에서 수동 할당하거나 경로를 맞춰주세요.)
-	static ConstructorHelpers::FObjectFinder<UHUIDataAsset> UIDataAssetFinder(TEXT("/Game/Blueprint/DataAsset/BP_UIData"));
+	static ConstructorHelpers::FObjectFinder<UHUIDataAsset> UIDataAssetFinder(TEXT("/Game/System/BP_UIData"));
 	if (UIDataAssetFinder.Succeeded())
 	{
 		UIDataAsset = UIDataAssetFinder.Object;
@@ -21,43 +20,55 @@ void UHUIManager::Initialize(FSubsystemCollectionBase& Collection)
 	ActiveWidgets.Empty();
 }
 
-UUserWidget* UHUIManager::ShowWidgetByName(FName WidgetName, int32 ZOrder)
+UUserWidget* UHUIManager::ShowWidgetByName(FName InWidgetName, int32 InZOrder)
 {
+	// 1. 이미 떠 있는 위젯이 있는지 맵에서 확인 (O(1))
+	if (TObjectPtr<UUserWidget>* FoundWidget = ActiveWidgets.Find(InWidgetName))
+	{
+		return *FoundWidget;
+	}
+
 	if (!UIDataAsset)
 	{
-		UE_LOG(LogTemp, Error, TEXT("UHUIManager: UIDataAsset is null! Please check the path."));
+		UE_LOG(LogTemp, Error, TEXT("UHUIManager: UIDataAsset is null!"));
 		return nullptr;
 	}
 
-	TSoftClassPtr<UUserWidget> SoftWidgetClass = UIDataAsset->FindWidgetClassByName(WidgetName);
-	if (SoftWidgetClass.IsNull())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("UHUIManager: Cannot find widget class for name [%s]"), *WidgetName.ToString());
-		return nullptr;
-	}
+	TSoftClassPtr<UUserWidget> SoftWidgetClass = UIDataAsset->FindWidgetClassByName(InWidgetName);
+	if (SoftWidgetClass.IsNull()) return nullptr;
 
-	// SoftClassPtr이므로 로드해서 사용
 	UClass* LoadedClass = SoftWidgetClass.LoadSynchronous();
 	if (LoadedClass)
 	{
-		return ShowWidget(LoadedClass, ZOrder);
+		// 2. 위젯 생성 및 맵에 등록
+		UUserWidget* NewWidget = CreateWidget<UUserWidget>(GetWorld(), LoadedClass);
+		if (NewWidget)
+		{
+			NewWidget->AddToViewport(InZOrder);
+			ActiveWidgets.Add(InWidgetName, NewWidget);
+			return NewWidget;
+		}
 	}
 
 	return nullptr;
+}
+
+UUserWidget* UHUIManager::GetWidgetByName(FName InWidgetName) const
+{
+	// 3. 맵에서 이름으로 즉시 찾아서 반환 (O(1))
+	return ActiveWidgets.FindRef(InWidgetName);
 }
 
 UUserWidget* UHUIManager::ShowWidget(TSubclassOf<UUserWidget> WidgetClass, int32 ZOrder)
 {
 	if (!WidgetClass) return nullptr;
 
-	UWorld* World = GetWorld();
-	if (!World) return nullptr;
-
-	UUserWidget* NewWidget = CreateWidget<UUserWidget>(World, WidgetClass);
+	UUserWidget* NewWidget = CreateWidget<UUserWidget>(GetWorld(), WidgetClass);
 	if (NewWidget)
 	{
 		NewWidget->AddToViewport(ZOrder);
-		ActiveWidgets.Add(NewWidget);
+		// 클래스 이름이나 고유 이름을 키로 등록 (직접 클래스로 띄울 때의 폴백)
+		ActiveWidgets.Add(WidgetClass->GetFName(), NewWidget);
 		return NewWidget;
 	}
 
@@ -69,16 +80,22 @@ void UHUIManager::HideWidget(UUserWidget* Widget)
 	if (!Widget) return;
 
 	Widget->RemoveFromParent();
-	ActiveWidgets.Remove(Widget);
+
+	// 4. 값(포인터)으로 키를 찾아 맵에서 제거
+	const FName* KeyFound = ActiveWidgets.FindKey(Widget);
+	if (KeyFound)
+	{
+		ActiveWidgets.Remove(*KeyFound);
+	}
 }
 
 void UHUIManager::HideAllWidgets()
 {
-	for (UUserWidget* Widget : ActiveWidgets)
+	for (auto& Pair : ActiveWidgets)
 	{
-		if (Widget)
+		if (Pair.Value)
 		{
-			Widget->RemoveFromParent();
+			Pair.Value->RemoveFromParent();
 		}
 	}
 	ActiveWidgets.Empty();

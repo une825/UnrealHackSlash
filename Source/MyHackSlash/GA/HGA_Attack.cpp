@@ -7,6 +7,8 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#include "NiagaraComponent.h"
+#include <System/HObjectPoolManager.h>
 
 UHGA_Attack::UHGA_Attack()
 {
@@ -30,18 +32,17 @@ void UHGA_Attack::ActivateAbility(const FGameplayAbilitySpecHandle InHandle, con
 		return;
 	}
 
-	// 공격 이펙트 재생
+	// 공격 이펙트 재생 (오브젝트 풀 사용)
 	if (AttackEffect)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAttached(
-			AttackEffect, 
-			BaseCharacter->GetMesh(), 
-			TEXT("hand_r"), 
-			FVector::ZeroVector, 
-			FRotator::ZeroRotator, 
-			EAttachLocation::SnapToTarget, 
-			true
-		);
+		if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
+		{
+			UNiagaraComponent* NiagaraComp = Pool->SpawnNiagaraFromPool(AttackEffect, BaseCharacter->GetActorLocation(), BaseCharacter->GetActorRotation());
+			if (NiagaraComp)
+			{
+				NiagaraComp->AttachToComponent(BaseCharacter->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("hand_r"));
+			}
+		}
 	}
 
 	const UHUnitProfileData* Profile = BaseCharacter->GetUnitProfileData();

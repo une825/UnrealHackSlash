@@ -10,7 +10,7 @@
 
 // 유닛의 종류 정의
 UENUM(BlueprintType)
-enum class EUnitType : uint8
+enum class EHUnitType : uint8
 {
 	Player,
 	Monster
@@ -27,7 +27,7 @@ class MYHACKSLASH_API UHUnitProfileData : public UPrimaryDataAsset
 public:
 	// 이 프로필을 사용하는 유닛의 타입 (플레이어 또는 몬스터)
 	UPROPERTY(EditAnywhere, Category = "Unit")
-	EUnitType UnitType = EUnitType::Monster;
+	EHUnitType UnitType = EHUnitType::Monster;
 
 	// --- 스탯 설정 ---
 	// 이 유닛이 사용할 레벨별 스탯 테이블
@@ -59,7 +59,7 @@ public:
 	// 특정 레벨의 몬스터 스탯 정보를 반환
 	FMonsterStatRow* GetMonsterStatRowByLevel(int32 Level) const
 	{
-		if (!StatTable || UnitType != EUnitType::Monster) return nullptr;
+		if (!StatTable || UnitType != EHUnitType::Monster) return nullptr;
 		FName RowName = FName(*FString::FromInt(Level));
 		return StatTable->FindRow<FMonsterStatRow>(RowName, TEXT("Monster Stat Context"));
 	}
@@ -67,7 +67,7 @@ public:
 	// 특정 레벨의 플레이어 스탯 정보를 반환
 	FPlayerStatRow* GetPlayerStatRowByLevel(int32 Level) const
 	{
-		if (!StatTable || UnitType != EUnitType::Player) return nullptr;
+		if (!StatTable || UnitType != EHUnitType::Player) return nullptr;
 		FName RowName = FName(*FString::FromInt(Level));
 		return StatTable->FindRow<FPlayerStatRow>(RowName, TEXT("Player Stat Context"));
 	}

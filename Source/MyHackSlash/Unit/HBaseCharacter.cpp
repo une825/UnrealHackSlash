@@ -14,6 +14,8 @@
 #include "Engine/World.h"
 #include "Engine/DamageEvents.h"
 #include <NiagaraFunctionLibrary.h>
+#include "NiagaraComponent.h"
+#include <System/HObjectPoolManager.h>
 
 
 // Sets default values
@@ -219,7 +221,7 @@ void AHBaseCharacter::AttackHitCheck()
 	}
 
 #if ENABLE_DRAW_DEBUG
-	//if (UnitProfileData && UnitProfileData->UnitType == EUnitType::Player)
+	//if (UnitProfileData && UnitProfileData->UnitType == EHUnitType::Player)
 	//{
 	//	FVector CapsuleOrigin = Start + (End - Start) * 0.5f;
 	//	float CapsuleHalfHeight = AttackRange * 0.5f;
@@ -233,21 +235,22 @@ void AHBaseCharacter::PlayHittedEffect()
 {
 	if (HittedBodyEffect)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAttached(
-			HittedBodyEffect,
-			GetMesh(),
-			TEXT("pelvis"),
-			FVector::ZeroVector,
-			FRotator::ZeroRotator,
-			EAttachLocation::SnapToTarget,
-			true
-		);
+		if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
+		{
+			UNiagaraComponent* NiagaraComp = Pool->SpawnNiagaraFromPool(HittedBodyEffect, FVector::ZeroVector, FRotator::ZeroRotator);
+			if (NiagaraComp)
+			{
+				NiagaraComp->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("pelvis"));
+			}
+		}
 	}
 
 	if (HittedEffect)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), HittedEffect,
-			GetActorLocation(), GetActorRotation());
+		if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
+		{
+			Pool->SpawnNiagaraFromPool(HittedEffect, GetActorLocation(), GetActorRotation());
+		}
 	}
 }
 
