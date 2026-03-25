@@ -21,6 +21,14 @@ class MYHACKSLASH_API AHPlayerCharacter : public AHBaseCharacter
 public:
 	AHPlayerCharacter();
 
+	/** 플레이어의 젬 인벤토리를 관리하는 컴포넌트입니다. */
+	UFUNCTION(BlueprintPure, Category = "Gem")
+	class UHGemInventoryComponent* GetGemInventoryComponent() const { return GemInventoryComponent; }
+
+	/** 플레이어의 젬 장착을 관리하는 컴포넌트입니다. */
+	UFUNCTION(BlueprintPure, Category = "Gem")
+	class UHEquipmentComponent* GetEquipmentComponent() const { return EquipmentComponent; }
+
 public:
 	// 경험치 변경 시 호출되는 델리게이트
 	UPROPERTY(BlueprintAssignable, Category = "Stat")
@@ -61,7 +69,11 @@ protected:
 	TMap<int32, TSubclassOf<class UGameplayAbility>> StartInputAbilities;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputAction* JumpAction;
+	class UInputAction* JumpAction;
+
+	/** @brief 추가 스킬 슬롯용 입력 액션 배열 (Index 0은 이미 AttackAction이 담당하므로 Slot 1부터 매핑됨) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	TArray<class UInputAction*> SkillActions;
 
 protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
@@ -82,4 +94,12 @@ private:
 	/** Camera boom positioning the camera above the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
+
+	/** 젬 인벤토리 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gem", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UHGemInventoryComponent> GemInventoryComponent;
+
+	/** 젬 장착 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gem", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UHEquipmentComponent> EquipmentComponent;
 };

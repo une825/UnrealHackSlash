@@ -209,13 +209,22 @@ void AHBaseCharacter::AttackHitCheck()
 	{
 		for (const FHitResult& Hit : HitResults)
 		{
-			AActor* TargetActor = Hit.GetActor();
-			if (TargetActor && !WasAlreadyHit(TargetActor))
+			AHBaseCharacter* TargetCharacter = Cast<AHBaseCharacter>(Hit.GetActor());
+			if (TargetCharacter && !TargetCharacter->IsDead && !WasAlreadyHit(TargetCharacter))
 			{
-				AddHitActor(TargetActor);
+				// 동일한 진영(플레이어 vs 플레이어, 몬스터 vs 몬스터)은 공격하지 않음
+				if (GetUnitProfileData() && TargetCharacter->GetUnitProfileData())
+				{
+					if (GetUnitProfileData()->UnitType == TargetCharacter->GetUnitProfileData()->UnitType)
+					{
+						continue;
+					}
+				}
+
+				AddHitActor(TargetCharacter);
 	
 				FDamageEvent DamageEvent;
-				TargetActor->TakeDamage(AttackDamage, DamageEvent, GetController(), this);
+				TargetCharacter->TakeDamage(AttackDamage, DamageEvent, GetController(), this);
 			}
 		}
 	}

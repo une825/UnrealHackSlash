@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "GameplayTagContainer.h"
 #include "HGA_Attack.generated.h"
 
 class UNiagaraSystem;
@@ -20,6 +21,9 @@ public:
 	UHGA_Attack();
 
 protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	struct FGameplayTag MontageTag;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effect")
 	TObjectPtr<UNiagaraSystem> AttackEffect;
 

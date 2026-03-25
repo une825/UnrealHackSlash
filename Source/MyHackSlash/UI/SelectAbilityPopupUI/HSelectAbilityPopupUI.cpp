@@ -2,27 +2,53 @@
 #include "UI/SelectAbilityPopupUI/HSelectAbilityEntryUI.h"
 #include "Components/TextBlock.h"
 #include "Components/ListView.h"
+#include "System/HSelectAbilityManager.h"
 #include "Kismet/GameplayStatics.h"
 
 void UHSelectAbilityPopupUI::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	// 1. 게임 시간 정지 (Global Time Dilation)
-	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.0f);
-	
-	// 2. 리스트 뷰 비우기 및 테스트 데이터 추가
-	if (AbilityListView)
-	{
-		AbilityListView->ClearListItems();
+	// 1. 게임 일시정지 (뱀서류 필수 로직)
+	UGameplayStatics::SetGamePaused(GetWorld(), true);
 
-		// 테스트 데이터 추가 (3개)
-		for (int32 i = 1; i <= 3; ++i)
+	// 2. 보상 옵션 갱신
+	RefreshOptions();
+}
+
+void UHSelectAbilityPopupUI::NativeDestruct()
+{
+	// 3. 게임 일시정지 해제
+	UGameplayStatics::SetGamePaused(GetWorld(), false);
+
+	Super::NativeDestruct();
+}
+
+void UHSelectAbilityPopupUI::RefreshOptions()
+{
+	if (!AbilityListView) return;
+
+	AbilityListView->ClearListItems();
+
+	if (UHSelectAbilityManager* Manager = GetGameInstance()->GetSubsystem<UHSelectAbilityManager>())
+	{
+		TArray<FHRewardOptionData> SelectedOptions;
+		if (Manager->GetRandomRewardOptions(SelectedOptions))
 		{
-			UHSelectAbilityData* NewData = NewObject<UHSelectAbilityData>(this);
-			NewData->Title = FText::Format(NSLOCTEXT("UI", "AbilityTitle", "능력 {0}"), FText::AsNumber(i));
-			NewData->Description = FText::Format(NSLOCTEXT("UI", "AbilityDesc", "공격력을 {0}% 증가시킵니다."), FText::AsNumber(i * 10));
-			AbilityListView->AddItem(NewData);
+			for (const FHRewardOptionData& OptionData : SelectedOptions)
+			{
+				// ListView에 추가하기 위해 UObject 래퍼 생성
+				UHSelectAbilityData* NewData = NewObject<UHSelectAbilityData>(this);
+				if (NewData)
+				{
+					NewData->SetRewardOptionData(OptionData);
+					AbilityListView->AddItem(NewData);
+				}
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UHSelectAbilityPopupUI: Failed to get reward options from manager."));
 		}
 	}
 }

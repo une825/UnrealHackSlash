@@ -10,7 +10,7 @@ This project implements core hack-and-slash gameplay mechanics, including a comb
 ### ⚔️ Combat System
 - **Gameplay Ability System (GAS):** 
   - Characters implement `IAbilitySystemInterface`.
-  - Abilities (`HGA_Attack`) handle gameplay logic.
+  - Abilities (`HGA_Attack`, `HGA_FireBall`) handle gameplay logic.
   - Attributes and Tags manage state (e.g., cooldowns, damage).
 - **Combat Interface:** `HCombatInterface` standardizes damage dealing and receiving.
 - **Animation Montages:** Fluid attack sequences and hit reactions.

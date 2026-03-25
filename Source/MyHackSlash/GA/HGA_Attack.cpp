@@ -46,13 +46,15 @@ void UHGA_Attack::ActivateAbility(const FGameplayAbilitySpecHandle InHandle, con
 	}
 
 	const UHUnitProfileData* Profile = BaseCharacter->GetUnitProfileData();
-	if (Profile && Profile->AttackMontage)
+	UAnimMontage* MontageToPlay = (Profile) ? Profile->GetActionMontage(MontageTag) : nullptr;
+
+	if (MontageToPlay)
 	{
 		// 유닛 프로필에 설정된 공격 애니메이션 재생
 		UAbilityTask_PlayMontageAndWait* PlayAttackTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 			this, 
 			TEXT("PlayAttack"), 
-			Profile->AttackMontage, 
+			MontageToPlay, 
 			BaseCharacter->GetCurrentStat().AttackSpeedRate
 		);
 

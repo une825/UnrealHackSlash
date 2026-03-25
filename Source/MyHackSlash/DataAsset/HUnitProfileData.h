@@ -6,6 +6,7 @@
 #include "Engine/DataAsset.h"
 #include "DataAsset/HMonsterStatRow.h"
 #include "DataAsset/HPlayerStatRow.h"
+#include "GameplayTagContainer.h"
 #include "HUnitProfileData.generated.h"
 
 // 유닛의 종류 정의
@@ -39,9 +40,15 @@ public:
 	TObjectPtr<class UAnimMontage> AttackMontage;
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
+	TMap<struct FGameplayTag, TObjectPtr<class UAnimMontage>> ActionMontageMap;
+
+	UPROPERTY(EditAnywhere, Category = "Animation")
 	TObjectPtr<class UAnimMontage> DeadMontage;
 
-	// --- AI 설정 ---
+	// --- 헬퍼 함수 ---
+	/** @brief 특정 태그에 해당하는 몽타주를 반환합니다. 없으면 기본 AttackMontage를 반환합니다. */
+	UAnimMontage* GetActionMontage(const struct FGameplayTag& InActionTag) const;
+
 	UPROPERTY(EditAnywhere, Category = "AI")
 	float PatrolRadius = 800.0f;
 

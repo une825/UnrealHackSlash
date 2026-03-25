@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Unit/Player/HPlayerCharacter.h"
 #include "Unit/Player/HPlayerState.h"
 #include "AbilitySystemComponent.h"
@@ -12,6 +9,11 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include <Kismet/GameplayStatics.h>
 #include "System/HUIManager.h"
+#include "Skill/HGemInventoryComponent.h"
+#include "Skill/HEquipmentComponent.h"
+#include "DataAsset/HGemDataAsset.h"
+#include "Skill/SkillGem/HMainGem.h"
+#include "Mode/MyHackSlashGameMode.h"
 
 AHPlayerCharacter::AHPlayerCharacter()
 {
@@ -27,6 +29,12 @@ AHPlayerCharacter::AHPlayerCharacter()
 	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	TopDownCameraComponent->bUsePawnControlRotation = false; 
+
+	// 젬 인벤토리 컴포넌트 생성
+	GemInventoryComponent = CreateDefaultSubobject<UHGemInventoryComponent>(TEXT("GemInventoryComponent"));
+
+	// 젬 장착 컴포넌트 생성
+	EquipmentComponent = CreateDefaultSubobject<UHEquipmentComponent>(TEXT("EquipmentComponent"));
 }
 
 void AHPlayerCharacter::InitializeStat(int32 InNewLevel)
@@ -130,6 +138,21 @@ void AHPlayerCharacter::PossessedBy(AController* NewController)
 		}
 
 		SetupGASInputComponent();
+
+		// 기본 젬 지급 및 장착 (FistAttack)
+		AMyHackSlashGameMode* GameMode = Cast<AMyHackSlashGameMode>(GetWorld()->GetAuthGameMode());
+		if (GameMode && GameMode->GetGemCollectionDataAsset() && GemInventoryComponent && EquipmentComponent)
+		{
+			FHGemData FistAttackData;
+			if (GameMode->GetGemCollectionDataAsset()->FindGemData(TEXT("FistAttack"), FistAttackData))
+			{
+				UHGemBase* NewGem = GemInventoryComponent->AddGem(FistAttackData);
+				if (UHMainGem* MainGem = Cast<UHMainGem>(NewGem))
+				{
+					EquipmentComponent->EquipGem(0, MainGem);
+				}
+			}
+		}
 	}
 
 	if (APlayerController* PlayerController = Cast<APlayerController>(NewController))
@@ -150,9 +173,24 @@ void AHPlayerCharacter::SetupGASInputComponent()
 	{
 		UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent);
 
+		// Jump (InputID 0)
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &AHPlayerCharacter::GASInputPressed, 0);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &AHPlayerCharacter::GASInputReleased, 0);
+
+		// Basic Attack (InputID 1 - Slot 0)
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &AHPlayerCharacter::GASInputPressed, 1);
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Completed, this, &AHPlayerCharacter::GASInputReleased, 1);
+
+		// Additional Skills (InputID 2~ - Slot 1~)
+		for (int32 i = 0; i < SkillActions.Num(); ++i)
+		{
+			if (SkillActions[i])
+			{
+				int32 InputID = i + 2; // Slot 1 -> InputID 2
+				EnhancedInputComponent->BindAction(SkillActions[i], ETriggerEvent::Triggered, this, &AHPlayerCharacter::GASInputPressed, InputID);
+				EnhancedInputComponent->BindAction(SkillActions[i], ETriggerEvent::Completed, this, &AHPlayerCharacter::GASInputReleased, InputID);
+			}
+		}
 	}
 }
 

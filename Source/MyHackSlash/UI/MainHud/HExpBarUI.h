@@ -18,6 +18,7 @@ class MYHACKSLASH_API UHExpBarUI : public UUserWidget
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 public:
 	// 경험치 바의 퍼센트와 텍스트를 업데이트합니다.
@@ -33,5 +34,10 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> LevelText;
+
+private:
+	float TargetExpPercent = 0.0f;
+	float CurrentExpPercent = 0.0f;
+	const float InterpSpeed = 5.0f;
 	
 };

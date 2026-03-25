@@ -15,16 +15,33 @@ void UHHPBarUI::NativeConstruct()
 		// 초기 값 설정
 		const FUnitStatRow& CurrentStat = Character->GetCurrentStat();
 		UpdateHPBar(Character->GetCurrentHP(), CurrentStat.MaxHP);
+		
+		// 초기에는 즉시 설정
+		CurrentHPPercent = TargetHPPercent;
+		if (HPProgressBar)
+		{
+			HPProgressBar->SetPercent(CurrentHPPercent);
+		}
+	}
+}
+
+void UHHPBarUI::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (!FMath::IsNearlyEqual(CurrentHPPercent, TargetHPPercent))
+	{
+		CurrentHPPercent = FMath::FInterpTo(CurrentHPPercent, TargetHPPercent, InDeltaTime, InterpSpeed);
+		if (HPProgressBar)
+		{
+			HPProgressBar->SetPercent(CurrentHPPercent);
+		}
 	}
 }
 
 void UHHPBarUI::UpdateHPBar(float InCurrentHP, float InMaxHP)
 {
-	if (HPProgressBar)
-	{
-		float HPPercent = (InMaxHP > 0) ? (InCurrentHP / InMaxHP) : 0.0f;
-		HPProgressBar->SetPercent(HPPercent);
-	}
+	TargetHPPercent = (InMaxHP > 0) ? (InCurrentHP / InMaxHP) : 0.0f;
 
 	if (HPText)
 	{

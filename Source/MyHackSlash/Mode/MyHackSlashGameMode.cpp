@@ -5,8 +5,10 @@
 #include "Unit/Player/HPlayerState.h"
 #include "UObject/ConstructorHelpers.h"
 #include "System/HMonsterSpawnerDataAsset.h"
-#include <System/HMonsterSpawnManager.h>
-#include <Engine/StreamableManager.h>
+#include "System/HMonsterSpawnManager.h"
+#include "System/HSelectAbilityManager.h"
+#include "DataAsset/HSelectAbilityData.h"
+#include "Engine/StreamableManager.h"
 #include "Engine/AssetManager.h"
 
 AMyHackSlashGameMode::AMyHackSlashGameMode()
@@ -36,6 +38,7 @@ void AMyHackSlashGameMode::BeginPlay()
 	Super::BeginPlay();
 
 	SetMonsterSpawnManager();
+	SetSelectAbilityManager();
 }
 
 void AMyHackSlashGameMode::Tick(float InDeltaSeconds)
@@ -44,24 +47,24 @@ void AMyHackSlashGameMode::Tick(float InDeltaSeconds)
 
 void AMyHackSlashGameMode::SetMonsterSpawnManager()
 {
-	// 1. º¯¼ö ÀÚÃ¼°¡ À¯È¿ÇÑÁö ¸ÕÀú Ã¼Å©
+	// 1. ìœ íš¨ì„± ì²´í¬
 	if (MonsterSpawnConfigPtr.IsNull())
 	{
-		UE_LOG(LogTemp, Error, TEXT("MonsterSpawnConfigPtr °¡ ÇÒ´çµÇÁö ¾Ê¾Ò½À´Ï´Ù!"));
+		UE_LOG(LogTemp, Error, TEXT("MonsterSpawnConfigPtr is not assigned!"));
 		return;
 	}
 
-	// 2. °æ·Î ÃßÃâ (ToSoftObjectPath »ç¿ë)
+	// 2. ì—ì…‹ ê²½ë¡œ í™•ì¸
 	FSoftObjectPath AssetPath = MonsterSpawnConfigPtr.ToSoftObjectPath();
 	if (!AssetPath.IsValid())
 	{
-		UE_LOG(LogTemp, Error, TEXT("AssetPath °¡ À¯È¿ÇÏÁö ¾Ê½À´Ï´Ù!"));
+		UE_LOG(LogTemp, Error, TEXT("AssetPath is invalid!"));
 		return;
 	}
 
 	if (MonsterSpawnConfigPtr.IsValid())
 	{
-		// ÀÌ¹Ì ·ÎµåµÇ¾î ÀÖ´Ù¸é ¹Ù·Î »ç¿ë
+		// ì´ë¯¸ ë¡œë“œë˜ì–´ ìžˆë‹¤ë©´ ë°”ë¡œ ì‹œìž‘
 		if (UHMonsterSpawnManager* MonsterSpawnManager = GetWorld()->GetSubsystem<UHMonsterSpawnManager>())
 		{
 			MonsterSpawnManager->StartMonsterWave(MonsterSpawnConfigPtr.Get());
@@ -69,11 +72,11 @@ void AMyHackSlashGameMode::SetMonsterSpawnManager()
 	}
 	else
 	{
-		// ºñµ¿±â ·Îµå ½ÃÀÛ
+		// ë¹„ë™ê¸° ë¡œë“œ ì‹œìž‘
 		FStreamableManager& Streamable = UAssetManager::GetStreamableManager();
 		LoadHandle = Streamable.RequestAsyncLoad(MonsterSpawnConfigPtr.ToSoftObjectPath(), FStreamableDelegate::CreateLambda([this]()
 			{
-				UE_LOG(LogTemp, Log, TEXT("Loading Complete!"));
+				UE_LOG(LogTemp, Log, TEXT("MonsterSpawnConfig Loading Complete!"));
 
 				if (UHMonsterSpawnerDataAsset* LoadedConfig = MonsterSpawnConfigPtr.Get())
 				{
@@ -83,5 +86,13 @@ void AMyHackSlashGameMode::SetMonsterSpawnManager()
 					}
 				}
 			}));
+	}
+}
+
+void AMyHackSlashGameMode::SetSelectAbilityManager()
+{
+	if (UHSelectAbilityManager* SelectAbilityManager = GetGameInstance()->GetSubsystem<UHSelectAbilityManager>())
+	{
+		SelectAbilityManager->InitializeManager(SelectAbilityGradeDataAsset, SelectAbilityRewardTable, GemCollectionDataAsset);
 	}
 }

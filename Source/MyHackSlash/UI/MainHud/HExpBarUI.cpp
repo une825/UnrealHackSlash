@@ -14,16 +14,33 @@ void UHExpBarUI::NativeConstruct()
 
 		// 초기 값 설정
 		UpdateExpBar(PlayerCharacter->GetLevel(), PlayerCharacter->GetCurrentExp(), PlayerCharacter->GetMaxExp());
+
+		// 초기에는 즉시 설정
+		CurrentExpPercent = TargetExpPercent;
+		if (ExpProgressBar)
+		{
+			ExpProgressBar->SetPercent(CurrentExpPercent);
+		}
+	}
+}
+
+void UHExpBarUI::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (!FMath::IsNearlyEqual(CurrentExpPercent, TargetExpPercent))
+	{
+		CurrentExpPercent = FMath::FInterpTo(CurrentExpPercent, TargetExpPercent, InDeltaTime, InterpSpeed);
+		if (ExpProgressBar)
+		{
+			ExpProgressBar->SetPercent(CurrentExpPercent);
+		}
 	}
 }
 
 void UHExpBarUI::UpdateExpBar(const int InLevel, const float InCurrentExp, const float InMaxExp)
 {
-	if (ExpProgressBar)
-	{
-		float ExpPercent = (InMaxExp > 0) ? (InCurrentExp / InMaxExp) : 0.0f;
-		ExpProgressBar->SetPercent(ExpPercent);
-	}
+	TargetExpPercent = (InMaxExp > 0) ? (InCurrentExp / InMaxExp) : 0.0f;
 
 	if (ExpText)
 	{
