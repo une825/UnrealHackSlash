@@ -8,6 +8,7 @@
 #include "UI/MainHud/HGemDragDropOp.h"
 #include "Unit/Player/HPlayerCharacter.h"
 #include "Skill/HEquipmentComponent.h"
+#include "Skill/HGemInventoryComponent.h"
 
 void UHEquipGemSlot::SetMainGem(UHMainGem* InMainGem)
 {
@@ -25,6 +26,10 @@ void UHEquipGemSlot::SetMainGem(UHMainGem* InMainGem)
 		{
 			MainGemIcon->SetBrushFromTexture(GemData.GemIcon);
 			MainGemIcon->SetVisibility(ESlateVisibility::Visible);
+		}
+		else
+		{
+			MainGemIcon->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
 
@@ -72,6 +77,12 @@ bool UHEquipGemSlot::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEv
 	// 1. 드래그된 젬이 메인 젬인 경우 (슬롯 교체)
 	if (UHMainGem* MainGem = Cast<UHMainGem>(GemOp->DraggedGem))
 	{
+		// 인벤토리에서 먼저 제거 시도
+		if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
+		{
+			InvComp->RemoveGemInstance(MainGem);
+		}
+
 		if (EquipComp->EquipGem(SlotIndex, MainGem))
 		{
 			SetMainGem(MainGem);
@@ -86,6 +97,12 @@ bool UHEquipGemSlot::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEv
 		{
 			if (CurrentMainGem->AddSupportGem(SupportGem))
 			{
+				// 인벤토리에서 제거
+				if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
+				{
+					InvComp->RemoveGemInstance(SupportGem);
+				}
+				
 				SetMainGem(CurrentMainGem);
 				return true;
 			}

@@ -2,6 +2,8 @@
 #include "Skill/SkillGem/HMainGem.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Skill/HGemInventoryComponent.h"
+#include "Unit/Player/HPlayerCharacter.h"
 
 UHEquipmentComponent::UHEquipmentComponent()
 {
@@ -50,6 +52,8 @@ void UHEquipmentComponent::UnequipGem(int32 InSlotIndex)
 {
 	if (!EquippedMainGems.IsValidIndex(InSlotIndex) || !EquippedMainGems[InSlotIndex]) return;
 
+	UHMainGem* RemovedGem = EquippedMainGems[InSlotIndex];
+
 	// GAS 연동: Ability 제거
 	if (ASC && EquippedAbilityHandles.Contains(InSlotIndex))
 	{
@@ -58,6 +62,16 @@ void UHEquipmentComponent::UnequipGem(int32 InSlotIndex)
 	}
 
 	EquippedMainGems[InSlotIndex] = nullptr;
+
+	// 해제된 젬을 다시 인벤토리 가방으로 돌려보냄
+	if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner()))
+	{
+		if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
+		{
+			InvComp->AddGemInstance(RemovedGem);
+		}
+	}
+
 	OnEquipmentChanged.Broadcast();
 }
 

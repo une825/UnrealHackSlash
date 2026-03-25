@@ -24,7 +24,7 @@
 | **주먹질** | **Melee** | Physical | 기본적인 근접 타격 | 빠른 공속, 표준 리치 |
 | **거대 망치** | **Melee** | Physical | 묵직한 한 방 공격 | 느린 공속, 고데미지, 강력한 넉백 |
 | **회전 톱날** | **Projectile** | Physical | 주변 회전 투사체 | 플레이어 중심 공전, 지속 데미지 |
-| **파이어볼** | **Projectile** | Fire | 직선 발사 화염구 | 충돌 시 폭발 |
+| **파이어볼** | **Projectile** | Fire | 직선 발사 화염구 | 충돌 시 폭발 (HProjectile 기반) |
 | **별사탕** | **Projectile** | Magic | 유도 미사일 | 적 추적 기능 (Homing) |
 | **깜짝 상자** | **Projectile** | Physical | 설치형 함정 | 감지 범위 내 적 진입 시 폭발 |
 
@@ -57,37 +57,29 @@
 
 ## 4. Systems & Logic
 
-### 4.1 젬 공명 시스템 (Resonance)
+### 4.1 몽타주 매핑 시스템 (Animation Mapping)
+유닛 프로필(`UHUnitProfileData`)은 단일 몽타주 대신 태그 기반의 맵을 사용하여 다양한 스킬 모션을 관리합니다.
+*   **ActionMontageMap**: `TMap<FGameplayTag, UAnimMontage*>`를 통해 `Ability.Attack`, `Ability.FireBall` 등의 태그에 맞는 애니메이션을 출력합니다.
+*   **Fallback**: 특정 태그에 해당하는 몽타주가 없을 경우 기본 `AttackMontage`를 사용합니다.
+
+### 4.2 발사체 시스템 (Projectile System)
+`Projectile` 타입의 메인 젬은 `AHProjectile` 클래스를 사용하여 투사체를 생성합니다.
+*   **Faction Check**: 시전자의 `UnitType`을 투사체에 전달하여 아군(같은 타입)에게는 데미지를 입히지 않도록 판별합니다.
+*   **VFX Integration**: 나이아가라 시스템을 사용하여 비행 효과 및 충돌 폭발 효과를 표현하며, 오브젝트 풀링을 통해 최적화합니다.
+
+### 4.3 젬 공명 시스템 (Resonance)
 슬롯에 장착된 젬들의 동일 속성(HEElement) 개수를 체크하여 패시브 효과를 발동합니다.
 
-* **화염 공명 (3개):** `화염 오라` - 플레이어 주변에 주기적 화염 데미지 방출.
-* **번개 공명 (3개):** `천벌` - 화면 내 랜덤 위치에 주기적 낙뢰 발생.
-
-### 4.2 젬 합성 시스템 (Synthesis)
-불필요한 자원을 소모하여 상위 혹은 새로운 능력을 획득합니다.
-
-* **Input:** 안 쓰는 젬 3개 (등급/종류 무관)
-* **Output:** 새로운 무작위 젬 1개 생성 (확률에 따라 상위 등급 출현 가능)
-
-### 4.3 장착 매칭 로직 (Gem Matching Logic)
-보조 젬을 메인 젬에 장착할 때 다음의 논리를 따릅니다.
-```cpp
-bool CanAttach(HMainGem, HSupportGem) {
-    if (HSupportGem.Type == HEGemType::Common) return true;
-    return (HMainGem.Type == HSupportGem.Type);
-}
-```
 ---
 
 ## 5. Implementation Notes for AI (AI 구현 참고사항)
 
 1. **Data Management:**
-     - `FHGemData` (USTRUCT): 개별 젬의 스펙을 정의하는 구조체. `GemID (FName)`를 식별자로 사용.
-     - `UHGemDataAsset` (UDataAsset): 모든 `FHGemData`를 리스트(`GemList`)로 관리하는 컬렉션 에셋.
+     - `FHGemData` (USTRUCT): `SkillAbilityClass` 필드를 통해 해당 젬이 실행할 GAS 어빌리티를 지정합니다.
 2. **Class Hierarchy:** 
+     - `AHProjectile`: 모든 투사체의 기반 클래스.
+     - `UHGA_FireBall`: 파이어볼 로직을 담당하는 Gameplay Ability.
      - `UHGemBase` (상위 클래스, UObject 상속): `FHGemData` 인스턴스를 보관하여 작동.
-     - `UHMainGem` (Melee, Projectile 로직 포함)
-     - `UHSupportGem` (공통/전용 효과 포함)
 3. **Inventory Integration:**
      - `UHGemInventoryComponent::AddGem(const FHGemData&)`를 통해 젬을 생성 및 인벤토리에 추가.
 4. **Logic Validation:** 보조젬 장착 시 `HSupportGem->TargetType`이 메인젬의 `HEGemType`과 일치하거나 'Common'인지 반드시 체크할 것.

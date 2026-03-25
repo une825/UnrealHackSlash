@@ -34,3 +34,21 @@ UHGemBase* UHGemInventoryComponent::AddGem(const FHGemData& InGemData)
 
 	return NewGem;
 }
+
+void UHGemInventoryComponent::AddGemInstance(UHGemBase* InGemInstance)
+{
+	if (InGemInstance && !InventoryGems.Contains(InGemInstance))
+	{
+		InventoryGems.Add(InGemInstance);
+		OnGemInventoryUpdated.Broadcast();
+	}
+}
+
+void UHGemInventoryComponent::RemoveGemInstance(UHGemBase* InGemInstance)
+{
+	if (InGemInstance && InventoryGems.Contains(InGemInstance))
+	{
+		InventoryGems.Remove(InGemInstance);
+		OnGemInventoryUpdated.Broadcast();
+	}
+}

@@ -33,6 +33,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Gem|Inventory")
 	UHGemBase* AddGem(const FHGemData& InGemData);
 
+	/** @brief 이미 생성된 젬 인스턴스를 인벤토리에 다시 추가합니다. (장착 해제 시 사용) */
+	UFUNCTION(BlueprintCallable, Category = "Gem|Inventory")
+	void AddGemInstance(UHGemBase* InGemInstance);
+
+	/** @brief 인벤토리에서 특정 젬 인스턴스를 제거합니다. (장착 시 사용) */
+	UFUNCTION(BlueprintCallable, Category = "Gem|Inventory")
+	void RemoveGemInstance(UHGemBase* InGemInstance);
+
 	/** 현재 인벤토리의 모든 젬 리스트를 반환합니다. */
 	UFUNCTION(BlueprintPure, Category = "Gem|Inventory")
 	const TArray<UHGemBase*>& GetInventoryGems() const { return InventoryGems; }
