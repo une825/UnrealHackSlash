@@ -2,11 +2,13 @@
 #include "Components/Image.h"
 #include "Skill/SkillGem/HSupportGem.h"
 #include "DataAsset/HGemDataAsset.h"
+#include "UI/MainHud/HGemDragDropOp.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 
 void UHEquipGemSlotEntryUI::NativeOnListItemObjectSet(UObject* InListItemObject)
 {
-	UHEquipGemSlotEntryData* EntryData = Cast<UHEquipGemSlotEntryData>(InListItemObject);
-	if (!EntryData || !EntryData->SupportGem)
+	CurrentEntryData = Cast<UHEquipGemSlotEntryData>(InListItemObject);
+	if (!CurrentEntryData || !CurrentEntryData->SupportGem)
 	{
 		if (IconImage)
 		{
@@ -16,7 +18,7 @@ void UHEquipGemSlotEntryUI::NativeOnListItemObjectSet(UObject* InListItemObject)
 	}
 
 	// 보조 젬 데이터에서 아이콘을 가져와 설정
-	const FHGemData& GemData = EntryData->SupportGem->GetGemData();
+	const FHGemData& GemData = CurrentEntryData->SupportGem->GetGemData();
 	if (IconImage && GemData.GemIcon)
 	{
 		IconImage->SetBrushFromTexture(GemData.GemIcon);
@@ -26,4 +28,53 @@ void UHEquipGemSlotEntryUI::NativeOnListItemObjectSet(UObject* InListItemObject)
 	{
 		IconImage->SetVisibility(ESlateVisibility::Hidden);
 	}
+}
+
+FReply UHEquipGemSlotEntryUI::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		return UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton).NativeReply;
+	}
+
+	return FReply::Unhandled();
+}
+
+void UHEquipGemSlotEntryUI::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
+{
+	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
+
+	if (nullptr == CurrentEntryData || nullptr == CurrentEntryData->SupportGem)
+	{
+		return;
+	}
+
+	// 1. DragDropOperation 생성
+	UHGemDragDropOp* DragOp = NewObject<UHGemDragDropOp>();
+	DragOp->DraggedGem = CurrentEntryData->SupportGem;
+	DragOp->SourceWidget = this;
+	DragOp->SourceSlotIndex = CurrentEntryData->SourceSlotIndex;
+
+	// 2. 비주얼 설정 (아이콘 잔상)
+	const FHGemData& GemData = CurrentEntryData->SupportGem->GetGemData();
+	if (GemData.GemIcon)
+	{
+		UImage* DragVisual = NewObject<UImage>(this);
+		if (DragVisual)
+		{
+			DragVisual->SetBrushFromTexture(GemData.GemIcon);
+
+			FVector2D DragIconSize = FVector2D(64, 64);
+			if (IconImage)
+			{
+				DragIconSize = IconImage->GetDesiredSize();
+			}
+			DragVisual->SetDesiredSizeOverride(DragIconSize);
+
+			DragOp->DefaultDragVisual = DragVisual;
+			DragOp->Pivot = EDragPivot::MouseDown;
+		}
+	}
+
+	OutOperation = DragOp;
 }

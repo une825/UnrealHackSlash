@@ -26,7 +26,15 @@ public:
 	void ClearSlot();
 
 protected:
-	// 드롭 수락 오버라이드
+	virtual void NativeConstruct() override;
+
+	/** @brief 컴포넌트의 데이터를 기반으로 슬롯 UI를 최신화합니다. */
+	UFUNCTION()
+	void Refresh();
+
+	// 드래그 앤 드롭 관련 오버라이드
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 
 protected:

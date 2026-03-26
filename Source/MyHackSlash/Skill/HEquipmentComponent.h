@@ -29,6 +29,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Gem|Equipment")
 	bool EquipGem(int32 InSlotIndex, UHMainGem* InGem);
 
+	/** @brief 특정 슬롯의 메인 젬에 보조 젬을 장착합니다. */
+	UFUNCTION(BlueprintCallable, Category = "Gem|Equipment")
+	bool EquipSupportGem(int32 InSlotIndex, UHSupportGem* InSupportGem);
+
 	/** @brief 특정 슬롯의 젬을 해제합니다. */
 	UFUNCTION(BlueprintCallable, Category = "Gem|Equipment")
 	void UnequipGem(int32 InSlotIndex);

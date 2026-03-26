@@ -8,7 +8,7 @@
 #include "UI/MainHud/HGemDragDropOp.h"
 #include "Unit/Player/HPlayerCharacter.h"
 #include "Skill/HEquipmentComponent.h"
-#include "Skill/HGemInventoryComponent.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 
 void UHEquipGemSlot::SetMainGem(UHMainGem* InMainGem)
 {
@@ -45,6 +45,7 @@ void UHEquipGemSlot::SetMainGem(UHMainGem* InMainGem)
 			{
 				UHEquipGemSlotEntryData* EntryData = NewObject<UHEquipGemSlotEntryData>(this);
 				EntryData->SupportGem = SupportGem;
+				EntryData->SourceSlotIndex = SlotIndex;
 				SubGemSlotListView->AddItem(EntryData);
 			}
 		}
@@ -64,6 +65,86 @@ void UHEquipGemSlot::ClearSlot()
 	}
 }
 
+void UHEquipGemSlot::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	if (AHPlayerCharacter* PlayerCharacter = Cast<AHPlayerCharacter>(GetOwningPlayerPawn()))
+	{
+		if (UHEquipmentComponent* EquipComp = PlayerCharacter->GetEquipmentComponent())
+		{
+			// 장착 상태 변경 델리게이트 바인딩
+			EquipComp->OnEquipmentChanged.AddDynamic(this, &UHEquipGemSlot::Refresh);
+			
+			// 초기 데이터 반영
+			Refresh();
+		}
+	}
+}
+
+void UHEquipGemSlot::Refresh()
+{
+	if (AHPlayerCharacter* PlayerCharacter = Cast<AHPlayerCharacter>(GetOwningPlayerPawn()))
+	{
+		if (UHEquipmentComponent* EquipComp = PlayerCharacter->GetEquipmentComponent())
+		{
+			// 현재 슬롯 인덱스에 맞는 메인 젬을 가져와서 UI 갱신
+			UHMainGem* EquippedGem = EquipComp->GetEquippedGem(SlotIndex);
+			SetMainGem(EquippedGem);
+		}
+	}
+}
+
+FReply UHEquipGemSlot::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		return UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton).NativeReply;
+	}
+
+	return FReply::Unhandled();
+}
+
+void UHEquipGemSlot::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
+{
+	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
+
+	AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwningPlayerPawn());
+	if (!Player || !Player->GetEquipmentComponent()) return;
+
+	UHMainGem* CurrentGem = Player->GetEquipmentComponent()->GetEquippedGem(SlotIndex);
+	if (!CurrentGem) return;
+
+	// 1. DragDropOperation 생성
+	UHGemDragDropOp* DragOp = NewObject<UHGemDragDropOp>();
+	DragOp->DraggedGem = CurrentGem;
+	DragOp->SourceWidget = this;
+	DragOp->SourceSlotIndex = SlotIndex;
+
+	// 2. 비주얼 설정 (아이콘 잔상)
+	const FHGemData& GemData = CurrentGem->GetGemData();
+	if (GemData.GemIcon)
+	{
+		UImage* DragVisual = NewObject<UImage>(this);
+		if (DragVisual)
+		{
+			DragVisual->SetBrushFromTexture(GemData.GemIcon);
+
+			FVector2D DragIconSize = FVector2D(128, 128);
+			if (MainGemIcon)
+			{
+				DragIconSize = MainGemIcon->GetDesiredSize();
+			}
+			DragVisual->SetDesiredSizeOverride(DragIconSize);
+
+			DragOp->DefaultDragVisual = DragVisual;
+			DragOp->Pivot = EDragPivot::MouseDown;
+		}
+	}
+
+	OutOperation = DragOp;
+}
+
 bool UHEquipGemSlot::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
 	UHGemDragDropOp* GemOp = Cast<UHGemDragDropOp>(InOperation);
@@ -77,35 +158,19 @@ bool UHEquipGemSlot::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEv
 	// 1. 드래그된 젬이 메인 젬인 경우 (슬롯 교체)
 	if (UHMainGem* MainGem = Cast<UHMainGem>(GemOp->DraggedGem))
 	{
-		// 인벤토리에서 먼저 제거 시도
-		if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
-		{
-			InvComp->RemoveGemInstance(MainGem);
-		}
-
+		// EquipGem 호출 (내부에서 Broadcast하므로 Refresh가 자동 호출됨)
 		if (EquipComp->EquipGem(SlotIndex, MainGem))
 		{
-			SetMainGem(MainGem);
 			return true;
 		}
 	}
 	// 2. 드래그된 젬이 보조 젬인 경우 (현재 장착된 메인 젬에 연결)
 	else if (UHSupportGem* SupportGem = Cast<UHSupportGem>(GemOp->DraggedGem))
 	{
-		UHMainGem* CurrentMainGem = EquipComp->GetEquippedGem(SlotIndex);
-		if (CurrentMainGem)
+		// EquipSupportGem 호출
+		if (EquipComp->EquipSupportGem(SlotIndex, SupportGem))
 		{
-			if (CurrentMainGem->AddSupportGem(SupportGem))
-			{
-				// 인벤토리에서 제거
-				if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
-				{
-					InvComp->RemoveGemInstance(SupportGem);
-				}
-				
-				SetMainGem(CurrentMainGem);
-				return true;
-			}
+			return true;
 		}
 	}
 

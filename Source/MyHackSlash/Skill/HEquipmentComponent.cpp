@@ -1,5 +1,6 @@
 #include "Skill/HEquipmentComponent.h"
 #include "Skill/SkillGem/HMainGem.h"
+#include "Skill/SkillGem/HSupportGem.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Skill/HGemInventoryComponent.h"
@@ -28,10 +29,19 @@ bool UHEquipmentComponent::EquipGem(int32 InSlotIndex, UHMainGem* InGem)
 		ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner());
 	}
 
-	// 기존 슬롯 해제
+	// 1. 인벤토리에서 먼저 제거 시도 (이미 장착된 젬이 아닐 때만)
+	if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner()))
+	{
+		if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
+		{
+			InvComp->RemoveGemInstance(InGem);
+		}
+	}
+
+	// 2. 기존 슬롯 해제 (기존 젬을 인벤토리로 반환)
 	UnequipGem(InSlotIndex);
 
-	// 새로운 젬 장착
+	// 3. 새로운 젬 장착
 	EquippedMainGems[InSlotIndex] = InGem;
 
 	// GAS 연동: Ability 부여
@@ -46,6 +56,32 @@ bool UHEquipmentComponent::EquipGem(int32 InSlotIndex, UHMainGem* InGem)
 
 	OnEquipmentChanged.Broadcast();
 	return true;
+}
+
+bool UHEquipmentComponent::EquipSupportGem(int32 InSlotIndex, UHSupportGem* InSupportGem)
+{
+	if (!InSupportGem) return false;
+
+	UHMainGem* TargetMainGem = GetEquippedGem(InSlotIndex);
+	if (!TargetMainGem) return false;
+
+	// 1. 메인 젬에 보조 젬 추가 시도
+	if (TargetMainGem->AddSupportGem(InSupportGem))
+	{
+		// 2. 인벤토리에서 제거 시도
+		if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner()))
+		{
+			if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
+			{
+				InvComp->RemoveGemInstance(InSupportGem);
+			}
+		}
+
+		OnEquipmentChanged.Broadcast();
+		return true;
+	}
+
+	return false;
 }
 
 void UHEquipmentComponent::UnequipGem(int32 InSlotIndex)

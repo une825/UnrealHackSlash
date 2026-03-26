@@ -1,9 +1,14 @@
 #include "UI/MainHud/HSkillGemInventoryEntryUI.h"
 #include "Components/Image.h"
 #include "Skill/SkillGem/HGemBase.h"
+#include "Skill/SkillGem/HMainGem.h"
+#include "Skill/SkillGem/HSupportGem.h"
 #include "DataAsset/HGemDataAsset.h"
 #include "UI/MainHud/HGemDragDropOp.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Unit/Player/HPlayerCharacter.h"
+#include "Skill/HEquipmentComponent.h"
+#include "Skill/HGemInventoryComponent.h"
 
 void UHSkillGemInventoryEntryUI::NativeOnListItemObjectSet(UObject* InListItemObject)
 {
@@ -50,6 +55,7 @@ void UHSkillGemInventoryEntryUI::NativeOnDragDetected(const FGeometry& InGeometr
 	UHGemDragDropOp* DragOp = NewObject<UHGemDragDropOp>();
 	DragOp->DraggedGem = CurrentEntryData->GemBase;
 	DragOp->SourceWidget = this;
+	DragOp->SourceSlotIndex = -1; // 인벤토리에서 시작함
 
 	// 2. 드래그 시 마우스를 따라다닐 비주얼 설정 (아이콘 잔상)
 	const FHGemData& GemData = CurrentEntryData->GemBase->GetGemData();
@@ -75,4 +81,46 @@ void UHSkillGemInventoryEntryUI::NativeOnDragDetected(const FGeometry& InGeometr
 	}
 	
 	OutOperation = DragOp;
+}
+
+bool UHSkillGemInventoryEntryUI::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+{
+	UHGemDragDropOp* GemOp = Cast<UHGemDragDropOp>(InOperation);
+	if (!GemOp || !GemOp->DraggedGem) return false;
+
+	// 장착 슬롯에서 온 드래그인 경우에만 장착 해제 처리
+	if (GemOp->SourceSlotIndex == -1) return false;
+
+	AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwningPlayerPawn());
+	if (!Player || !Player->GetEquipmentComponent()) return false;
+
+	UHEquipmentComponent* EquipComp = Player->GetEquipmentComponent();
+
+	// 1. 메인 젬인 경우 (슬롯 전체 해제)
+	if (UHMainGem* MainGem = Cast<UHMainGem>(GemOp->DraggedGem))
+	{
+		EquipComp->UnequipGem(GemOp->SourceSlotIndex);
+		return true;
+	}
+	// 2. 보조 젬인 경우 (해당 메인 젬에서 보조 젬만 제거)
+	else if (UHSupportGem* SupportGem = Cast<UHSupportGem>(GemOp->DraggedGem))
+	{
+		UHMainGem* CurrentMainGem = EquipComp->GetEquippedGem(GemOp->SourceSlotIndex);
+		if (CurrentMainGem)
+		{
+			CurrentMainGem->RemoveSupportGem(SupportGem);
+
+			// 보조 젬을 인벤토리에 다시 추가
+			if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
+			{
+				InvComp->AddGemInstance(SupportGem);
+			}
+
+			// UI 갱신 (EquipmentComponent의 델리게이트 브로드캐스트)
+			EquipComp->OnEquipmentChanged.Broadcast();
+			return true;
+		}
+	}
+
+	return false;
 }

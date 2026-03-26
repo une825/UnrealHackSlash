@@ -23,4 +23,8 @@ public:
 	/** @brief 드래그가 시작된 소스 위젯 */
 	UPROPERTY(BlueprintReadWrite, Category = "Gem|UI")
 	TObjectPtr<UUserWidget> SourceWidget;
+
+	/** @brief 드래그가 시작된 장착 슬롯 인덱스 (인벤토리에서 시작 시 -1) */
+	UPROPERTY(BlueprintReadWrite, Category = "Gem|UI")
+	int32 SourceSlotIndex = -1;
 };
