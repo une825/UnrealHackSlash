@@ -2,15 +2,15 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "HSkillGemInventory.generated.h"
+#include "HGemInventoryUI.generated.h"
 
 class UListView;
 
 /**
- * 스킬 젬 인벤토리를 관리하는 UI 클래스입니다.
+ * 젬 인벤토리를 관리하는 UI 클래스입니다.
  */
 UCLASS()
-class MYHACKSLASH_API UHSkillGemInventory : public UUserWidget
+class MYHACKSLASH_API UHGemInventoryUI : public UUserWidget
 {
 	GENERATED_BODY()
 
@@ -28,5 +28,5 @@ protected:
 private:
 	/** 항상 유지할 10개의 슬롯 데이터 객체들 */
 	UPROPERTY()
-	TArray<TObjectPtr<class UHSkillGemEntryData>> InventorySlotDatas;
+	TArray<TObjectPtr<class UHGemInventoryEntryData>> InventorySlotDatas;
 };

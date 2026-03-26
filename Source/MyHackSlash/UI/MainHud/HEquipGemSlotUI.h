@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "HEquipGemSlot.generated.h"
+#include "HEquipGemSlotUI.generated.h"
 
 class UImage;
 class UListView;
@@ -12,7 +12,7 @@ class UHMainGem;
  * 하나의 메인 젬 슬롯과 연결된 보조 젬들을 표시하는 UI입니다.
  */
 UCLASS()
-class MYHACKSLASH_API UHEquipGemSlot : public UUserWidget
+class MYHACKSLASH_API UHEquipGemSlotUI : public UUserWidget
 {
 	GENERATED_BODY()
 

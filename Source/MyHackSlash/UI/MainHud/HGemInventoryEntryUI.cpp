@@ -1,4 +1,4 @@
-#include "UI/MainHud/HSkillGemInventoryEntryUI.h"
+#include "UI/MainHud/HGemInventoryEntryUI.h"
 #include "Components/Image.h"
 #include "Skill/SkillGem/HGemBase.h"
 #include "Skill/SkillGem/HMainGem.h"
@@ -10,9 +10,9 @@
 #include "Skill/HEquipmentComponent.h"
 #include "Skill/HGemInventoryComponent.h"
 
-void UHSkillGemInventoryEntryUI::NativeOnListItemObjectSet(UObject* InListItemObject)
+void UHGemInventoryEntryUI::NativeOnListItemObjectSet(UObject* InListItemObject)
 {
-	CurrentEntryData = Cast<UHSkillGemEntryData>(InListItemObject);
+	CurrentEntryData = Cast<UHGemInventoryEntryData>(InListItemObject);
 	if (!CurrentEntryData || CurrentEntryData->bIsEmpty || !CurrentEntryData->GemBase)
 	{
 		if (AbilityIconImage)
@@ -31,7 +31,7 @@ void UHSkillGemInventoryEntryUI::NativeOnListItemObjectSet(UObject* InListItemOb
 	}
 }
 
-FReply UHSkillGemInventoryEntryUI::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+FReply UHGemInventoryEntryUI::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
@@ -42,7 +42,7 @@ FReply UHSkillGemInventoryEntryUI::NativeOnMouseButtonDown(const FGeometry& InGe
 	return FReply::Unhandled();
 }
 
-void UHSkillGemInventoryEntryUI::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
+void UHGemInventoryEntryUI::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
 {
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 
@@ -83,7 +83,7 @@ void UHSkillGemInventoryEntryUI::NativeOnDragDetected(const FGeometry& InGeometr
 	OutOperation = DragOp;
 }
 
-bool UHSkillGemInventoryEntryUI::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+bool UHGemInventoryEntryUI::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
 	UHGemDragDropOp* GemOp = Cast<UHGemDragDropOp>(InOperation);
 	if (!GemOp || !GemOp->DraggedGem) return false;

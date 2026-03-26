@@ -1,4 +1,4 @@
-#include "UI/MainHud/HEquipGemSlot.h"
+#include "UI/MainHud/HEquipGemSlotUI.h"
 #include "Components/Image.h"
 #include "Components/ListView.h"
 #include "Skill/SkillGem/HMainGem.h"
@@ -10,7 +10,7 @@
 #include "Skill/HEquipmentComponent.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 
-void UHEquipGemSlot::SetMainGem(UHMainGem* InMainGem)
+void UHEquipGemSlotUI::SetMainGem(UHMainGem* InMainGem)
 {
 	if (nullptr == InMainGem)
 	{
@@ -52,7 +52,7 @@ void UHEquipGemSlot::SetMainGem(UHMainGem* InMainGem)
 	}
 }
 
-void UHEquipGemSlot::ClearSlot()
+void UHEquipGemSlotUI::ClearSlot()
 {
 	if (MainGemIcon)
 	{
@@ -65,7 +65,7 @@ void UHEquipGemSlot::ClearSlot()
 	}
 }
 
-void UHEquipGemSlot::NativeConstruct()
+void UHEquipGemSlotUI::NativeConstruct()
 {
 	Super::NativeConstruct();
 
@@ -74,7 +74,7 @@ void UHEquipGemSlot::NativeConstruct()
 		if (UHEquipmentComponent* EquipComp = PlayerCharacter->GetEquipmentComponent())
 		{
 			// 장착 상태 변경 델리게이트 바인딩
-			EquipComp->OnEquipmentChanged.AddDynamic(this, &UHEquipGemSlot::Refresh);
+			EquipComp->OnEquipmentChanged.AddDynamic(this, &UHEquipGemSlotUI::Refresh);
 			
 			// 초기 데이터 반영
 			Refresh();
@@ -82,7 +82,7 @@ void UHEquipGemSlot::NativeConstruct()
 	}
 }
 
-void UHEquipGemSlot::Refresh()
+void UHEquipGemSlotUI::Refresh()
 {
 	if (AHPlayerCharacter* PlayerCharacter = Cast<AHPlayerCharacter>(GetOwningPlayerPawn()))
 	{
@@ -95,7 +95,7 @@ void UHEquipGemSlot::Refresh()
 	}
 }
 
-FReply UHEquipGemSlot::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+FReply UHEquipGemSlotUI::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
@@ -105,7 +105,7 @@ FReply UHEquipGemSlot::NativeOnMouseButtonDown(const FGeometry& InGeometry, cons
 	return FReply::Unhandled();
 }
 
-void UHEquipGemSlot::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
+void UHEquipGemSlotUI::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
 {
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 
@@ -145,7 +145,7 @@ void UHEquipGemSlot::NativeOnDragDetected(const FGeometry& InGeometry, const FPo
 	OutOperation = DragOp;
 }
 
-bool UHEquipGemSlot::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+bool UHEquipGemSlotUI::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
 	UHGemDragDropOp* GemOp = Cast<UHGemDragDropOp>(InOperation);
 	if (!GemOp || !GemOp->DraggedGem) return false;
@@ -158,7 +158,6 @@ bool UHEquipGemSlot::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEv
 	// 1. 드래그된 젬이 메인 젬인 경우 (슬롯 교체)
 	if (UHMainGem* MainGem = Cast<UHMainGem>(GemOp->DraggedGem))
 	{
-		// EquipGem 호출 (내부에서 Broadcast하므로 Refresh가 자동 호출됨)
 		if (EquipComp->EquipGem(SlotIndex, MainGem))
 		{
 			return true;
@@ -167,7 +166,6 @@ bool UHEquipGemSlot::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEv
 	// 2. 드래그된 젬이 보조 젬인 경우 (현재 장착된 메인 젬에 연결)
 	else if (UHSupportGem* SupportGem = Cast<UHSupportGem>(GemOp->DraggedGem))
 	{
-		// EquipSupportGem 호출
 		if (EquipComp->EquipSupportGem(SlotIndex, SupportGem))
 		{
 			return true;

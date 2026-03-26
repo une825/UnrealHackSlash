@@ -30,14 +30,14 @@
 
 ## 3. UI System: Drag & Drop
 
-### 3.1 Drag Phase (`UHSkillGemInventoryEntryUI`, `UHEquipGemSlot`)
+### 3.1 Drag Phase (`UHGemInventoryEntryUI`, `UHEquipGemSlotUI`)
 *   사용자가 인벤토리 또는 장착 슬롯의 젬 아이콘을 드래그하면 `UHGemDragDropOp`이 생성됩니다.
 *   **Payload**: 드래그 중인 `UHGemBase` 인스턴스 정보와 시작된 슬롯 위치(`SourceSlotIndex`)가 담깁니다.
 *   **Visual**: 젬의 아이콘이 마우스 커서를 따라다니도록 `DefaultDragVisual`이 설정됩니다.
 
-### 3.2 Drop Phase (`UHEquipGemSlot`, `UHSkillGemInventoryEntryUI`)
-*   **장착 슬롯에 드롭 (`UHEquipGemSlot`)**: 인벤토리에서 온 젬을 해당 슬롯에 장착(`EquipGem`)하거나 메인 젬에 연결합니다.
-*   **인벤토리에 드롭 (`UHSkillGemInventoryEntryUI`)**: 장착 슬롯에서 온 젬을 해제(`UnequipGem`)하고 인벤토리로 반환합니다. 보조 젬인 경우 해당 메인 젬과의 연결만 끊고 인벤토리에 추가됩니다.
+### 3.2 Drop Phase (`UHEquipGemSlotUI`, `UHGemInventoryEntryUI`)
+*   **장착 슬롯에 드롭 (`UHEquipGemSlotUI`)**: 인벤토리에서 온 젬을 해당 슬롯에 장착(`EquipGem`)하거나 메인 젬에 연결합니다.
+*   **인벤토리에 드롭 (`UHGemInventoryEntryUI`)**: 장착 슬롯에서 온 젬을 해제(`UnequipGem`)하고 인벤토리로 반환합니다. 보조 젬인 경우 해당 메인 젬과의 연결만 끊고 인벤토리에 추가됩니다.
 
 ---
 

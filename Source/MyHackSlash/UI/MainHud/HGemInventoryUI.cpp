@@ -1,11 +1,11 @@
-#include "UI/MainHud/HSkillGemInventory.h"
-#include "UI/MainHud/HSkillGemInventoryEntryUI.h"
+#include "UI/MainHud/HGemInventoryUI.h"
+#include "UI/MainHud/HGemInventoryEntryUI.h"
 #include "Components/ListView.h"
 #include "Unit/Player/HPlayerCharacter.h"
 #include "Skill/HGemInventoryComponent.h"
 #include "Skill/SkillGem/HGemBase.h"
 
-void UHSkillGemInventory::NativeConstruct()
+void UHGemInventoryUI::NativeConstruct()
 {
 	Super::NativeConstruct();
 
@@ -13,7 +13,7 @@ void UHSkillGemInventory::NativeConstruct()
 	InventorySlotDatas.Empty();
 	for (int32 i = 0; i < 10; ++i)
 	{
-		InventorySlotDatas.Add(NewObject<UHSkillGemEntryData>(this));
+		InventorySlotDatas.Add(NewObject<UHGemInventoryEntryData>(this));
 	}
 
 	if (AHPlayerCharacter* PlayerCharacter = Cast<AHPlayerCharacter>(GetOwningPlayerPawn()))
@@ -21,7 +21,7 @@ void UHSkillGemInventory::NativeConstruct()
 		if (UHGemInventoryComponent* GemInventory = PlayerCharacter->GetGemInventoryComponent())
 		{
 			// 인벤토리 변경 시 UI 갱신 바인딩
-			GemInventory->OnGemInventoryUpdated.AddDynamic(this, &UHSkillGemInventory::RefreshInventory);
+			GemInventory->OnGemInventoryUpdated.AddDynamic(this, &UHGemInventoryUI::RefreshInventory);
 
 			// 초기 리스트 갱신
 			RefreshInventory();
@@ -29,7 +29,7 @@ void UHSkillGemInventory::NativeConstruct()
 	}
 }
 
-void UHSkillGemInventory::RefreshInventory()
+void UHGemInventoryUI::RefreshInventory()
 {
 	if (!InventoryListView) return;
 

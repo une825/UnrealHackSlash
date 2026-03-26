@@ -63,6 +63,9 @@ void AHBaseCharacter::ResetCharacter()
 	Attackable = true;
 	LastDamageCauser = nullptr;
 
+	// 체력 초기화 (중요: 오브젝트 풀링 재활용 대응)
+	InitializeStat(Level);
+
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 	GetCharacterMovement()->SetComponentTickEnabled(true);
 	
@@ -119,6 +122,17 @@ float AHBaseCharacter::TakeDamage(float InDamageAmount, FDamageEvent const& InDa
 	LastDamageCauser = InDamageCauser;
 
 	PlayHittedEffect();
+
+	// 카메라 쉐이크 재생 (플레이어 캐릭터인 경우)
+	if (HitCameraShakeClass)
+	{
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			// 데미지에 비례하여 흔들림 강도 계산 (최소 0.1 이상 보장)
+			const float ShakeScale = FMath::Max(0.1f, InDamageAmount * DamageToShakeScale);
+			PC->ClientStartCameraShake(HitCameraShakeClass, ShakeScale);
+		}
+	}
 
 	if (CurrentHP <= 0.0f)
 	{

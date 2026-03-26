@@ -117,4 +117,12 @@ protected:
 	TObjectPtr<UNiagaraSystem> HittedEffect;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effect")
 	TObjectPtr<UNiagaraSystem> HittedBodyEffect;
+
+	/** @brief 피격 시 실행할 카메라 쉐이크 클래스 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effect")
+	TSubclassOf<class UCameraShakeBase> HitCameraShakeClass;
+
+	/** @brief 데미지 수치를 카메라 쉐이크 강도(Scale)로 변환하는 배율 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effect")
+	float DamageToShakeScale = 0.1f;
 };
