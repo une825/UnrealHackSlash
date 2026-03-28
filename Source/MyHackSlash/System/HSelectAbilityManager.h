@@ -39,11 +39,35 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Select Ability")
 	void ExecuteReward(const FHRewardOptionData& InSelectedOption);
 
+	/** @brief 새로고침 가능 횟수를 초기화합니다. */
+	UFUNCTION(BlueprintCallable, Category = "Select Ability")
+	void ResetRefreshCount() { CurrentRefreshCount = MaxRefreshCount; }
+
+	/** @brief 새로고침이 가능한지 확인합니다. */
+	UFUNCTION(BlueprintPure, Category = "Select Ability")
+	bool CanRefresh() const { return CurrentRefreshCount > 0; }
+
+	/** @brief 새로고침 횟수를 1회 차감합니다. */
+	UFUNCTION(BlueprintCallable, Category = "Select Ability")
+	void ConsumeRefresh() { if (CurrentRefreshCount > 0) CurrentRefreshCount--; }
+
+	/** @brief 현재 남은 새로고침 횟수를 반환합니다. */
+	UFUNCTION(BlueprintPure, Category = "Select Ability")
+	int32 GetCurrentRefreshCount() const { return CurrentRefreshCount; }
+
 protected:
 	/** @brief 확률 기반으로 이번 팝업의 등급을 결정합니다. */
 	EHAbilityGrade RollGrade() const;
 
 private:
+	/** @brief 최대 새로고침 가능 횟수 */
+	UPROPERTY(EditAnywhere, Category = "Select Ability", meta = (AllowPrivateAccess = "true"))
+	int32 MaxRefreshCount = 3;
+
+	/** @brief 현재 남은 새로고침 횟수 */
+	UPROPERTY(VisibleAnywhere, Category = "Select Ability", meta = (AllowPrivateAccess = "true"))
+	int32 CurrentRefreshCount = 3;
+
 	/** @brief 등급 확률 설정 데이터 에셋 */
 	UPROPERTY()
 	TObjectPtr<UHSelectAbilityGradeDataAsset> GradeDataAsset;

@@ -55,8 +55,11 @@ protected:
 	HEElement Element = HEElement::Physical;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stat")
+	float ExplosionRadius = 50.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stat")
 	float LifeSpan = 5.0f;
 
 	UPROPERTY(VisibleInstanceOnly, Category = "Stat")
-	EHUnitType OwningUnitType = EHUnitType::Monster;
+	EHUnitType OwningUnitType = EHUnitType::Player;
 };

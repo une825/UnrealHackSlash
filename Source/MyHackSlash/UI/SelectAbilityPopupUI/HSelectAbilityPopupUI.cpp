@@ -2,6 +2,7 @@
 #include "UI/SelectAbilityPopupUI/HSelectAbilityEntryUI.h"
 #include "Components/TextBlock.h"
 #include "Components/ListView.h"
+#include "Components/Button.h"
 #include "System/HSelectAbilityManager.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -12,16 +13,34 @@ void UHSelectAbilityPopupUI::NativeConstruct()
 	// 1. 게임 일시정지 (뱀서류 필수 로직)
 	UGameplayStatics::SetGamePaused(GetWorld(), true);
 
-	// 2. 보상 옵션 갱신
+	// 2. 새로고침 버튼 이벤트 바인딩
+	if (RefreshButton)
+	{
+		RefreshButton->OnClicked.AddDynamic(this, &UHSelectAbilityPopupUI::OnRefreshButtonClicked);
+	}
+
+	// 3. 보상 옵션 갱신
 	RefreshOptions();
 }
 
 void UHSelectAbilityPopupUI::NativeDestruct()
 {
-	// 3. 게임 일시정지 해제
+	// 4. 게임 일시정지 해제
 	UGameplayStatics::SetGamePaused(GetWorld(), false);
 
 	Super::NativeDestruct();
+}
+
+void UHSelectAbilityPopupUI::OnRefreshButtonClicked()
+{
+	if (UHSelectAbilityManager* Manager = GetGameInstance()->GetSubsystem<UHSelectAbilityManager>())
+	{
+		if (Manager->CanRefresh())
+		{
+			Manager->ConsumeRefresh();
+			RefreshOptions();
+		}
+	}
 }
 
 void UHSelectAbilityPopupUI::RefreshOptions()
@@ -30,25 +49,32 @@ void UHSelectAbilityPopupUI::RefreshOptions()
 
 	AbilityListView->ClearListItems();
 
-	if (UHSelectAbilityManager* Manager = GetGameInstance()->GetSubsystem<UHSelectAbilityManager>())
+	UHSelectAbilityManager* Manager = GetGameInstance()->GetSubsystem<UHSelectAbilityManager>();
+	if (!Manager) return;
+
+	// 1. 보상 선택지 생성 및 리스트 갱신
+	TArray<FHRewardOptionData> SelectedOptions;
+	if (Manager->GetRandomRewardOptions(SelectedOptions))
 	{
-		TArray<FHRewardOptionData> SelectedOptions;
-		if (Manager->GetRandomRewardOptions(SelectedOptions))
+		for (const FHRewardOptionData& OptionData : SelectedOptions)
 		{
-			for (const FHRewardOptionData& OptionData : SelectedOptions)
+			UHSelectAbilityData* NewData = NewObject<UHSelectAbilityData>(this);
+			if (NewData)
 			{
-				// ListView에 추가하기 위해 UObject 래퍼 생성
-				UHSelectAbilityData* NewData = NewObject<UHSelectAbilityData>(this);
-				if (NewData)
-				{
-					NewData->SetRewardOptionData(OptionData);
-					AbilityListView->AddItem(NewData);
-				}
+				NewData->SetRewardOptionData(OptionData);
+				AbilityListView->AddItem(NewData);
 			}
 		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("UHSelectAbilityPopupUI: Failed to get reward options from manager."));
-		}
+	}
+
+	// 2. 새로고침 관련 UI 갱신
+	if (RefreshCountText)
+	{
+		RefreshCountText->SetText(FText::AsNumber(Manager->GetCurrentRefreshCount()));
+	}
+
+	if (RefreshButton)
+	{
+		RefreshButton->SetIsEnabled(Manager->CanRefresh());
 	}
 }

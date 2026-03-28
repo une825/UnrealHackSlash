@@ -34,6 +34,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TArray<FUIWidgetInfo> WidgetList;
 
+	// 데미지 텍스트 액터 클래스 (풀링용)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<class AHDamageTextActor> DamageTextActorClass;
+
 	// 이름으로 위젯 클래스를 찾아 반환합니다.
 	TSoftClassPtr<UUserWidget> FindWidgetClassByName(FName Name) const
 	{

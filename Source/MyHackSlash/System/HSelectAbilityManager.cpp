@@ -5,12 +5,16 @@
 #include "Skill/HGemInventoryComponent.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include <Unit/Player/HPlayerState.h>
 
 void UHSelectAbilityManager::InitializeManager(UHSelectAbilityGradeDataAsset* InGradeDataAsset, UDataTable* InRewardTable, UHGemDataAsset* InGemCollection)
 {
 	GradeDataAsset = InGradeDataAsset;
 	RewardDataTable = InRewardTable;
 	GemCollection = InGemCollection;
+
+	// 매니저 초기화 시 횟수 초기화
+	ResetRefreshCount();
 }
 
 bool UHSelectAbilityManager::GetRandomRewardOptions(TArray<FHRewardOptionData>& OutOptions)
@@ -107,11 +111,22 @@ void UHSelectAbilityManager::ExecuteReward(const FHRewardOptionData& InSelectedO
 	}
 
 	case EHRewardType::GetGold:
-		// TODO: 플레이어 골드 증가 로직 연동
+	{
+		// 플레이어 스테이트를 찾아 골드 추가
+		if (APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
+		{
+			if (AHPlayerState* PS = PC->GetPlayerState<AHPlayerState>())
+			{
+				PS->AddGold(InSelectedOption.Amount);
+				UE_LOG(LogTemp, Log, TEXT("Reward Executed: Added %d Gold. Total: %d"), InSelectedOption.Amount, PS->GetCurrentGold());
+			}
+		}
 		break;
+	}
 
 	case EHRewardType::GetReroll:
-		// TODO: 리롤 기회 추가 로직 연동
+		CurrentRefreshCount += InSelectedOption.Amount;
+		UE_LOG(LogTemp, Log, TEXT("Refresh count increased by %d. Current: %d"), InSelectedOption.Amount, CurrentRefreshCount);
 		break;
 
 	default:

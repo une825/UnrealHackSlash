@@ -42,6 +42,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void HideAllWidgets();
 
+	// 데미지 텍스트 액터 클래스를 반환합니다.
+	TSubclassOf<class AHDamageTextActor> GetDamageTextActorClass() const;
+
 	// 특정 타입의 위젯을 찾아서 반환합니다.
 	template <typename T>
 	T* GetWidget() const

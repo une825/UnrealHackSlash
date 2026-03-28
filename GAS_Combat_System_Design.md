@@ -48,6 +48,11 @@
     *   **Camera Shake**: 플레이어 캐릭터인 경우 `HitCameraShakeClass`를 통한 화면 흔들림 실행.
     *   **Death**: 사망 시 래그돌 및 임펄스 적용.
 
+### 2.3 Skill Damage Calculation
+*   **UHGA_FireBall**: 스킬 데미지는 본체의 기본 스탯과 어빌리티 고유 데미지를 합산하여 계산합니다.
+    *   `FinalDamage = UHGA_FireBall::ProjectileDamage + FUnitStatRow::AttackDamage`
+    *   이를 통해 캐릭터의 레벨업이나 스탯 변화가 스킬 데미지에 즉각 반영되도록 설계되었습니다.
+
 ---
 
 ## 3. Animation & VFX Integration

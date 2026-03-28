@@ -110,6 +110,9 @@ bool AHBaseCharacter::CanJumpInternal_Implementation() const
 	return Super::CanJumpInternal_Implementation();
 }
 
+#include "System/HUIManager.h"
+#include "UI/HDamageTextActor.h"
+
 float AHBaseCharacter::TakeDamage(float InDamageAmount, FDamageEvent const& InDamageEvent, AController* InEventInstigator, AActor* InDamageCauser)
 {
 	float ActualDamage = Super::TakeDamage(InDamageAmount, InDamageEvent, InEventInstigator, InDamageCauser);
@@ -117,9 +120,74 @@ float AHBaseCharacter::TakeDamage(float InDamageAmount, FDamageEvent const& InDa
 	if (IsDead) return ActualDamage;
 
 	CurrentHP = FMath::Clamp(CurrentHP - ActualDamage, 0.0f, MaxHP);
-	OnHPChanged.Broadcast(CurrentHP, MaxHP);
+	UE_LOG(LogTemp, Log, TEXT("[%s] Received Damage: %.2f, Current HP: %.2f / %.2f"), *GetName(), ActualDamage, CurrentHP, MaxHP);
 
-	LastDamageCauser = InDamageCauser;
+	// 데미지 텍스트 띄우기 (플레이어가 몬스터를 공격했을 때만)
+	if (ActualDamage > 0.0f)
+	{
+		bool bShowDamageText = false;
+		
+		// 실제 공격 주체(Attacker) 찾기
+		AHBaseCharacter* Attacker = nullptr;
+		
+		// 1. 인스티게이터(컨트롤러)로부터 폰 가져오기
+		if (InEventInstigator)
+		{
+			Attacker = Cast<AHBaseCharacter>(InEventInstigator->GetPawn());
+		}
+		
+		// 2. 인스티게이터가 없거나 폰을 찾지 못한 경우 Causer 확인 (투사체 등)
+		if (!Attacker && InDamageCauser)
+		{
+			Attacker = Cast<AHBaseCharacter>(InDamageCauser->GetOwner());
+			
+			// 여전히 없다면 Causer 자체가 캐릭터일 수 있음
+			if (!Attacker)
+			{
+				Attacker = Cast<AHBaseCharacter>(InDamageCauser);
+			}
+		}
+
+		if (Attacker && Attacker->GetUnitProfileData() && GetUnitProfileData())
+		{
+			// 공격자는 플레이어(Player)이고, 피격자(this)는 몬스터(Monster)인 경우
+			if (Attacker->GetUnitProfileData()->UnitType == EHUnitType::Player &&
+				GetUnitProfileData()->UnitType == EHUnitType::Monster)
+			{
+				bShowDamageText = true;
+			}
+		}
+
+		if (bShowDamageText)
+		{
+			if (UHUIManager* UIManager = GetGameInstance()->GetSubsystem<UHUIManager>())
+			{
+				if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
+				{
+					TSubclassOf<AHDamageTextActor> DamageTextClass = UIManager->GetDamageTextActorClass();
+					if (DamageTextClass)
+					{
+						// 머리 위 랜덤 위치 계산
+						FVector SpawnLocation = GetActorLocation() + FVector(FMath::RandRange(-20.f, 20.f), FMath::RandRange(-20.f, 20.f), 100.f);
+						if (AHDamageTextActor* DamageText = Cast<AHDamageTextActor>(Pool->SpawnFromPool(DamageTextClass, SpawnLocation, FRotator::ZeroRotator)))
+						{
+							DamageText->InitializeDamageText(ActualDamage, false); // 크리티컬 여부는 일단 false
+						}
+					}
+				}
+			}
+		}
+
+		// 마지막 공격자 정보를 갱신 (Attacker가 있다면 Attacker를, 없다면 원래 Causer를 저장)
+		LastDamageCauser = Attacker ? Attacker : InDamageCauser;
+	}
+	else
+	{
+		// 데미지가 0인 경우에도 마지막 Causer 정보는 남겨둘 수 있음
+		LastDamageCauser = InDamageCauser;
+	}
+
+	OnHPChanged.Broadcast(CurrentHP, MaxHP);
 
 	PlayHittedEffect();
 
@@ -137,6 +205,7 @@ float AHBaseCharacter::TakeDamage(float InDamageAmount, FDamageEvent const& InDa
 	if (CurrentHP <= 0.0f)
 	{
 		SetDead();
+		UE_LOG(LogTemp, Log, TEXT("[%s] Character is Dead: %s"), *GetName(), IsDead ? TEXT("True") : TEXT("False"));
 	}
 
 	return ActualDamage;

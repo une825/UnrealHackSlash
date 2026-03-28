@@ -62,26 +62,36 @@ void UHGA_FireBall::SpawnProjectile()
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	if (Avatar == nullptr) return;
 
-	FVector SpawnLocation = Avatar->GetActorLocation() + Avatar->GetActorForwardVector() * 100.0f;
+	// 1. 플레이어의 중심에서 앞쪽으로 충분히 밀어내고(100.0f), 높이를 약간 낮춤
+	FVector SpawnLocation = Avatar->GetActorLocation() + Avatar->GetActorForwardVector() * 50.0f;
 	FRotator SpawnRotation = Avatar->GetActorRotation();
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = Avatar;
 	SpawnParams.Instigator = Cast<APawn>(Avatar);
+	// 무언가와 겹쳐 있더라도 일단 생성 (생성 실패 방지)
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	AHProjectile* Projectile = GetWorld()->SpawnActor<AHProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, SpawnParams);
+	AHProjectile* Projectile = GetWorld()->SpawnActorDeferred<AHProjectile>(ProjectileClass, FTransform(SpawnRotation, SpawnLocation), Avatar, Cast<APawn>(Avatar), ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 	if (Projectile)
 	{
-		Projectile->SetDamage(ProjectileDamage);
+		float FinalDamage = ProjectileDamage;
 		Projectile->SetElement(HEElement::Fire);
 
 		if (AHBaseCharacter* BaseCharacter = Cast<AHBaseCharacter>(Avatar))
 		{
+			FinalDamage += BaseCharacter->GetCurrentStat().AttackDamage;
+
 			if (BaseCharacter->GetUnitProfileData())
 			{
 				Projectile->SetOwningUnitType(BaseCharacter->GetUnitProfileData()->UnitType);
 			}
 		}
+
+		Projectile->SetDamage(FinalDamage);
+		
+		// 모든 데이터 세팅 후 생성 완료 (이 시점에 BeginPlay 및 충돌 판정 시작)
+		Projectile->FinishSpawning(FTransform(SpawnRotation, SpawnLocation));
 	}
 }
 

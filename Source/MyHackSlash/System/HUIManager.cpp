@@ -3,6 +3,7 @@
 #include "Engine/World.h"
 #include "DataAsset/HUIDataAsset.h"
 #include "UObject/ConstructorHelpers.h"
+#include "UI/HDamageTextActor.h"
 
 UHUIManager::UHUIManager()
 {
@@ -99,4 +100,9 @@ void UHUIManager::HideAllWidgets()
 		}
 	}
 	ActiveWidgets.Empty();
+}
+
+TSubclassOf<class AHDamageTextActor> UHUIManager::GetDamageTextActorClass() const
+{
+	return UIDataAsset ? UIDataAsset->DamageTextActorClass : nullptr;
 }
