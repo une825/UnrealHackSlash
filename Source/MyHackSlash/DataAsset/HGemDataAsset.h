@@ -40,6 +40,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gem|Common")
 	HEElement GemElement = HEElement::Physical;
 
+	/** @brief 젬의 티어 (1~3단계 등) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gem|Common")
+	int32 Tier = 1;
+
+	/** @brief 3개가 모였을 때 업그레이드될 다음 티어 젬의 ID (없으면 NAME_None) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gem|Common")
+	FName NextTierGemID = NAME_None;
+
 	// --- 메인 젬 전용 데이터 (Active) ---
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gem|Main")
 	TSubclassOf<UGameplayAbility> SkillAbilityClass;

@@ -26,6 +26,11 @@
 *   **InputID Mapping**: 슬롯 인덱스에 따라 `InputID`를 부여합니다. (Slot 0 -> InputID 1, Slot 1 -> InputID 2 등)
 *   **Dynamic Update**: 젬 교체 시 기존 능력을 `ClearAbility`하고 새 능력을 `GiveAbility` 함으로써 실시간 스킬 교체를 지원합니다.
 
+### 2.3 젬 자동 업그레이드 워크플로우 (Auto-Upgrade)
+*   **Trigger**: 인벤토리에 새로운 젬 인스턴스가 추가될 때마다 실행됩니다.
+*   **Logic**: 동일한 `GemID`를 가진 젬 3개가 확인되면 인벤토리에서 제거하고 상위 티어 젬(NextTierGemID)을 생성하여 추가합니다.
+*   **Chain Upgrade**: 업그레이드된 결과물이 다시 3개가 되어 추가 업그레이드가 가능한 경우 루프를 돌며 최종 단계까지 연속 합성을 수행합니다.
+
 ---
 
 ## 3. UI System: Drag & Drop

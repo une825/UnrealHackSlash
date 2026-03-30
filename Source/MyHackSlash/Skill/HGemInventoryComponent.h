@@ -13,6 +13,7 @@ class UHSupportGem;
 class UAbilitySystemComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGemInventoryUpdated);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGemUpgraded, UHGemBase*, NewGem);
 
 /**
  * 캐릭터의 젬 인벤토리와 장착 슬롯을 관리하는 컴포넌트입니다.
@@ -45,10 +46,18 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Gem|Inventory")
 	const TArray<UHGemBase*>& GetInventoryGems() const { return InventoryGems; }
 
+protected:
+	/** @brief 동일한 젬 3개가 모였는지 확인하고 자동 업그레이드를 수행합니다. */
+	void CheckAndUpgradeGems();
+
 public:
 	/** 인벤토리 데이터가 변할 때 호출되는 델리게이트 */
 	UPROPERTY(BlueprintAssignable, Category = "Gem|Events")
 	FOnGemInventoryUpdated OnGemInventoryUpdated;
+
+	/** 젬이 업그레이드되었을 때 호출되는 델리게이트 */
+	UPROPERTY(BlueprintAssignable, Category = "Gem|Events")
+	FOnGemUpgraded OnGemUpgraded;
 
 private:
 	/** 보유 중인 모든 젬 인스턴스 */

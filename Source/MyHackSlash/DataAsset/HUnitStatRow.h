@@ -21,6 +21,8 @@ public:
 		, AttackRange(40.0f)
 		, AttackSpeedRate(1.0f)
 		, MovementSpeed(400.0f)
+		, CriticalRate(5.0f)
+		, CriticalMultiplier(1.5f)
 	{}
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
@@ -37,4 +39,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
 	float MovementSpeed;
+
+	/** @brief 치명타 확률 (0~100) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
+	float CriticalRate;
+
+	/** @brief 치명타 데미지 배율 (예: 1.5 = 150%) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
+	float CriticalMultiplier;
 };

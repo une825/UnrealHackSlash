@@ -144,8 +144,8 @@ void AHPlayerCharacter::PossessedBy(AController* NewController)
 		if (GameMode && GameMode->GetGemCollectionDataAsset() && GemInventoryComponent && EquipmentComponent)
 		{
 			FHGemData FistAttackData;
-			//if (GameMode->GetGemCollectionDataAsset()->FindGemData(TEXT("FireBall"), FistAttackData))
-			if (GameMode->GetGemCollectionDataAsset()->FindGemData(TEXT("FistAttack"), FistAttackData))
+			//if (GameMode->GetGemCollectionDataAsset()->FindGemData(TEXT("FireBall_T1"), FistAttackData))
+			if (GameMode->GetGemCollectionDataAsset()->FindGemData(TEXT("FistAttack_T1"), FistAttackData))
 			{
 				UHGemBase* NewGem = GemInventoryComponent->AddGem(FistAttackData);
 				if (UHMainGem* MainGem = Cast<UHMainGem>(NewGem))

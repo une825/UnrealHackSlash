@@ -84,7 +84,7 @@ bool UHEquipmentComponent::EquipSupportGem(int32 InSlotIndex, UHSupportGem* InSu
 	return false;
 }
 
-void UHEquipmentComponent::UnequipGem(int32 InSlotIndex)
+void UHEquipmentComponent::UnequipGem(int32 InSlotIndex, bool bInReturnToInventory)
 {
 	if (!EquippedMainGems.IsValidIndex(InSlotIndex) || !EquippedMainGems[InSlotIndex]) return;
 
@@ -99,12 +99,15 @@ void UHEquipmentComponent::UnequipGem(int32 InSlotIndex)
 
 	EquippedMainGems[InSlotIndex] = nullptr;
 
-	// 해제된 젬을 다시 인벤토리 가방으로 돌려보냄
-	if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner()))
+	// 해제된 젬을 다시 인벤토리 가방으로 돌려보냄 (파라미터가 true일 때만)
+	if (bInReturnToInventory)
 	{
-		if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
+		if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner()))
 		{
-			InvComp->AddGemInstance(RemovedGem);
+			if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
+			{
+				InvComp->AddGemInstance(RemovedGem);
+			}
 		}
 	}
 

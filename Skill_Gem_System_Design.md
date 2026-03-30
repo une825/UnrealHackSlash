@@ -70,6 +70,12 @@
 ### 4.3 젬 공명 시스템 (Resonance)
 슬롯에 장착된 젬들의 동일 속성(HEElement) 개수를 체크하여 패시브 효과를 발동합니다.
 
+### 4.4 젬 업그레이드 시스템 (Gem Upgrade)
+동일한 종류의 젬을 모아 성능이 강화된 상위 티어 젬으로 합성할 수 있습니다.
+*   **합성 조건**: 인벤토리에 동일한 `GemID`를 가진 젬 인스턴스가 3개 모일 경우.
+*   **자동 합성**: `UHGemInventoryComponent`에서 젬이 추가될 때마다 자동으로 체크하여 상위 젬 1개로 변환합니다.
+*   **데이터 정의**: `FHGemData`의 `Tier`와 `NextTierGemID` 필드를 통해 업그레이드 경로를 정의합니다.
+
 ---
 
 ## 5. Implementation Notes for AI (AI 구현 참고사항)

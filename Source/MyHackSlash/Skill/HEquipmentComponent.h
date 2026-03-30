@@ -35,7 +35,7 @@ public:
 
 	/** @brief 특정 슬롯의 젬을 해제합니다. */
 	UFUNCTION(BlueprintCallable, Category = "Gem|Equipment")
-	void UnequipGem(int32 InSlotIndex);
+	void UnequipGem(int32 InSlotIndex, bool bInReturnToInventory = true);
 
 	/** @brief 특정 슬롯에 장착된 젬을 반환합니다. */
 	UFUNCTION(BlueprintPure, Category = "Gem|Equipment")
