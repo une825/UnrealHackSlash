@@ -7,7 +7,9 @@
 #include "System/HMonsterSpawnerDataAsset.h"
 #include "System/HMonsterSpawnManager.h"
 #include "System/HSelectAbilityManager.h"
+#include "System/HInfiniteMapManager.h"
 #include "DataAsset/HSelectAbilityData.h"
+#include "DataAsset/HMapConfigDataAsset.h"
 #include "Engine/StreamableManager.h"
 #include "Engine/AssetManager.h"
 
@@ -39,6 +41,22 @@ void AMyHackSlashGameMode::BeginPlay()
 
 	SetMonsterSpawnManager();
 	SetSelectAbilityManager();
+
+	// Infinite Map 초기화 (DataAsset 사용)
+	if (MapConfig)
+	{
+		if (UHInfiniteMapManager* MapManager = GetWorld()->GetSubsystem<UHInfiniteMapManager>())
+		{
+			MapManager->SetMapSettings(
+				MapConfig->MapTileClass, 
+				MapConfig->MapTileSize, 
+				MapConfig->MapViewDistance, 
+				MapConfig->MapPropPool, 
+				MapConfig->MinPropCount, 
+				MapConfig->MaxPropCount
+			);
+		}
+	}
 }
 
 void AMyHackSlashGameMode::Tick(float InDeltaSeconds)

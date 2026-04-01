@@ -46,6 +46,9 @@ protected:
 	FAIMonsterAttackFinished OnAttackFinished;
 
 protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
+	TSubclassOf<class AHCoin> CoinClass;
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
 	FMonsterStatRow CurrentMonsterStat;
 };

@@ -10,6 +10,7 @@ class UHMonsterSpawnerDataAsset;
 class UHSelectAbilityGradeDataAsset;
 class UHGemDataAsset;
 class UDataTable;
+struct FMapPropData;
 
 UCLASS(minimalapi)
 class AMyHackSlashGameMode : public AGameModeBase
@@ -46,6 +47,10 @@ private:
 	/** @brief 스킬 젬 데이터 컬렉션 에셋 */
 	UPROPERTY(EditAnywhere, Category = "Select Ability")
 	TObjectPtr<UHGemDataAsset> GemCollectionDataAsset;
+
+	// --- Infinite Map Settings ---
+	UPROPERTY(EditAnywhere, Category = "Map")
+	TObjectPtr<class UHMapConfigDataAsset> MapConfig;
 
 	TSharedPtr<struct FStreamableHandle> LoadHandle;
 };

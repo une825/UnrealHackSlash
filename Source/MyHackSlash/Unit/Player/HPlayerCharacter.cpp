@@ -14,6 +14,9 @@
 #include "DataAsset/HGemDataAsset.h"
 #include "Skill/SkillGem/HMainGem.h"
 #include "Mode/MyHackSlashGameMode.h"
+#include "System/HInfiniteMapManager.h"
+
+#include "NavigationInvokerComponent.h"
 
 AHPlayerCharacter::AHPlayerCharacter()
 {
@@ -35,6 +38,29 @@ AHPlayerCharacter::AHPlayerCharacter()
 
 	// 젬 장착 컴포넌트 생성
 	EquipmentComponent = CreateDefaultSubobject<UHEquipmentComponent>(TEXT("EquipmentComponent"));
+
+	// 네비게이션 인보커 컴포넌트 생성 및 설정
+	NavInvokerComponent = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavInvokerComponent"));
+	// 플레이어 주변 3000유닛(타일 1.5개 분량) 정도를 굽고, 5000유닛 밖은 제거
+	NavInvokerComponent->SetGenerationRadii(3000.0f, 5000.0f);
+
+	PrimaryActorTick.bCanEverTick = true;
+}
+
+void AHPlayerCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
+void AHPlayerCharacter::Tick(float InDeltaTime)
+{
+	Super::Tick(InDeltaTime);
+
+	// 무한 맵 업데이트
+	if (UHInfiniteMapManager* MapManager = GetWorld()->GetSubsystem<UHInfiniteMapManager>())
+	{
+		MapManager->UpdateMap(GetActorLocation());
+	}
 }
 
 void AHPlayerCharacter::InitializeStat(int32 InNewLevel)

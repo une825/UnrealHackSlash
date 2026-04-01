@@ -80,5 +80,5 @@
 ## 5. Implementation Notes for AI
 
 1.  **Ability Activation**: 몬스터 AI는 비헤이비어 트리에서 태그를 기반으로 어빌리티를 트리거해야 합니다.
-2.  **Death Logic**: 사망 시 `EnableRagdoll`과 `SetDeadImpulse`를 통해 물리 기반의 사망 연출을 수행합니다.
+2.  **Death Logic**: 사망 시 `EnableRagdoll`과 `SetDeadImpulse`를 통해 물리 기반의 사망 연출을 수행합니다. 또한, 설정된 확률 및 양에 따라 **코인(`AHCoin`)**을 드랍합니다.
 3.  **Homing Projectiles**: `AHProjectile` 클래스를 확장하여 유도 기능을 추가할 수 있습니다.

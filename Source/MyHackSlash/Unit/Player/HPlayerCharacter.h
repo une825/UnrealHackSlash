@@ -41,7 +41,9 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
 public:
-	virtual void PossessedBy(AController* NewController);
+	virtual void BeginPlay() override;
+	virtual void Tick(float InDeltaTime) override;
+	virtual void PossessedBy(AController* NewController) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* InPlayerInputComponent) override;
 
 	// 플레이어 스탯 및 경험치 초기화
@@ -102,4 +104,8 @@ private:
 	/** 젬 장착 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UHEquipmentComponent> EquipmentComponent;
+
+	/** 네비게이션 인보커 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Navigation", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UNavigationInvokerComponent> NavInvokerComponent;
 };

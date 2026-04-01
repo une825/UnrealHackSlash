@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Unit/Monster/HBaseMonster.h"
+#include "Item/HCoin.h"
 #include "Unit/Player/HPlayerCharacter.h"
 #include "System/HMonsterAIController.h"
 #include "System/HObjectPoolManager.h"
@@ -59,6 +60,22 @@ void AHBaseMonster::SetDead()
 	if (LastDamageCauser.IsValid())
 	{
 		OnMonsterDead.Broadcast(LastDamageCauser.Get(), this);
+	}
+
+	// 코인 드랍
+	if (CoinClass)
+	{
+		if (UHObjectPoolManager* PoolManager = GetWorld()->GetSubsystem<UHObjectPoolManager>())
+		{
+			if (AHCoin* NewCoin = Cast<AHCoin>(PoolManager->SpawnFromPool(CoinClass, GetActorLocation(), GetActorRotation())))
+			{
+				NewCoin->PrepareFromPool(CurrentMonsterStat.GoldReward);
+			}
+		}
+		else if (AHCoin* NewCoin = GetWorld()->SpawnActor<AHCoin>(CoinClass, GetActorLocation(), GetActorRotation()))
+		{
+			NewCoin->SetGoldAmount(CurrentMonsterStat.GoldReward);
+		}
 	}
 
 	// 일정 시간 후 오브젝트 풀로 반납

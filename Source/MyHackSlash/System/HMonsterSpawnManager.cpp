@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "System/HMonsterSpawnManager.h"
 #include "HMonsterSpawnerDataAsset.h"
 #include "HObjectPoolManager.h"
@@ -8,6 +5,8 @@
 #include "Unit/Monster/HBaseMonster.h"
 #include "NavigationSystem.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/Character.h"
+#include "Components/CapsuleComponent.h"
 
 void UHMonsterSpawnManager::StartMonsterWave(UHMonsterSpawnerDataAsset* InConfig)
 {
@@ -27,18 +26,31 @@ void UHMonsterSpawnManager::StopMonsterWave()
 
 void UHMonsterSpawnManager::ExecuteSpawnTick()
 {
-    if (!CurrentConfig) return;
+    if (!CurrentConfig || !CurrentConfig->MonsterClass) return;
 
     UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>();
     if (!Pool) return;
 
     UHQuestManager* QuestManager = GetWorld()->GetGameInstance()->GetSubsystem<UHQuestManager>();
 
+    // 스폰할 몬스터의 기본 높이값 가져오기 (매직 넘버 제거)
+    float SpawnZOffset = 0.0f;
+    if (const ACharacter* DefaultChar = Cast<ACharacter>(CurrentConfig->MonsterClass->GetDefaultObject()))
+    {
+        if (UCapsuleComponent* Capsule = DefaultChar->GetCapsuleComponent())
+        {
+            SpawnZOffset = Capsule->GetScaledCapsuleHalfHeight();
+        }
+    }
+
     for (int32 i = 0; i < CurrentConfig->SpawnsPerTick; ++i)
     {
         FVector SpawnPos;
         if (GetValidSpawnLocation(SpawnPos))
         {
+            // 실제 몬스터의 캡슐 높이만큼 위로 올려서 정확히 지면에 발이 닿게 설정
+            SpawnPos.Z += SpawnZOffset;
+
             AActor* SpawnedActor = Pool->SpawnFromPool(CurrentConfig->MonsterClass, SpawnPos, FRotator::ZeroRotator);
 
             if (AHBaseMonster* Monster = Cast<AHBaseMonster>(SpawnedActor))

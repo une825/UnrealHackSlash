@@ -18,9 +18,14 @@ public:
 	FMonsterStatRow()
 		: FUnitStatRow()
 		, ExpReward(50.0f)
+		, GoldReward(10)
 	{}
 
 	// 처치 시 플레이어에게 지급할 경험치
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
 	float ExpReward;
+
+	// 처치 시 드랍할 골드 양
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
+	int32 GoldReward;
 };
