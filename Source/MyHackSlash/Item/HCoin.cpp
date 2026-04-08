@@ -20,6 +20,7 @@ AHCoin::AHCoin()
 	SphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComponent"));
 	SetRootComponent(SphereComponent);
 	SphereComponent->SetSphereRadius(25.0f);
+	SphereComponent->SetCanEverAffectNavigation(false);
 	
 	// 물리 및 충돌 프리셋 설정
 	SphereComponent->SetCollisionProfileName(TEXT("PhysicsActor"));
@@ -39,6 +40,7 @@ AHCoin::AHCoin()
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	MeshComponent->SetupAttachment(RootComponent);
 	MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MeshComponent->SetCanEverAffectNavigation(false);
 
 	// 회전 설정
 	RotatingMovementComponent = CreateDefaultSubobject<URotatingMovementComponent>(TEXT("RotatingMovement"));

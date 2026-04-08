@@ -37,6 +37,14 @@ void AHBaseMonster::InitializeStat(int32 InNewLevel)
 	}
 }
 
+void AHBaseMonster::ResetCharacter()
+{
+	Super::ResetCharacter();
+
+	// AI를 다시 연결하여 동작하게 함
+	SpawnDefaultController();
+}
+
 void AHBaseMonster::SetDead()
 {
 	Super::SetDead();
@@ -49,9 +57,6 @@ void AHBaseMonster::SetDead()
 		AICon->UnPossess(); // 컨트롤러와 폰 연결 끊기 (AI 로직 완전 정지)
 	}
 
-	// 시체가 내비게이션 및 다른 AI의 경로 계산에 방해되지 않도록 설정
-	GetMesh()->SetCanEverAffectNavigation(false);
-	
 	// 가해자에게 사망 이벤트 전송 (GAS 기반 경험치 및 퀘스트 처리)
 	if (LastDamageCauser.IsValid())
 	{

@@ -179,8 +179,9 @@ void AHBaseCharacter::ResetCharacter()
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Ignore);
 
 	GetMesh()->SetSimulatePhysics(false);
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); // 충돌 명시적으로 복구
 	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh"));
-	GetMesh()->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+	GetMesh()->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 	GetMesh()->SetRelativeLocation(FVector(0, 0, -GetCapsuleComponent()->GetScaledCapsuleHalfHeight()));
 	GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
 }
@@ -458,11 +459,24 @@ void AHBaseCharacter::PlayHittedEffect()
 
 void AHBaseCharacter::EnableRagdoll()
 {
+	// 캡슐 컴포넌트 내비게이션 및 충돌 완전 제거
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
+	GetCapsuleComponent()->SetCanEverAffectNavigation(false); // 내비게이션 영향 제거
 
+	// 무브먼트 컴포넌트 정지 및 회피 비활성화
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->DisableMovement();
+	GetCharacterMovement()->SetAvoidanceEnabled(false); // RVO Avoidance 비활성화
+	GetCharacterMovement()->SetCanEverAffectNavigation(false); // 무브먼트 내비 영향 제거
+
+	// 메쉬 설정
 	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+	// 프로필 설정 후에 명시적으로 Pawn 채널을 Ignore 해야 다른 AI들이 통과함
 	GetMesh()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	GetMesh()->SetCanEverAffectNavigation(false); // 메쉬 내비 영향 제거
+	
 	GetMesh()->SetSimulatePhysics(true);
 	GetMesh()->SetAllBodiesSimulatePhysics(true);
 	GetMesh()->SetAllBodiesBelowSimulatePhysics(TEXT("pelvis"), true, true);

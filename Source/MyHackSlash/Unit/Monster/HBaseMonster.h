@@ -24,6 +24,8 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnMonsterDead OnMonsterDead;
 
+	virtual void ResetCharacter() override;
+
 	float GetExpReward() const;
 
 public:
