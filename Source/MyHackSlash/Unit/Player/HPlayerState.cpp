@@ -7,7 +7,7 @@
 AHPlayerState::AHPlayerState()
 {
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
-	AbilitySystemComponent->SetIsReplicated(true);
+	AttributeSet = CreateDefaultSubobject<UHCharacterAttributeSet>(TEXT("AttributeSet"));
 }
 
 UAbilitySystemComponent* AHPlayerState::GetAbilitySystemComponent() const

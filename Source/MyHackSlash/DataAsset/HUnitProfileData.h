@@ -62,6 +62,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Effects")
 	float DeathImpulseForce = 8000.0f;
 
+	/** @brief 타격에 성공했을 때 재생할 사운드 목록 (랜덤 재생됨) */
+	UPROPERTY(EditAnywhere, Category = "Effects")
+	TArray<TObjectPtr<class USoundBase>> HitSounds;
+
 	// --- 헬퍼 함수 ---
 	// 특정 레벨의 몬스터 스탯 정보를 반환
 	FMonsterStatRow* GetMonsterStatRowByLevel(int32 Level) const

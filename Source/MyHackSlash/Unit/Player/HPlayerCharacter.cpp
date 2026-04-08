@@ -17,6 +17,7 @@
 #include "System/HInfiniteMapManager.h"
 
 #include "NavigationInvokerComponent.h"
+#include <System/HSoundManager.h>
 
 AHPlayerCharacter::AHPlayerCharacter()
 {
@@ -65,59 +66,81 @@ void AHPlayerCharacter::Tick(float InDeltaTime)
 
 void AHPlayerCharacter::InitializeStat(int32 InNewLevel)
 {
-	Level = InNewLevel;
+	Super::InitializeStat(InNewLevel);
 
-	if (UnitProfileData && UnitProfileData->UnitType == EHUnitType::Player)
+	if (UnitProfileData && UnitProfileData->UnitType == EHUnitType::Player && AttributeSet)
 	{
 		if (FPlayerStatRow* StatRow = UnitProfileData->GetPlayerStatRowByLevel(Level))
 		{
-			// 공통 스탯 복사
-			CurrentStat = *StatRow;
+			// 플레이어 특화 스탯 복사
 			CurrentPlayerStat = *StatRow;
 
-			// 체력 초기화
-			MaxHP = StatRow->MaxHP;
-			CurrentHP = MaxHP;
+			// 다음 레벨에 필요한 경험치 설정 (AttributeSet 사용)
+			AttributeSet->SetMaxExperience(StatRow->MaxExp);
 
-			// 플레이어 특화 스탯 (경험치)
-			MaxExp = StatRow->MaxExp;
+			GetCharacterMovement()->MaxWalkSpeed = CurrentPlayerStat.MovementSpeed;
 
-			GetCharacterMovement()->MaxWalkSpeed = CurrentStat.MovementSpeed;
+			OnExpChanged.Broadcast(Level, AttributeSet->GetExperience(), AttributeSet->GetMaxExperience());
+			OnHPChanged.Broadcast(AttributeSet->GetHealth(), AttributeSet->GetMaxHealth());
 
-			OnExpChanged.Broadcast(Level, CurrentExp, MaxExp);
-			OnHPChanged.Broadcast(CurrentHP, MaxHP);
-
-			UE_LOG(LogTemp, Warning, TEXT("Player Initialized Level %d (HP: %f, MaxExp: %f)"), Level, MaxHP, MaxExp);
+			UE_LOG(LogTemp, Warning, TEXT("Player Initialized Level %d (HP: %f, MaxExp: %f)"), 
+				Level, AttributeSet->GetMaxHealth(), AttributeSet->GetMaxExperience());
 		}
 	}
 }
 
 void AHPlayerCharacter::AddExp(float InExp)
 {
-	if (IsDead) return;
+	if (IsDead || !AbilitySystemComponent || !AttributeSet) return;
 
-	CurrentExp += InExp;
-	UE_LOG(LogTemp, Log, TEXT("Player gained %f EXP. (Total: %f / %f)"), InExp, CurrentExp, MaxExp);
+	// GAS 방식으로 경험치 증가
+	float NewExp = AttributeSet->GetExperience() + InExp;
+	AttributeSet->SetExperience(NewExp);
 
-	while (CurrentExp >= MaxExp && MaxExp > 0)
+	// 레벨업 로직은 AttributeSet::PostGameplayEffectExecute에서 처리됨
+	
+	// UI 업데이트를 위한 델리게이트 호출
+	OnExpChanged.Broadcast(GetLevel(), AttributeSet->GetExperience(), AttributeSet->GetMaxExperience());
+
+	UE_LOG(LogTemp, Log, TEXT("Player gained %f EXP via GAS. (Total: %f / %f)"), 
+		InExp, AttributeSet->GetExperience(), AttributeSet->GetMaxExperience());
+}
+
+float AHPlayerCharacter::GetCurrentExp() const
+{
+	if (AttributeSet)
 	{
-		CurrentExp -= MaxExp;
-		Level++;
-		OnLevelUp();
+		return AttributeSet->GetExperience();
 	}
+	return 0.0f;
+}
 
-	OnExpChanged.Broadcast(Level, CurrentExp, MaxExp);
+float AHPlayerCharacter::GetMaxExp() const
+{
+	if (AttributeSet)
+	{
+		return AttributeSet->GetMaxExperience();
+	}
+	return 0.0f;
 }
 
 void AHPlayerCharacter::OnLevelUp()
 {
-	InitializeStat(Level);
-
-	// 레벨업 시 체력을 충전한다.
-	CurrentHP = MaxHP;
-	OnHPChanged.Broadcast(CurrentHP, MaxHP);
+	if (AttributeSet)
+	{
+		InitializeStat(AttributeSet->GetLevel());
+		
+		// 레벨업 시 체력을 충전한다.
+		AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
+		OnHPChanged.Broadcast(AttributeSet->GetHealth(), AttributeSet->GetMaxHealth());
+	}
 
 	UE_LOG(LogTemp, Warning, TEXT("Player LEVELED UP! Now Level %d"), Level);
+
+	if (UHSoundManager* SoundManager = GetWorld()->GetSubsystem<UHSoundManager>())
+	{
+		SoundManager->PlaySFXByKey(TEXT("LevelUpSound"), Owner->GetActorLocation(), 1.0, true);
+	}
 
 	// 팝업 띄우기
 	if (UHUIManager* UIManager = GetGameInstance()->GetSubsystem<UHUIManager>())
@@ -138,6 +161,12 @@ void AHPlayerCharacter::SetDead()
 
 	// 2. 잠시 후 슬로우 모션으로 전환 (Timer 사용)
 	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.2f);
+
+	// BGM 속도도 함께 느리게 조절
+	if (UHSoundManager* SoundManager = GetWorld()->GetSubsystem<UHSoundManager>())
+	{
+		SoundManager->SetBGMPitch(0.4f); // 0.2보다는 조금 덜 낮춰서 너무 늘어지지 않게 함
+	}
 }
 
 void AHPlayerCharacter::PossessedBy(AController* NewController)
@@ -149,6 +178,12 @@ void AHPlayerCharacter::PossessedBy(AController* NewController)
 	{
 		AbilitySystemComponent = GASPlayerState->GetAbilitySystemComponent();
 		AbilitySystemComponent->InitAbilityActorInfo(GASPlayerState, this);
+
+		// AttributeSet 설정 (부모 클래스의 멤버 변수)
+		// PlayerState에서 직접 가져오기 위한 Getter 함수를 추가하거나, 
+		// HPlayerState.h에서 AttributeSet이 TObjectPtr임을 고려하여 가져옴
+		// 여기서는 IAbilitySystemInterface를 통해 ASC가 관리하는 AttributeSet을 찾는 방식 사용 가능
+		AttributeSet = const_cast<UHCharacterAttributeSet*>(AbilitySystemComponent->GetSet<UHCharacterAttributeSet>());
 
 		for (TSubclassOf<UGameplayAbility> StartAbility : StartAbilities)
 		{

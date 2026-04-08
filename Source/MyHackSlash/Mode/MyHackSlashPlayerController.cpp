@@ -30,6 +30,15 @@ void AMyHackSlashPlayerController::BeginPlay()
 	// Call the base class  
 	Super::BeginPlay();
 
+	// ì¸ê²Œìž„ ìž…ë ¥ ëª¨ë“œ ì„¤ì • (ì¸íŠ¸ë¡œì˜ UIOnly ì„¤ì •ì„ í•´ì œí•˜ê¸° ìœ„í•¨)
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetHideCursorDuringCapture(false);
+	SetInputMode(InputMode);
+
+	// ë§ˆìš°ìŠ¤ ì»¤ì„œ í‘œì‹œ ë³´ìž¥
+	bShowMouseCursor = true;
+
 	// test
 	if (UHUIManager* UIMgr = GetGameInstance()->GetSubsystem<UHUIManager>())
 	{
@@ -117,25 +126,25 @@ void AMyHackSlashPlayerController::OnWASDMove(const FInputActionValue& Value)
 
 	if (ControlledPawn != nullptr)
 	{
-		// 1. ÀÌµ¿ ·ÎÁ÷
+		// 1. ï¿½Ìµï¿½ ï¿½ï¿½ï¿½ï¿½
 		const FVector ForwardDirection(1.0f, 0.0f, 0.0f);
 		const FVector RightDirection(0.0f, 1.0f, 0.0f);
 
 		ControlledPawn->AddMovementInput(ForwardDirection, MovementVector.Y);
 		ControlledPawn->AddMovementInput(RightDirection, MovementVector.X);
 
-		// 2. ¸¶¿ì½º ¹æÇâ ¹Ù¶óº¸±â ·ÎÁ÷ Ãß°¡
+		// 2. ï¿½ï¿½ï¿½ì½º ï¿½ï¿½ï¿½ï¿½ ï¿½Ù¶óº¸±ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ß°ï¿½
 		FHitResult HitResult;
-		// ECC_Visibility Ã¤³ÎÀ» »ç¿ëÇÏ¿© ¸¶¿ì½º ¾Æ·¡ÀÇ ¿ùµå ÁÂÇ¥¸¦ °¡Á®¿É´Ï´Ù.
+		// ECC_Visibility Ã¤ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½ï¿½ï¿½ì½º ï¿½Æ·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½É´Ï´ï¿½.
 		if (GetHitResultUnderCursor(ECC_Visibility, false, HitResult))
 		{
 			FVector MouseLocation = HitResult.Location;
 			FVector PawnLocation = ControlledPawn->GetActorLocation();
 
-			// ¸¶¿ì½º À§Ä¡¿Í Ä³¸¯ÅÍ À§Ä¡ »çÀÌÀÇ È¸Àü°ª °è»ê
+			// ï¿½ï¿½ï¿½ì½º ï¿½ï¿½Ä¡ï¿½ï¿½ Ä³ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È¸ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 			FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(PawnLocation, MouseLocation);
 
-			// Ä³¸¯ÅÍ°¡ À§¾Æ·¡·Î ±â¿ïÁö ¾Êµµ·Ï Pitch¿Í RollÀº 0À¸·Î °íÁ¤ÇÏ°í Yaw(ÁÂ¿ì È¸Àü)¸¸ »ç¿ëÇÕ´Ï´Ù.
+			// Ä³ï¿½ï¿½ï¿½Í°ï¿½ ï¿½ï¿½ï¿½Æ·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Êµï¿½ï¿½ï¿½ Pitchï¿½ï¿½ Rollï¿½ï¿½ 0ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ Yaw(ï¿½Â¿ï¿½ È¸ï¿½ï¿½)ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 			ControlledPawn->SetActorRotation(FRotator(0.f, LookAtRotation.Yaw, 0.f));
 		}
 	}

@@ -1,8 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Unit/Monster/HBaseMonster.h"
-#include "Item/HCoin.h"
 #include "Unit/Player/HPlayerCharacter.h"
+#include "Item/HCoin.h"
+#include "AbilitySystemComponent.h"
 #include "System/HMonsterAIController.h"
 #include "System/HObjectPoolManager.h"
 #include "DataAsset/HUnitProfileData.h"
@@ -14,6 +15,8 @@
 
 AHBaseMonster::AHBaseMonster()
 {
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AttributeSet = CreateDefaultSubobject<UHCharacterAttributeSet>(TEXT("AttributeSet"));
 }
 
 float AHBaseMonster::GetExpReward() const
@@ -33,15 +36,18 @@ void AHBaseMonster::InitializeStat(int32 InNewLevel)
 			CurrentStat = *StatRow;
 			CurrentMonsterStat = *StatRow;
 
-			// 체력 초기화
-			MaxHP = StatRow->MaxHP;
-			CurrentHP = MaxHP;
+			// 체력 초기화 (AttributeSet 사용)
+			if (AttributeSet)
+			{
+				AttributeSet->SetMaxHealth(StatRow->MaxHP);
+				AttributeSet->SetHealth(StatRow->MaxHP);
+			}
 
 			GetCharacterMovement()->MaxWalkSpeed = CurrentStat.MovementSpeed;
 			
-			OnHPChanged.Broadcast(CurrentHP, MaxHP);
+			OnHPChanged.Broadcast(GetCurrentHP(), GetMaxHP());
 
-			UE_LOG(LogTemp, Log, TEXT("Monster Initialized Level %d (HP: %f)"), Level, MaxHP);
+			UE_LOG(LogTemp, Log, TEXT("Monster Initialized Level %d (HP: %f)"), Level, GetMaxHP());
 		}
 	}
 }
@@ -100,6 +106,23 @@ void AHBaseMonster::PostInitializeComponents()
 	Super::PostInitializeComponents();
 }
 
+void AHBaseMonster::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+	// 초기 어빌리티 부여
+	for (const TSubclassOf<UGameplayAbility>& AbilityClass : StartAbilities)
+	{
+		if (AbilityClass)
+		{
+			FGameplayAbilitySpec Spec(AbilityClass);
+			AbilitySystemComponent->GiveAbility(Spec);
+		}
+	}
+}
+
 void AHBaseMonster::SetAIAttackDelegate(const FAIMonsterAttackFinished& InOnAttackFinished)
 {
 	OnAttackFinished = InOnAttackFinished;
@@ -107,7 +130,8 @@ void AHBaseMonster::SetAIAttackDelegate(const FAIMonsterAttackFinished& InOnAtta
 
 void AHBaseMonster::AttackByAI()
 {
-	ProcessAttack();
+	// 기존 ProcessAttack() 대신 GAS 기반의 Attack() 호출
+	Attack();
 }
 
 void AHBaseMonster::NotifyAttackEnd()

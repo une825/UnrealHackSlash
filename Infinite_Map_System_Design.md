@@ -31,7 +31,7 @@
 *   **설정 항목**:
     *   타일 클래스 및 크기 (`MapTileSize`)
     *   가시 거리 (`MapViewDistance`)
-    *   프롭 목록 및 가중치 (`MapPropPool`, `SpawnWeight`)
+    *   프롭 목록 및 가중치 (`MapPropPool`): `FMapPropData` 구조체를 통해 메쉬 또는 특정 액터 클래스(`PropClass`)를 지정하고, 각 프롭의 스폰 확률 가중치(`SpawnWeight`)를 설정합니다.
     *   타일당 프롭 밀도 (`Min/MaxPropCount`)
 
 ---

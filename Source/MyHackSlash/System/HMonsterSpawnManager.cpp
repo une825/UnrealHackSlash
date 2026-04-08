@@ -1,7 +1,8 @@
 #include "System/HMonsterSpawnManager.h"
-#include "HMonsterSpawnerDataAsset.h"
+#include "DataAsset/HMonsterSpawnerDataAsset.h"
 #include "HObjectPoolManager.h"
 #include "System/HQuestManager.h"
+#include "System/HWaveManager.h"
 #include "Unit/Monster/HBaseMonster.h"
 #include "NavigationSystem.h"
 #include "Kismet/GameplayStatics.h"
@@ -31,9 +32,7 @@ void UHMonsterSpawnManager::ExecuteSpawnTick()
     UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>();
     if (!Pool) return;
 
-    UHQuestManager* QuestManager = GetWorld()->GetGameInstance()->GetSubsystem<UHQuestManager>();
-
-    // 스폰할 몬스터의 기본 높이값 가져오기 (매직 넘버 제거)
+    // 스폰할 몬스터의 기본 높이값 가져오기
     float SpawnZOffset = 0.0f;
     if (const ACharacter* DefaultChar = Cast<ACharacter>(CurrentConfig->MonsterClass->GetDefaultObject()))
     {
@@ -55,15 +54,26 @@ void UHMonsterSpawnManager::ExecuteSpawnTick()
 
             if (AHBaseMonster* Monster = Cast<AHBaseMonster>(SpawnedActor))
             {
-                // 퀘스트 매니저가 사망 이벤트를 수신하도록 바인딩
-                if (QuestManager)
-                {
-                    // 중복 바인딩 방지를 위해 먼저 제거 후 추가 (오브젝트 풀링 대응)
-                    Monster->OnMonsterDead.RemoveDynamic(QuestManager, &UHQuestManager::ProcessMonsterDeath);
-                    Monster->OnMonsterDead.AddDynamic(QuestManager, &UHQuestManager::ProcessMonsterDeath);
-                }
+                // 중복 바인딩 방지를 위해 먼저 제거 후 추가 (오브젝트 풀링 대응)
+                Monster->OnMonsterDead.RemoveDynamic(this, &UHMonsterSpawnManager::OnMonsterDied);
+                Monster->OnMonsterDead.AddDynamic(this, &UHMonsterSpawnManager::OnMonsterDied);
             }
         }
+    }
+}
+
+void UHMonsterSpawnManager::OnMonsterDied(AActor* InAttacker, AHBaseMonster* InDeadMonster)
+{
+    // 1. 퀘스트 매니저 알림
+    if (UHQuestManager* QuestManager = GetWorld()->GetGameInstance()->GetSubsystem<UHQuestManager>())
+    {
+        QuestManager->ProcessMonsterDeath(InAttacker, InDeadMonster);
+    }
+
+    // 2. 웨이브 매니저 알림
+    if (UHWaveManager* WaveManager = GetWorld()->GetSubsystem<UHWaveManager>())
+    {
+        WaveManager->ReportMonsterDeath();
     }
 }
 

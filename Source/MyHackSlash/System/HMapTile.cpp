@@ -77,9 +77,7 @@ void AHMapTile::GenerateProps(float InTileSize, const TArray<FMapPropData>& InPr
 		// 랜덤 위치 계산
 		float RandomX = RandomStream.FRandRange(-SafeZoneSize, SafeZoneSize);
 		float RandomY = RandomStream.FRandRange(-SafeZoneSize, SafeZoneSize);
-		FVector RelativeLocation(RandomX, RandomY, 0.0f);
-		FVector WorldLocation = GetActorLocation() + RelativeLocation;
-
+		
 		// 가중치 기반 랜덤 선택
 		float RandomWeightValue = RandomStream.FRandRange(0.0f, TotalWeight);
 		float CurrentWeightSum = 0.0f;
@@ -97,10 +95,38 @@ void AHMapTile::GenerateProps(float InTileSize, const TArray<FMapPropData>& InPr
 
 		if (!SelectedProp) SelectedProp = &InPropPool[0]; // 폴백
 
+		// 오프셋을 반영한 스폰 위치 설정
+		FVector RelativeLocation(RandomX, RandomY, SelectedProp->SpawnZOffset);
+		FVector WorldLocation = GetActorLocation() + RelativeLocation;
+
+		// 스폰할 클래스 결정: 직접 지정된 PropClass가 없으면 기본 AHMapProp 사용
+		UClass* SpawnClass = SelectedProp->PropClass ? SelectedProp->PropClass.Get() : AHMapProp::StaticClass();
+
 		// 풀에서 프롭 획득
-		if (AHMapProp* NewProp = Cast<AHMapProp>(PoolManager->SpawnFromPool(AHMapProp::StaticClass(), WorldLocation, FRotator(0, RandomStream.FRandRange(0, 360), 0))))
+		if (AActor* NewProp = PoolManager->SpawnFromPool(SpawnClass, WorldLocation, FRotator(0, RandomStream.FRandRange(0, 360), 0)))
 		{
-			NewProp->InitializeProp(SelectedProp->Mesh, SelectedProp->CollisionProfile);
+			// 기본 AHMapProp인 경우에만 메쉬와 콜리전 초기화
+			if (AHMapProp* MapProp = Cast<AHMapProp>(NewProp))
+			{
+				MapProp->InitializeProp(SelectedProp->Mesh, SelectedProp->CollisionProfile);
+			}
+
+			// 자동 접지 (Auto Grounding) 처리
+			if (SelectedProp->bAutoGround)
+			{
+				FVector Origin, Extent;
+				NewProp->GetActorBounds(true, Origin, Extent);
+
+				// 액터의 현재 가장 낮은 지점 (World Z)
+				float BottomZ = Origin.Z - Extent.Z;
+				// 타일의 표면 위치 (World Z) + 설정된 추가 오프셋
+				float TargetZ = GetActorLocation().Z + SelectedProp->SpawnZOffset;
+
+				// 보정값 계산 및 적용
+				float ZAdjustment = TargetZ - BottomZ;
+				NewProp->AddActorWorldOffset(FVector(0.0f, 0.0f, ZAdjustment));
+			}
+			
 			SpawnedProps.Add(NewProp);
 		}
 	}

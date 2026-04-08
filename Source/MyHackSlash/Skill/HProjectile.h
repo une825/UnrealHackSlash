@@ -32,6 +32,11 @@ public:
 	void SetElement(HEElement InElement) { Element = InElement; }
 	void SetOwningUnitType(EHUnitType InUnitType) { OwningUnitType = InUnitType; }
 
+public:
+	/** @brief 데미지 적용 시 사용할 GameplayEffect 클래스 */
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	TSubclassOf<class UGameplayEffect> DamageEffectClass;
+
 protected:
 	void Explode();
 

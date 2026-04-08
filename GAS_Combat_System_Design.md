@@ -29,17 +29,22 @@
 
 ## 2. Stat & Damage System
 
-이 프로젝트는 표준 `UAttributeSet` 대신 **DataTable 기반의 커스텀 스탯 시스템**을 사용합니다.
+이 프로젝트는 **GAS 표준 `UAttributeSet`**을 사용하여 유닛의 핵심 스탯을 실시간으로 관리하며, 초기값은 **DataTable**을 통해 설정할 수 있습니다.
 
-### 2.1 Unit Stats (`FUnitStatRow`)
-모든 유닛은 `FUnitStatRow` 구조체를 통해 다음 핵심 스탯을 관리합니다.
-*   **MaxHP**: 최대 체력
-*   **AttackDamage**: 기본 공격력
-*   **AttackRange**: 공격 유효 거리
-*   **AttackSpeedRate**: 애니메이션 재생 속도 배율
-*   **MovementSpeed**: 이동 속도
+### 2.1 Character Attribute Set (`UHCharacterAttributeSet`)
+유닛의 핵심 스탯을 정의하고 GAS와 연동합니다. 각 스탯은 대응하는 **Max** 속성을 통해 상한선이 제한됩니다.
+*   **Health / MaxHealth**: 현재 체력 및 최대 체력
+*   **AttackDamage / MaxAttackDamage**: 기본 공격력 및 최대 공격력
+*   **AttackRange / MaxAttackRange**: 공격 유효 거리 및 최대 공격 거리
+*   **AttackRadius / MaxAttackRadius**: 공격 반경 및 최대 공격 반경
+*   **AttackSpeedRate / MaxAttackSpeedRate**: 애니메이션 재생 속도 배율 및 최대 배율
+*   **MovementSpeed / MaxMovementSpeed**: 이동 속도 및 최대 이동 속도
 
-### 2.2 Damage Workflow
+### 2.2 Unit Stats (`FUnitStatRow`)
+모든 유닛은 `FUnitStatRow` 구조체(DataTable 기반)를 통해 초기 스탯 데이터를 관리합니다.
+이 데이터는 `UHCharacterAttributeSet`의 초기화 시 사용됩니다.
+
+### 2.3 Damage Workflow
 1.  **Hit Detection**: `IHCombatInterface::AttackHitCheck()`에서 `SweepMulti`를 통해 타겟을 감지합니다.
 2.  **Faction Check**: 공격자와 피격자의 `EHUnitType`(Player/Monster)을 비교하여 아군 오사를 방지합니다.
 3.  **Execution**: `AActor::TakeDamage`를 통해 데미지를 전달합니다.
@@ -48,7 +53,7 @@
     *   **Camera Shake**: 플레이어 캐릭터인 경우 `HitCameraShakeClass`를 통한 화면 흔들림 실행.
     *   **Death**: 사망 시 래그돌 및 임펄스 적용.
 
-### 2.3 Skill Damage Calculation
+### 2.4 Skill Damage Calculation
 *   **UHGA_FireBall**: 스킬 데미지는 본체의 기본 스탯과 어빌리티 고유 데미지를 합산하여 계산합니다.
     *   `FinalDamage = UHGA_FireBall::ProjectileDamage + FUnitStatRow::AttackDamage`
     *   이를 통해 캐릭터의 레벨업이나 스탯 변화가 스킬 데미지에 즉각 반영되도록 설계되었습니다.

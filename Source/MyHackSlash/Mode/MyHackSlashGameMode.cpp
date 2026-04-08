@@ -4,12 +4,16 @@
 #include "MyHackSlashPlayerController.h"
 #include "Unit/Player/HPlayerState.h"
 #include "UObject/ConstructorHelpers.h"
-#include "System/HMonsterSpawnerDataAsset.h"
+#include "DataAsset/HMonsterSpawnerDataAsset.h"
 #include "System/HMonsterSpawnManager.h"
 #include "System/HSelectAbilityManager.h"
 #include "System/HInfiniteMapManager.h"
+#include "System/HWaveManager.h"
+#include <System/HSoundManager.h>
 #include "DataAsset/HSelectAbilityData.h"
 #include "DataAsset/HMapConfigDataAsset.h"
+#include "DataAsset/HWaveConfigDataAsset.h"
+#include "DataAsset/HSoundDataAsset.h"
 #include "Engine/StreamableManager.h"
 #include "Engine/AssetManager.h"
 
@@ -39,7 +43,8 @@ void AMyHackSlashGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
-	SetMonsterSpawnManager();
+	// SetMonsterSpawnManager(); // 이제 WaveManager가 담당하므로 직접 호출하지 않음
+	SetWaveManager();
 	SetSelectAbilityManager();
 
 	// Infinite Map 초기화 (DataAsset 사용)
@@ -57,6 +62,16 @@ void AMyHackSlashGameMode::BeginPlay()
 			);
 		}
 	}
+
+	// BGM 시작
+	if (SoundConfig)
+	{
+		if (UHSoundManager* SoundManager = GetWorld()->GetSubsystem<UHSoundManager>())
+		{
+			SoundManager->InitializeManager(SoundConfig);
+			SoundManager->PlayBGMByKey(TEXT("BGM_01"));
+		}
+	}
 }
 
 void AMyHackSlashGameMode::Tick(float InDeltaSeconds)
@@ -65,45 +80,19 @@ void AMyHackSlashGameMode::Tick(float InDeltaSeconds)
 
 void AMyHackSlashGameMode::SetMonsterSpawnManager()
 {
-	// 1. 유효성 체크
-	if (MonsterSpawnConfigPtr.IsNull())
-	{
-		UE_LOG(LogTemp, Error, TEXT("MonsterSpawnConfigPtr is not assigned!"));
-		return;
-	}
+	// 현재는 WaveManager가 StartMonsterWave를 직접 호출하므로 이 함수는 사용되지 않거나
+	// 초기 설정이 필요한 경우에만 사용합니다.
+}
 
-	// 2. 에셋 경로 확인
-	FSoftObjectPath AssetPath = MonsterSpawnConfigPtr.ToSoftObjectPath();
-	if (!AssetPath.IsValid())
+void AMyHackSlashGameMode::SetWaveManager()
+{
+	if (WaveConfig)
 	{
-		UE_LOG(LogTemp, Error, TEXT("AssetPath is invalid!"));
-		return;
-	}
-
-	if (MonsterSpawnConfigPtr.IsValid())
-	{
-		// 이미 로드되어 있다면 바로 시작
-		if (UHMonsterSpawnManager* MonsterSpawnManager = GetWorld()->GetSubsystem<UHMonsterSpawnManager>())
+		if (UHWaveManager* WaveManager = GetWorld()->GetSubsystem<UHWaveManager>())
 		{
-			MonsterSpawnManager->StartMonsterWave(MonsterSpawnConfigPtr.Get());
+			WaveManager->InitializeWaveSystem(WaveConfig);
+			WaveManager->StartWave();
 		}
-	}
-	else
-	{
-		// 비동기 로드 시작
-		FStreamableManager& Streamable = UAssetManager::GetStreamableManager();
-		LoadHandle = Streamable.RequestAsyncLoad(MonsterSpawnConfigPtr.ToSoftObjectPath(), FStreamableDelegate::CreateLambda([this]()
-			{
-				UE_LOG(LogTemp, Log, TEXT("MonsterSpawnConfig Loading Complete!"));
-
-				if (UHMonsterSpawnerDataAsset* LoadedConfig = MonsterSpawnConfigPtr.Get())
-				{
-					if (UHMonsterSpawnManager* MonsterSpawnManager = GetWorld()->GetSubsystem<UHMonsterSpawnManager>())
-					{
-						MonsterSpawnManager->StartMonsterWave(LoadedConfig);
-					}
-				}
-			}));
 	}
 }
 

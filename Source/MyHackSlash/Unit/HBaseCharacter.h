@@ -8,11 +8,13 @@
 #include "Skill/HCombatInterface.h"
 #include "DataAsset/HUnitStatRow.h"
 #include "DataAsset/HUnitProfileData.h"
+#include <Attribute/HCharacterAttributeSet.h>
 
 #include "HBaseCharacter.generated.h"
 
 class UInputAction;
 class UNiagaraSystem;
+class UAudioComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHPChanged, float, CurrentHP, float, MaxHP);
 
@@ -36,10 +38,14 @@ public:
 
 	virtual void ResetCharacter();
 
-	const int32 GetLevel() const { return Level; }
-	const int32 GetCurrentHP() const { return CurrentHP; }
+	int32 GetLevel() const;
+	float GetCurrentHP() const;
+	float GetMaxHP() const;
 	const UHUnitProfileData* GetUnitProfileData() const { return UnitProfileData; }
 	const FUnitStatRow& GetCurrentStat() const { return CurrentStat; }
+
+	/** @brief 최종 데미지를 계산합니다. (치명타 등) */
+	virtual float CalculateActualDamage(float InDamageAmount, FDamageEvent const& InDamageEvent, AController* InEventInstigator, AActor* InDamageCauser, bool& OutIsCritical);
 
 public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
@@ -47,8 +53,25 @@ public:
 	float GetAIPatrolRadius() const;
 	float GetAIDetectRadius() const;
 
+	/** @brief 마지막으로 데미지를 가한 액터를 설정합니다. */
+	void SetLastDamageCauser(AActor* InCauser) { LastDamageCauser = InCauser; }
+
+	/** @brief 공격 로직의 상태 관리를 위한 함수들입니다. (GAS 어빌리티 등에서 호출 가능) */
+	void ProcessAttack();
+	void AttackEnd(UAnimMontage* InAnimMontage, bool bInInterrupted);
+
 public:
 	void Attack();
+	void HandleHitSound();
+	void HandleHUDDamageEffect();
+	void PlayHittedEffect();
+	void ShowDamageText(float InActualDamage, bool bInIsCritical, AActor* InDamageCauser);
+	virtual void HandleCameraShake(float InDamageAmount);
+
+protected:
+	/** @brief 공격 어빌리티를 식별하는 태그 */
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	FGameplayTag AttackAbilityTag;
 
 protected:
 	virtual void BeginPlay() override;
@@ -57,18 +80,23 @@ protected:
 	virtual float TakeDamage(float InDamageAmount, FDamageEvent const& InDamageEvent, AController* InEventInstigator, AActor* InDamageCauser) override;
 
 protected:
-	void ProcessAttack();
+
+protected:
+	/** @brief 공격 로직의 진입점입니다. */
 	void AttackBegin();
-	void AttackEnd(UAnimMontage* InAnimMontage, bool bInInterrupted);
 	virtual void NotifyAttackEnd();
 
 	UFUNCTION(BlueprintCallable)
 	void UpdateWalkSpeed(const float InNewWalkSpeed);
 
 	virtual void SetDead();
+	virtual void OnDeadTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
 	virtual void AttackHitCheck() override;
 
-	void PlayHittedEffect();
+protected:
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	FGameplayTag DeadTag;
+
 	void EnableRagdoll();
 	void SetDeadImpulse();
 
@@ -78,6 +106,12 @@ protected:
 	
 	UPROPERTY(EditAnywhere, Category = "GAS")
 	TArray<TSubclassOf<class UGameplayAbility>> StartAbilities;
+
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	TSubclassOf<class UGameplayEffect> InitStatEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UHCharacterAttributeSet> AttributeSet;
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = DataAsset)
@@ -90,18 +124,14 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
 	FUnitStatRow CurrentStat;
 
-	// 실시간 체력 정보
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
-	float CurrentHP = 0.0f;
-
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
-	float MaxHP = 100.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputAction* AttackAction;
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = "true"))
 	bool Attackable = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = "true"))
+	float HitRadius = 50.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = "true"))
+	FName WeaponSocketName = TEXT("Hand_R_Socket");
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Dead, Meta = (AllowPrivateAccess = "true"))
 	bool IsDead = false;

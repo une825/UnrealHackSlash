@@ -9,6 +9,7 @@
 class UHMonsterSpawnerDataAsset;
 class UHSelectAbilityGradeDataAsset;
 class UHGemDataAsset;
+class UHSoundDataAsset;
 class UDataTable;
 struct FMapPropData;
 
@@ -32,7 +33,13 @@ private:
 	/** @brief Select Ability 시스템을 초기화합니다. */
 	void SetSelectAbilityManager();
 
+	/** @brief Wave 시스템을 초기화합니다. */
+	void SetWaveManager();
+
 private:
+	UPROPERTY(EditAnywhere, Category = "Wave")
+	TObjectPtr<class UHWaveConfigDataAsset> WaveConfig;
+
 	UPROPERTY(EditAnywhere, Category = "Wave")
 	TSoftObjectPtr<UHMonsterSpawnerDataAsset> MonsterSpawnConfigPtr;
 
@@ -52,8 +59,9 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Map")
 	TObjectPtr<class UHMapConfigDataAsset> MapConfig;
 
+	// --- Sound Settings ---
+	UPROPERTY(EditAnywhere, Category = "Sound")
+	TObjectPtr<UHSoundDataAsset> SoundConfig;
+
 	TSharedPtr<struct FStreamableHandle> LoadHandle;
 };
-
-
-

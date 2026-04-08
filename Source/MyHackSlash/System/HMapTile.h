@@ -14,15 +14,29 @@ struct FMapPropData
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	/** @brief 직접 스폰할 액터 클래스 (비어있으면 기본 AHMapProp 사용) */
+	UPROPERTY(EditAnywhere, Category = "Prop")
+	TSubclassOf<AActor> PropClass;
+
+	/** @brief PropClass가 비어있을 때 사용할 메쉬 */
+	UPROPERTY(EditAnywhere, Category = "Prop", meta = (EditCondition = "PropClass == nullptr"))
 	TObjectPtr<class UStaticMesh> Mesh;
 
-	UPROPERTY(EditAnywhere)
+	/** @brief PropClass가 비어있을 때 사용할 콜리전 프로필 */
+	UPROPERTY(EditAnywhere, Category = "Prop", meta = (EditCondition = "PropClass == nullptr"))
 	FName CollisionProfile = TEXT("BlockAll");
 
 	/** @brief 스폰될 확률 가중치 (0.0 ~ 1.0) */
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Prop")
 	float SpawnWeight = 0.5f;
+
+	/** @brief 스폰 시 추가로 적용할 Z축 오프셋 */
+	UPROPERTY(EditAnywhere, Category = "Prop")
+	float SpawnZOffset = 0.0f;
+
+	/** @brief 액터의 크기를 계산하여 자동으로 바닥에 붙일지 여부 (중심점이 박스 중앙인 경우 유용) */
+	UPROPERTY(EditAnywhere, Category = "Prop")
+	bool bAutoGround = true;
 };
 
 /**

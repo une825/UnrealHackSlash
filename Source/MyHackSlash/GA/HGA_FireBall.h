@@ -20,13 +20,6 @@ public:
 	UHGA_FireBall();
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
-	struct FGameplayTag MontageTag;
-
-	/** @brief 발사할 투사체 클래스 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile")
-	TSubclassOf<AHProjectile> ProjectileClass;
-
 	/** @brief 투사체의 데미지 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile")
 	float ProjectileDamage = 20.0f;
@@ -48,6 +41,16 @@ protected:
 	void OnInterruptedCallback();
 
 protected:
+	/** 투사체가 충돌 시 적용할 데미지 이펙트 */
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	TSubclassOf<class UGameplayEffect> FireBallDamageEffect;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	TSubclassOf<class AHProjectile> ProjectileClass;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	FGameplayTag MontageTag;
+
 	UPROPERTY()
 	TObjectPtr<class UHUnitProfileData> CurrentUnitProfileData;
 };

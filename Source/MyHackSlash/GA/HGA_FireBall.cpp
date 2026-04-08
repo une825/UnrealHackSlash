@@ -89,6 +89,7 @@ void UHGA_FireBall::SpawnProjectile()
 		}
 
 		Projectile->SetDamage(FinalDamage);
+		Projectile->DamageEffectClass = FireBallDamageEffect;
 		
 		// 모든 데이터 세팅 후 생성 완료 (이 시점에 BeginPlay 및 충돌 판정 시작)
 		Projectile->FinishSpawning(FTransform(SpawnRotation, SpawnLocation));

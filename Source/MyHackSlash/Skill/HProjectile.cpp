@@ -7,6 +7,9 @@
 #include "NiagaraComponent.h"
 #include "System/HObjectPoolManager.h"
 #include "Engine/DamageEvents.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "GameplayEffect.h"
 
 AHProjectile::AHProjectile()
 {
@@ -141,8 +144,48 @@ void AHProjectile::Explode()
 				}
 
 				// 데미지 적용
-				FDamageEvent DamageEvent;
-				HitActor->TakeDamage(DamageAmount, DamageEvent, GetInstigatorController(), this);
+				if (DamageEffectClass)
+				{
+					if (UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(HitActor))
+					{
+						if (UAbilitySystemComponent* SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetInstigator()))
+						{
+							FGameplayEffectContextHandle ContextHandle = SourceASC->MakeEffectContext();
+							ContextHandle.AddHitResult(Hit);
+
+							FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(DamageEffectClass, 1.0f, ContextHandle);
+							if (SpecHandle.IsValid())
+							{
+								// 치명타 계산 포함 최종 데미지 산출
+								bool bIsCritical = false;
+								float FinalDamage = DamageAmount;
+								
+								if (AHBaseCharacter* SourceCharacter = Cast<AHBaseCharacter>(GetInstigator()))
+								{
+									FinalDamage = SourceCharacter->CalculateActualDamage(FinalDamage, FDamageEvent(), SourceCharacter->GetController(), SourceCharacter, bIsCritical);
+									
+									// 치명타 정보를 태그로 심어서 전달 (GameplayCue에서 인식 가능)
+									if (bIsCritical)
+									{
+										SpecHandle.Data->DynamicAssetTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical")));
+									}
+								}
+
+								// 아까 세팅한 GameplayTag "Data.Damage"를 사용하여 데미지 전달
+								FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(TEXT("Data.Damage"));
+								SpecHandle.Data->SetSetByCallerMagnitude(DamageTag, FinalDamage);
+
+								SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
+							}
+						}
+					}
+				}
+				else
+				{
+					// 예외 처리: 이펙트 클래스가 없는 경우 기존 방식(TakeDamage)을 폴백으로 유지하거나 로그 출력
+					FDamageEvent DamageEvent;
+					HitActor->TakeDamage(DamageAmount, DamageEvent, GetInstigatorController(), this);
+				}
 				DamagedActors.Add(HitActor);
 			}
 		}

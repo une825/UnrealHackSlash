@@ -26,6 +26,9 @@ public:
     void StopMonsterWave();
 
 private:
+    UFUNCTION()
+    void OnMonsterDied(AActor* InAttacker, class AHBaseMonster* InDeadMonster);
+
     void ExecuteSpawnTick();
     bool GetValidSpawnLocation(FVector& OutLocation);
 

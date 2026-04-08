@@ -22,13 +22,15 @@ AHCoin::AHCoin()
 	SphereComponent->SetSphereRadius(25.0f);
 	
 	// 물리 및 충돌 프리셋 설정
+	SphereComponent->SetCollisionProfileName(TEXT("PhysicsActor"));
+	SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	SphereComponent->SetSimulatePhysics(true);
 	SphereComponent->SetEnableGravity(true);
-	SphereComponent->SetCollisionProfileName(TEXT("PhysicsActor"));
+	
 	// Pawn과는 겹치도록 설정
 	SphereComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 
-	// 물리 회전 고정 (모든 축의 회전을 물리 엔진이 계산하지 않도록 잠금)
+	// 물리 회전 고정
 	SphereComponent->BodyInstance.bLockXRotation = true;
 	SphereComponent->BodyInstance.bLockYRotation = true;
 	SphereComponent->BodyInstance.bLockZRotation = true;
@@ -40,9 +42,7 @@ AHCoin::AHCoin()
 
 	// 회전 설정
 	RotatingMovementComponent = CreateDefaultSubobject<URotatingMovementComponent>(TEXT("RotatingMovement"));
-	// 회전 대상을 액터 루트가 아닌 메쉬 컴포넌트로 지정
 	RotatingMovementComponent->SetUpdatedComponent(MeshComponent);
-	// Z축(Yaw)으로 초당 180도 회전하도록 설정 (팽이처럼 도는 효과)
 	RotatingMovementComponent->RotationRate = FRotator(0.0f, 180.0f, 0.0f); 
 
 	// 델리게이트 바인딩
@@ -60,31 +60,28 @@ void AHCoin::PrepareFromPool(int32 InGoldAmount)
 	
 	SetActorHiddenInGame(false);
 	
-	// 충돌 설정 강제 적용 (SetActorEnableCollision은 액터 수준이므로 컴포넌트 수준에서 다시 보장)
+	// 1. 물리 시뮬레이션 일시 중단 (상태 변경을 위해)
+	SphereComponent->SetSimulatePhysics(false);
+
+	// 2. 충돌 설정 및 상태 초기화
 	SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	SphereComponent->SetCollisionProfileName(TEXT("PhysicsActor"));
 	SphereComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-
-	// 물리 시뮬레이션 활성화 보장
-	if (!SphereComponent->IsSimulatingPhysics())
-	{
-		SphereComponent->SetSimulatePhysics(true);
-	}
-
-	// 물리 상태 초기화
+	
 	SphereComponent->SetAllPhysicsLinearVelocity(FVector::ZeroVector);
 	SphereComponent->SetAllPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-	
-	// 물리 엔진 강제 깨우기
+
+	// 3. 물리 시뮬레이션 다시 활성화
+	SphereComponent->SetSimulatePhysics(true);
 	SphereComponent->WakeRigidBody();
 
-	// 팝콘처럼 튀어오르게 하기 (랜덤 방향)
+	// 4. 팝콘처럼 튀어오르게 하기 (랜덤 방향)
 	FVector PopDirection = FVector(FMath::FRandRange(-1.0f, 1.0f), FMath::FRandRange(-1.0f, 1.0f), 1.5f);
 	PopDirection.Normalize();
 	float PopForce = FMath::FRandRange(MinPopForce, MaxPopForce);
 	
-	// AddImpulse 대신 직접 속도(Velocity)를 설정하여 'CollisionEnabled' 체크 우회 및 안정성 확보
-	SphereComponent->SetAllPhysicsLinearVelocity(PopDirection * PopForce);
+	// 물리 엔진의 안정성을 위해 Velocity를 직접 수정
+	SphereComponent->SetPhysicsLinearVelocity(PopDirection * PopForce);
 }
 
 void AHCoin::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)

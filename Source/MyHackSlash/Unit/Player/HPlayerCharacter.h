@@ -34,6 +34,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Stat")
 	FOnExpChanged OnExpChanged;
 
+	// 레벨업 시 호출되는 이벤트
+	void OnLevelUp();
+
 public:
 	/** Returns TopDownCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent; }
@@ -53,16 +56,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Stat")
 	void AddExp(float InExp);
 
-	float GetCurrentExp() const { return CurrentExp; }
-	float GetMaxExp() const { return MaxExp; }
+	float GetCurrentExp() const;
+	float GetMaxExp() const;
 
 protected:
 	void SetupGASInputComponent();
 	void GASInputPressed(const int32 InInputID);
 	void GASInputReleased(const int32 InInputID);
-
-	// 레벨업 시 호출되는 이벤트
-	void OnLevelUp();
 
 	virtual void SetDead() override;
 
@@ -77,16 +77,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	TArray<class UInputAction*> SkillActions;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* AttackAction;
+
 protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
 	FPlayerStatRow CurrentPlayerStat;
-
-	// 플레이어 경험치 정보
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
-	float CurrentExp = 0.0f;
-
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
-	float MaxExp = 100.0f;
 
 private:
 	/** Top down camera */

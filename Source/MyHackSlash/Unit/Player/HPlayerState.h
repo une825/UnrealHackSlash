@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "AbilitySystemInterface.h"
+#include <Attribute/HCharacterAttributeSet.h>
 
 #include "HPlayerState.generated.h"
 
@@ -41,6 +42,9 @@ public:
 protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	UAbilitySystemComponent* AbilitySystemComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UHCharacterAttributeSet> AttributeSet;
 
 	/** @brief 현재 보유 중인 골드 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "H|Currency")

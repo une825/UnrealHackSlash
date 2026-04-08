@@ -1,8 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Unit/HBaseCharacter.h"
-
 #include "AbilitySystemComponent.h"
 #include "DataAsset/HUnitProfileData.h"
 #include "UObject/ConstructorHelpers.h"
@@ -10,19 +8,28 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
 #include "Materials/Material.h"
 #include "Engine/World.h"
 #include "Engine/DamageEvents.h"
-#include <NiagaraFunctionLibrary.h>
+#include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
-#include <System/HObjectPoolManager.h>
+#include "System/HObjectPoolManager.h"
+#include "System/HUIManager.h"
+#include "System/HSoundManager.h"
+#include "Kismet/GameplayStatics.h"
+#include "Components/AudioComponent.h"
+#include "UI/HDamageTextActor.h"
+#include "UI/MainHud/HMainHudUI.h"
+#include "Item/HBreakableActor.h"
+#include "Attribute/HCharacterAttributeSet.h"
 
-
-// Sets default values
 AHBaseCharacter::AHBaseCharacter()
 {
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("HCapsule"));
+
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
@@ -37,24 +44,87 @@ AHBaseCharacter::AHBaseCharacter()
 	PrimaryActorTick.bStartWithTickEnabled = true;
 
 	AbilitySystemComponent = nullptr;
+
+	AttackAbilityTag = FGameplayTag::RequestGameplayTag(TEXT("Ability.FistAttack"));
+	DeadTag = FGameplayTag::RequestGameplayTag(TEXT("Character.State.IsDead"));
 }
 
 void AHBaseCharacter::Attack()
 {
-	ProcessAttack();
+	if (IsDead) return;
+
+	if (AbilitySystemComponent && AttackAbilityTag.IsValid())
+	{
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackAbilityTag));
+	}
 }
 
 void AHBaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	InitializeStat(Level);
+
+	if (AbilitySystemComponent && DeadTag.IsValid())
+	{
+		AbilitySystemComponent->RegisterGameplayTagEvent(DeadTag, EGameplayTagEventType::NewOrRemoved).AddUObject(this, &AHBaseCharacter::OnDeadTagChanged);
+	}
+}
+
+void AHBaseCharacter::OnDeadTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+	if (NewCount > 0 && !IsDead)
+	{
+		SetDead();
+	}
+}
+
+int32 AHBaseCharacter::GetLevel() const
+{
+	if (AttributeSet)
+	{
+		return static_cast<int32>(AttributeSet->GetLevel());
+	}
+	return Level;
+}
+
+float AHBaseCharacter::GetCurrentHP() const
+{
+	if (AttributeSet)
+	{
+		return AttributeSet->GetHealth();
+	}
+	return 0.0f;
+}
+
+float AHBaseCharacter::GetMaxHP() const
+{
+	if (AttributeSet)
+	{
+		return AttributeSet->GetMaxHealth();
+	}
+	return 0.0f;
 }
 
 void AHBaseCharacter::InitializeStat(int32 InNewLevel)
 {
-	// 기본 클래스에서는 레벨 변수만 갱신합니다.
-	// 하위 클래스(Player, Monster)에서 상세 로직을 구현합니다.
 	Level = InNewLevel;
+
+	if (AttributeSet)
+	{
+		AttributeSet->SetLevel(static_cast<float>(InNewLevel));
+	}
+
+	if (AbilitySystemComponent && InitStatEffect)
+	{
+		FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+		EffectContext.AddInstigator(this, this);
+
+		FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(InitStatEffect, static_cast<float>(InNewLevel), EffectContext);
+		if (SpecHandle.IsValid())
+		{
+			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
+	}
 }
 
 void AHBaseCharacter::ResetCharacter()
@@ -63,7 +133,14 @@ void AHBaseCharacter::ResetCharacter()
 	Attackable = true;
 	LastDamageCauser = nullptr;
 
-	// 체력 초기화 (중요: 오브젝트 풀링 재활용 대응)
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->RemoveLooseGameplayTag(DeadTag);
+		FGameplayTagContainer AllCharacterTags;
+		AllCharacterTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Character")));
+		AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(AllCharacterTags);
+	}
+
 	InitializeStat(Level);
 
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
@@ -71,7 +148,7 @@ void AHBaseCharacter::ResetCharacter()
 	
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("HCapsule"));
-	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Block);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Ignore);
 
 	GetMesh()->SetSimulatePhysics(false);
 	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh"));
@@ -110,20 +187,18 @@ bool AHBaseCharacter::CanJumpInternal_Implementation() const
 	return Super::CanJumpInternal_Implementation();
 }
 
-#include "System/HUIManager.h"
-#include "UI/HDamageTextActor.h"
-
 float AHBaseCharacter::TakeDamage(float InDamageAmount, FDamageEvent const& InDamageEvent, AController* InEventInstigator, AActor* InDamageCauser)
 {
-	float ActualDamage = InDamageAmount; // 기본적으로 전달받은 데미지부터 시작
-	
-	if (IsDead) return ActualDamage;
+	if (IsDead) return 0.0f;
+	return Super::TakeDamage(InDamageAmount, InDamageEvent, InEventInstigator, InDamageCauser);
+}
 
-	// --- 치명타 로직 시작 ---
-	bool bIsCritical = false;
+float AHBaseCharacter::CalculateActualDamage(float InDamageAmount, FDamageEvent const& InDamageEvent, AController* InEventInstigator, AActor* InDamageCauser, bool& OutIsCritical)
+{
+	float CalculatedDamage = InDamageAmount;
+	OutIsCritical = false;
+
 	AHBaseCharacter* Attacker = nullptr;
-
-	// 1. 공격자(Attacker) 찾기
 	if (InEventInstigator)
 	{
 		Attacker = Cast<AHBaseCharacter>(InEventInstigator->GetPawn());
@@ -134,38 +209,38 @@ float AHBaseCharacter::TakeDamage(float InDamageAmount, FDamageEvent const& InDa
 		if (!Attacker) Attacker = Cast<AHBaseCharacter>(InDamageCauser);
 	}
 
-	// 2. 공격자 스탯에 기반하여 치명타 확률 계산
-	if (Attacker)
+	if (Attacker && Attacker->GetAbilitySystemComponent())
 	{
-		float CritChance = Attacker->GetCurrentStat().CriticalRate;
-		if (FMath::FRandRange(0.0f, 100.0f) <= CritChance)
+		const UHCharacterAttributeSet* AttackerAttribute = Attacker->GetAbilitySystemComponent()->GetSet<UHCharacterAttributeSet>();
+		if (AttackerAttribute)
 		{
-			bIsCritical = true;
-			ActualDamage *= Attacker->GetCurrentStat().CriticalMultiplier;
-		}
-	}
-	// --- 치명타 로직 끝 ---
-
-	// 실제 엔진 로직은 최종 계산된 데미지로 수행
-	ActualDamage = Super::TakeDamage(ActualDamage, InDamageEvent, InEventInstigator, InDamageCauser);
-
-	CurrentHP = FMath::Clamp(CurrentHP - ActualDamage, 0.0f, MaxHP);
-	UE_LOG(LogTemp, Log, TEXT("[%s] Received Damage: %.2f (Crit: %s), Current HP: %.2f / %.2f"), *GetName(), ActualDamage, bIsCritical ? TEXT("Yes") : TEXT("No"), CurrentHP, MaxHP);
-
-	// 데미지 텍스트 팝업
-	if (ActualDamage > 0.0f)
-	{
-		bool bShowDamageText = false;
-		if (Attacker && Attacker->GetUnitProfileData() && GetUnitProfileData())
-		{
-			if (Attacker->GetUnitProfileData()->UnitType == EHUnitType::Player &&
-				GetUnitProfileData()->UnitType == EHUnitType::Monster)
+			float CritChance = AttackerAttribute->GetCriticalRate();
+			if (FMath::FRandRange(0.0f, 100.0f) <= CritChance)
 			{
-				bShowDamageText = true;
+				OutIsCritical = true;
+				CalculatedDamage *= AttackerAttribute->GetCriticalMultiplier();
 			}
 		}
+	}
 
-		if (bShowDamageText)
+	return CalculatedDamage;
+}
+
+void AHBaseCharacter::ShowDamageText(float InActualDamage, bool bInIsCritical, AActor* InDamageCauser)
+{
+	if (InActualDamage <= 0.0f) return;
+
+	AActor* ActualCauser = InDamageCauser;
+	if (APlayerState* PS = Cast<APlayerState>(InDamageCauser))
+	{
+		ActualCauser = PS->GetPawn();
+	}
+
+	AHBaseCharacter* Attacker = Cast<AHBaseCharacter>(ActualCauser);
+	if (Attacker && Attacker->GetUnitProfileData() && GetUnitProfileData())
+	{
+		if (Attacker->GetUnitProfileData()->UnitType == EHUnitType::Player &&
+			GetUnitProfileData()->UnitType == EHUnitType::Monster)
 		{
 			if (UHUIManager* UIManager = GetGameInstance()->GetSubsystem<UHUIManager>())
 			{
@@ -177,42 +252,58 @@ float AHBaseCharacter::TakeDamage(float InDamageAmount, FDamageEvent const& InDa
 						FVector SpawnLocation = GetActorLocation() + FVector(FMath::RandRange(-20.f, 20.f), FMath::RandRange(-20.f, 20.f), 100.f);
 						if (AHDamageTextActor* DamageText = Cast<AHDamageTextActor>(Pool->SpawnFromPool(DamageTextClass, SpawnLocation, FRotator::ZeroRotator)))
 						{
-							DamageText->InitializeDamageText(ActualDamage, bIsCritical);
+							DamageText->InitializeDamageText(InActualDamage, bInIsCritical);
 						}
 					}
 				}
 			}
 		}
-		LastDamageCauser = Attacker ? Attacker : InDamageCauser;
 	}
-	else
+}
+
+void AHBaseCharacter::HandleHUDDamageEffect()
+{
+	if (UnitProfileData && UnitProfileData->UnitType == EHUnitType::Player)
 	{
-		// 데미지가 0인 경우에도 마지막 Causer 정보는 남겨둘 수 있음
-		LastDamageCauser = InDamageCauser;
+		if (UHUIManager* UIManager = GetGameInstance()->GetSubsystem<UHUIManager>())
+		{
+			if (UHMainHudUI* MainHud = UIManager->GetWidget<UHMainHudUI>())
+			{
+				MainHud->PlayDamageEffectAnim();
+			}
+		}
 	}
+}
 
-	OnHPChanged.Broadcast(CurrentHP, MaxHP);
-
-	PlayHittedEffect();
-
-	// 카메라 쉐이크 재생 (플레이어 캐릭터인 경우)
+void AHBaseCharacter::HandleCameraShake(float InDamageAmount)
+{
 	if (HitCameraShakeClass)
 	{
 		if (APlayerController* PC = Cast<APlayerController>(GetController()))
 		{
-			// 데미지에 비례하여 흔들림 강도 계산 (최소 0.1 이상 보장)
 			const float ShakeScale = FMath::Max(0.1f, InDamageAmount * DamageToShakeScale);
 			PC->ClientStartCameraShake(HitCameraShakeClass, ShakeScale);
 		}
 	}
+}
 
-	if (CurrentHP <= 0.0f)
+void AHBaseCharacter::HandleHitSound()
+{
+	if (UnitProfileData && UnitProfileData->HitSounds.Num() > 0)
 	{
-		SetDead();
-		UE_LOG(LogTemp, Log, TEXT("[%s] Character is Dead: %s"), *GetName(), IsDead ? TEXT("True") : TEXT("False"));
+		const int32 RandomIndex = FMath::RandRange(0, UnitProfileData->HitSounds.Num() - 1);
+		if (USoundBase* SelectedSound = UnitProfileData->HitSounds[RandomIndex])
+		{
+			if (UHSoundManager* SoundManager = GetWorld()->GetSubsystem<UHSoundManager>())
+			{
+				SoundManager->PlaySoundAtLocationThrottled(SelectedSound, GetActorLocation());
+			}
+			else
+			{
+				UGameplayStatics::PlaySoundAtLocation(this, SelectedSound, GetActorLocation());
+			}
+		}
 	}
-
-	return ActualDamage;
 }
 
 void AHBaseCharacter::ProcessAttack()
@@ -263,8 +354,6 @@ void AHBaseCharacter::SetDead()
 	IsDead = true;
 
 	GetCharacterMovement()->DisableMovement();
-
-	// 래그돌 활성화
 	EnableRagdoll();
 	SetDeadImpulse();
 }
@@ -273,58 +362,13 @@ void AHBaseCharacter::AttackHitCheck()
 {
 	if (IsDead) return;
 
-	const float AttackRange = CurrentStat.AttackRange;
-	const float AttackDamage = CurrentStat.AttackDamage;
-
-	const FVector Start = GetMesh()->GetSocketLocation(WeaponSocketName);
-	const FVector End = Start + GetActorForwardVector() * AttackRange;
-
-	TArray<FHitResult> HitResults;
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack));
-	Params.AddIgnoredActor(this); 
-	
-	bool bHit = GetWorld()->SweepMultiByChannel(
-		HitResults,
-		Start, End,
-		FQuat::Identity,
-		ECC_GameTraceChannel1, 
-		FCollisionShape::MakeSphere(HitRadius),
-		Params
-	);
-	
-	if (bHit)
+	if (AbilitySystemComponent)
 	{
-		for (const FHitResult& Hit : HitResults)
-		{
-			AHBaseCharacter* TargetCharacter = Cast<AHBaseCharacter>(Hit.GetActor());
-			if (TargetCharacter && !TargetCharacter->IsDead && !WasAlreadyHit(TargetCharacter))
-			{
-				// 동일한 진영(플레이어 vs 플레이어, 몬스터 vs 몬스터)은 공격하지 않음
-				if (GetUnitProfileData() && TargetCharacter->GetUnitProfileData())
-				{
-					if (GetUnitProfileData()->UnitType == TargetCharacter->GetUnitProfileData()->UnitType)
-					{
-						continue;
-					}
-				}
-
-				AddHitActor(TargetCharacter);
-	
-				FDamageEvent DamageEvent;
-				TargetCharacter->TakeDamage(AttackDamage, DamageEvent, GetController(), this);
-			}
-		}
+		FGameplayEventData Payload;
+		Payload.Instigator = this;
+		Payload.EventTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Action.AttackHitCheck"));
+		AbilitySystemComponent->HandleGameplayEvent(Payload.EventTag, &Payload);
 	}
-
-#if ENABLE_DRAW_DEBUG
-	//if (UnitProfileData && UnitProfileData->UnitType == EHUnitType::Player)
-	//{
-	//	FVector CapsuleOrigin = Start + (End - Start) * 0.5f;
-	//	float CapsuleHalfHeight = AttackRange * 0.5f;
-	//	FColor DrawColor = bHit ? FColor::Green : FColor::Red;
-	//	DrawDebugCapsule(GetWorld(), CapsuleOrigin, CapsuleHalfHeight, HitRadius, FRotationMatrix::MakeFromZ(GetActorForwardVector()).ToQuat(), DrawColor, false, 0.1f);
-	//}
-#endif
 }
 
 void AHBaseCharacter::PlayHittedEffect()
@@ -356,6 +400,7 @@ void AHBaseCharacter::EnableRagdoll()
 	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
 
 	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+	GetMesh()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 	GetMesh()->SetSimulatePhysics(true);
 	GetMesh()->SetAllBodiesSimulatePhysics(true);
 	GetMesh()->SetAllBodiesBelowSimulatePhysics(TEXT("pelvis"), true, true);
@@ -368,13 +413,18 @@ void AHBaseCharacter::EnableRagdoll()
 
 void AHBaseCharacter::SetDeadImpulse()
 {
-	// 공격자(가해자) 정보를 기반으로 임펄스 적용
 	float FinalImpulseForce = 5000.0f;
 	FVector ImpulseDir = -GetActorForwardVector();
 
 	if (LastDamageCauser.IsValid())
 	{
-		if (AHBaseCharacter* Attacker = Cast<AHBaseCharacter>(LastDamageCauser.Get()))
+		AActor* ActualCauser = LastDamageCauser.Get();
+		if (APlayerState* PS = Cast<APlayerState>(LastDamageCauser))
+		{
+			ActualCauser = PS->GetPawn();
+		}
+
+		if (AHBaseCharacter* Attacker = Cast<AHBaseCharacter>(ActualCauser))
 		{
 			if (const UHUnitProfileData* AttackerProfile = Attacker->GetUnitProfileData())
 			{
@@ -382,7 +432,7 @@ void AHBaseCharacter::SetDeadImpulse()
 			}
 		}
 
-		ImpulseDir = GetActorLocation() - LastDamageCauser->GetActorLocation();
+		ImpulseDir = GetActorLocation() - ActualCauser->GetActorLocation();
 		ImpulseDir.Normalize();
 	}
 

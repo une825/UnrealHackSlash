@@ -1,99 +1,73 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "GA/HGA_Attack.h"
 #include "Unit/HBaseCharacter.h"
-#include "DataAsset/HUnitProfileData.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
-#include "NiagaraFunctionLibrary.h"
-#include "NiagaraSystem.h"
-#include "NiagaraComponent.h"
-#include <System/HObjectPoolManager.h>
+#include "AbilitySystemComponent.h"
 
 UHGA_Attack::UHGA_Attack()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 }
 
-void UHGA_Attack::ActivateAbility(const FGameplayAbilitySpecHandle InHandle, const FGameplayAbilityActorInfo* InActorInfo, const FGameplayAbilityActivationInfo InActivationInfo, const FGameplayEventData* InTriggerEventData)
+void UHGA_Attack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	Super::ActivateAbility(InHandle, InActorInfo, InActivationInfo, InTriggerEventData);
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-	if (InActorInfo == nullptr || !InActorInfo->AvatarActor.IsValid())
+	if (ActorInfo == nullptr || !ActorInfo->AvatarActor.IsValid())
 	{
-		EndAbility(InHandle, InActorInfo, InActivationInfo, true, true);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	AHBaseCharacter* BaseCharacter = Cast<AHBaseCharacter>(InActorInfo->AvatarActor.Get());
-	if (nullptr == BaseCharacter)
+	AHBaseCharacter* Character = Cast<AHBaseCharacter>(ActorInfo->AvatarActor.Get());
+	if (Character == nullptr)
 	{
-		EndAbility(InHandle, InActorInfo, InActivationInfo, true, true);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	// 공격 이펙트 재생 (오브젝트 풀 사용)
-	if (AttackEffect)
+	// 1. 캐릭터가 소유한 공격 몽타주 가져오기
+	UAnimMontage* AttackMontage = Character->GetAttackMontage();
+	if (AttackMontage == nullptr)
 	{
-		if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
-		{
-			UNiagaraComponent* NiagaraComp = Pool->SpawnNiagaraFromPool(AttackEffect, BaseCharacter->GetActorLocation(), BaseCharacter->GetActorRotation());
-			if (NiagaraComp)
-			{
-				NiagaraComp->AttachToComponent(BaseCharacter->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("hand_r"));
-			}
-		}
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
 	}
 
-	const UHUnitProfileData* Profile = BaseCharacter->GetUnitProfileData();
-	UAnimMontage* MontageToPlay = (Profile) ? Profile->GetActionMontage(MontageTag) : nullptr;
+	// 2. PlayMontageAndWait 태스크 생성 및 실행
+	// 공격 속도 배율도 캐릭터 스탯(CurrentStat)에서 가져오도록 설정
+	float AttackSpeedRate = Character->GetCurrentStat().AttackSpeedRate;
+	UAbilityTask_PlayMontageAndWait* PlayMontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+		this,
+		TEXT("Attack"),
+		AttackMontage,
+		AttackSpeedRate,
+		NAME_None,
+		false,
+		1.0f
+	);
 
-	if (MontageToPlay)
+	if (PlayMontageTask)
 	{
-		// 유닛 프로필에 설정된 공격 애니메이션 재생
-		UAbilityTask_PlayMontageAndWait* PlayAttackTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
-			this, 
-			TEXT("PlayAttack"), 
-			MontageToPlay, 
-			BaseCharacter->GetCurrentStat().AttackSpeedRate
-		);
+		// 몽타주가 완료되거나 취소되었을 때 EndAbility를 호출하도록 바인딩
+		PlayMontageTask->OnCompleted.AddDynamic(this, &UHGA_Attack::OnMontageEnded);
+		PlayMontageTask->OnBlendOut.AddDynamic(this, &UHGA_Attack::OnMontageEnded);
+		PlayMontageTask->OnInterrupted.AddDynamic(this, &UHGA_Attack::OnMontageEnded);
+		PlayMontageTask->OnCancelled.AddDynamic(this, &UHGA_Attack::OnMontageEnded);
 
-		if (PlayAttackTask)
-		{
-			PlayAttackTask->OnCompleted.AddDynamic(this, &UHGA_Attack::OnCompleteCallback);
-			PlayAttackTask->OnInterrupted.AddDynamic(this, &UHGA_Attack::OnInterruptedCallback);
-			PlayAttackTask->ReadyForActivation();
-		}
+		PlayMontageTask->ReadyForActivation();
 	}
 	else
 	{
-		// 몽타주가 없는 경우 캐릭터의 기본 공격 로직 실행 시도
-		BaseCharacter->Attack();
-		EndAbility(InHandle, InActorInfo, InActivationInfo, true, false);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 	}
 }
 
-void UHGA_Attack::InputPressed(const FGameplayAbilitySpecHandle InHandle, const FGameplayAbilityActorInfo* InActorInfo, const FGameplayAbilityActivationInfo InActivationInfo)
-{
-	Super::InputPressed(InHandle, InActorInfo, InActivationInfo);
-}
-
-void UHGA_Attack::CancelAbility(const FGameplayAbilitySpecHandle InHandle, const FGameplayAbilityActorInfo* InActorInfo, const FGameplayAbilityActivationInfo InActivationInfo, bool bInReplicateCancelAbility)
-{
-	Super::CancelAbility(InHandle, InActorInfo, InActivationInfo, bInReplicateCancelAbility);
-}
-
-void UHGA_Attack::EndAbility(const FGameplayAbilitySpecHandle InHandle, const FGameplayAbilityActorInfo* InActorInfo, const FGameplayAbilityActivationInfo InActivationInfo, bool bInReplicateEndAbility, bool bInWasCancelled)
-{
-	Super::EndAbility(InHandle, InActorInfo, InActivationInfo, bInReplicateEndAbility, bInWasCancelled);
-}
-
-void UHGA_Attack::OnCompleteCallback()
+void UHGA_Attack::OnMontageEnded()
 {
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
-void UHGA_Attack::OnInterruptedCallback()
+void UHGA_Attack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
