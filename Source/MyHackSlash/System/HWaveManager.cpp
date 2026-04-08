@@ -29,6 +29,20 @@ void UHWaveManager::StartWave()
 	CurrentTimer = 0.0f;
 	CurrentKillCount = 0;
 
+	// 상점 웨이브인 경우 상점 UI 오픈 및 일시정지
+	if (WaveData.WaveType == EHWaveType::Shop)
+	{
+		UGameplayStatics::SetGamePaused(GetWorld(), true);
+
+		if (GetWorld() && GetWorld()->GetGameInstance())
+		{
+			if (UHUIManager* UIManager = GetWorld()->GetGameInstance()->GetSubsystem<UHUIManager>())
+			{
+				UIManager->ShowWidgetByName(TEXT("ShopUI"));
+			}
+		}
+	}
+
 	// 몬스터 스폰 시작 (전투/보스인 경우)
 	if (WaveData.WaveType == EHWaveType::Battle || WaveData.WaveType == EHWaveType::Boss)
 	{

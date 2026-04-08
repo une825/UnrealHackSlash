@@ -5,7 +5,6 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "DataAsset/HUnitProfileData.h"
-#include "DataAsset/HPlayerStatRow.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include <Kismet/GameplayStatics.h>
 #include "System/HUIManager.h"
@@ -64,46 +63,98 @@ void AHPlayerCharacter::Tick(float InDeltaTime)
 	}
 }
 
+void AHPlayerCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	// Player 캐릭터는 PossessedBy 또는 OnRep_PlayerState 시점에 ASC가 할당되므로 여기서 바인딩하지 않음
+}
+
+void AHPlayerCharacter::BindAttributeCallbacks()
+{
+	// 부모 클래스의 HP 바인딩 수행
+	Super::BindAttributeCallbacks();
+
+	if (AbilitySystemComponent)
+	{
+		// Experience Attribute 변경 시 OnExpAttributeChanged 호출되도록 바인딩
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UHCharacterAttributeSet::GetExperienceAttribute())
+			.AddUObject(this, &AHPlayerCharacter::OnExpAttributeChanged);
+
+		// MaxExperience 변경 시에도 UI 갱신을 위해 바인딩
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UHCharacterAttributeSet::GetMaxExperienceAttribute())
+			.AddUObject(this, &AHPlayerCharacter::OnExpAttributeChanged);
+
+		// Level 변경 시에도 UI 갱신을 위해 바인딩
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UHCharacterAttributeSet::GetLevelAttribute())
+			.AddUObject(this, &AHPlayerCharacter::OnExpAttributeChanged);
+
+		// 몬스터 처치 이벤트 바인딩
+		AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(FGameplayTag::RequestGameplayTag(TEXT("Event.Character.MonsterKilled")))
+			.AddUObject(this, &AHPlayerCharacter::OnMonsterKilled);
+	}
+}
+
+void AHPlayerCharacter::OnMonsterKilled(const FGameplayEventData* Payload)
+{
+	if (Payload)
+	{
+		// 이벤트에 담긴 경험치(Magnitude)를 플레이어에게 지급합니다.
+		AddExp(Payload->EventMagnitude);
+	}
+}
+
+void AHPlayerCharacter::OnExpAttributeChanged(const FOnAttributeChangeData& Data)
+{
+	if (AttributeSet)
+	{
+		// Level Attribute가 변경된 경우 레벨업 처리 체크
+		if (Data.Attribute == UHCharacterAttributeSet::GetLevelAttribute())
+		{
+			if (Data.NewValue > Data.OldValue)
+			{
+				OnLevelUp();
+			}
+		}
+
+		OnExpChanged.Broadcast(GetLevel(), AttributeSet->GetExperience(), AttributeSet->GetMaxExperience());
+	}
+}
+
 void AHPlayerCharacter::InitializeStat(int32 InNewLevel)
 {
+	// Super::InitializeStat에서 InitStatEffect를 실행함. 
+	// InitStatEffect(GE) 내부에서 DataTable을 참조하여 레벨별 MaxHP, MaxExp 등을 설정해야 함.
 	Super::InitializeStat(InNewLevel);
 
-	if (UnitProfileData && UnitProfileData->UnitType == EHUnitType::Player && AttributeSet)
+	if (AttributeSet)
 	{
-		if (FPlayerStatRow* StatRow = UnitProfileData->GetPlayerStatRowByLevel(Level))
-		{
-			// 플레이어 특화 스탯 복사
-			CurrentPlayerStat = *StatRow;
+		// 초기화 후 델리게이트 브로드캐스트 (UI 갱신용)
+		OnExpChanged.Broadcast(InNewLevel, AttributeSet->GetExperience(), AttributeSet->GetMaxExperience());
+		OnHPChanged.Broadcast(AttributeSet->GetHealth(), AttributeSet->GetMaxHealth());
 
-			// 다음 레벨에 필요한 경험치 설정 (AttributeSet 사용)
-			AttributeSet->SetMaxExperience(StatRow->MaxExp);
-
-			GetCharacterMovement()->MaxWalkSpeed = CurrentPlayerStat.MovementSpeed;
-
-			OnExpChanged.Broadcast(Level, AttributeSet->GetExperience(), AttributeSet->GetMaxExperience());
-			OnHPChanged.Broadcast(AttributeSet->GetHealth(), AttributeSet->GetMaxHealth());
-
-			UE_LOG(LogTemp, Warning, TEXT("Player Initialized Level %d (HP: %f, MaxExp: %f)"), 
-				Level, AttributeSet->GetMaxHealth(), AttributeSet->GetMaxExperience());
-		}
+		UE_LOG(LogTemp, Warning, TEXT("Player Initialized Level %d (HP: %f, MaxExp: %f)"), 
+			InNewLevel, AttributeSet->GetMaxHealth(), AttributeSet->GetMaxExperience());
 	}
 }
 
 void AHPlayerCharacter::AddExp(float InExp)
 {
-	if (IsDead || !AbilitySystemComponent || !AttributeSet) return;
+	if (IsDead || !AbilitySystemComponent || !GainExpEffect) return;
 
-	// GAS 방식으로 경험치 증가
-	float NewExp = AttributeSet->GetExperience() + InExp;
-	AttributeSet->SetExperience(NewExp);
+	// GAS 방식으로 경험치 증가 (SetByCaller 활용)
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddInstigator(this, this);
 
-	// 레벨업 로직은 AttributeSet::PostGameplayEffectExecute에서 처리됨
-	
-	// UI 업데이트를 위한 델리게이트 호출
-	OnExpChanged.Broadcast(GetLevel(), AttributeSet->GetExperience(), AttributeSet->GetMaxExperience());
+	FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(GainExpEffect, GetLevel(), EffectContext);
+	if (SpecHandle.IsValid())
+	{
+		// "Data.Experience" 태그를 통해 경험치 양 전달
+		SpecHandle.Data.Get()->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(TEXT("Data.Experience")), InExp);
+		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
 
-	UE_LOG(LogTemp, Log, TEXT("Player gained %f EXP via GAS. (Total: %f / %f)"), 
-		InExp, AttributeSet->GetExperience(), AttributeSet->GetMaxExperience());
+	UE_LOG(LogTemp, Log, TEXT("Player gained %f EXP via GAS Effect."), InExp);
 }
 
 float AHPlayerCharacter::GetCurrentExp() const
@@ -128,24 +179,29 @@ void AHPlayerCharacter::OnLevelUp()
 {
 	if (AttributeSet)
 	{
-		InitializeStat(AttributeSet->GetLevel());
+		const int32 NewLevel = GetLevel();
 		
-		// 레벨업 시 체력을 충전한다.
+		// 레벨업 시 스탯 재초기화 (새로운 MaxExp 등 적용)
+		InitializeStat(NewLevel);
+		
+		// 레벨업 시 체력을 충전한다. (이것도 나중에는 GE_Heal 등으로 전환 가능)
 		AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
+
 		OnHPChanged.Broadcast(AttributeSet->GetHealth(), AttributeSet->GetMaxHealth());
-	}
+		OnExpChanged.Broadcast(NewLevel, AttributeSet->GetExperience(), AttributeSet->GetMaxExperience());
 
-	UE_LOG(LogTemp, Warning, TEXT("Player LEVELED UP! Now Level %d"), Level);
+		UE_LOG(LogTemp, Warning, TEXT("Player LEVELED UP! Now Level %d"), NewLevel);
 
-	if (UHSoundManager* SoundManager = GetWorld()->GetSubsystem<UHSoundManager>())
-	{
-		SoundManager->PlaySFXByKey(TEXT("LevelUpSound"), Owner->GetActorLocation(), 1.0, true);
-	}
+		if (UHSoundManager* SoundManager = GetWorld()->GetSubsystem<UHSoundManager>())
+		{
+			SoundManager->PlaySFXByKey(TEXT("LevelUpSound"), GetActorLocation(), 1.0, true);
+		}
 
-	// 팝업 띄우기
-	if (UHUIManager* UIManager = GetGameInstance()->GetSubsystem<UHUIManager>())
-	{
-		UIManager->ShowWidgetByName(TEXT("SelectAbilityPopupUI"));
+		// 팝업 띄우기 (UI 시스템 연동)
+		if (UHUIManager* UIManager = GetGameInstance()->GetSubsystem<UHUIManager>())
+		{
+			UIManager->ShowWidgetByName(TEXT("SelectAbilityPopupUI"));
+		}
 	}
 }
 
@@ -179,11 +235,11 @@ void AHPlayerCharacter::PossessedBy(AController* NewController)
 		AbilitySystemComponent = GASPlayerState->GetAbilitySystemComponent();
 		AbilitySystemComponent->InitAbilityActorInfo(GASPlayerState, this);
 
-		// AttributeSet 설정 (부모 클래스의 멤버 변수)
-		// PlayerState에서 직접 가져오기 위한 Getter 함수를 추가하거나, 
-		// HPlayerState.h에서 AttributeSet이 TObjectPtr임을 고려하여 가져옴
-		// 여기서는 IAbilitySystemInterface를 통해 ASC가 관리하는 AttributeSet을 찾는 방식 사용 가능
+		// AttributeSet 설정
 		AttributeSet = const_cast<UHCharacterAttributeSet*>(AbilitySystemComponent->GetSet<UHCharacterAttributeSet>());
+
+		// ASC 초기화 완료 후 어트리뷰트 바인딩 수행
+		BindAttributeCallbacks();
 
 		for (TSubclassOf<UGameplayAbility> StartAbility : StartAbilities)
 		{
@@ -205,7 +261,6 @@ void AHPlayerCharacter::PossessedBy(AController* NewController)
 		if (GameMode && GameMode->GetGemCollectionDataAsset() && GemInventoryComponent && EquipmentComponent)
 		{
 			FHGemData FistAttackData;
-			//if (GameMode->GetGemCollectionDataAsset()->FindGemData(TEXT("FireBall_T1"), FistAttackData))
 			if (GameMode->GetGemCollectionDataAsset()->FindGemData(TEXT("FistAttack_T1"), FistAttackData))
 			{
 				UHGemBase* NewGem = GemInventoryComponent->AddGem(FistAttackData);
@@ -216,10 +271,23 @@ void AHPlayerCharacter::PossessedBy(AController* NewController)
 			}
 		}
 	}
+}
 
-	if (APlayerController* PlayerController = Cast<APlayerController>(NewController))
+void AHPlayerCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	AHPlayerState* GASPlayerState = GetPlayerState<AHPlayerState>();
+	if (GASPlayerState)
 	{
-		//PlayerController->ConsoleCommand(TEXT("showdebug abilitysystem"));
+		AbilitySystemComponent = GASPlayerState->GetAbilitySystemComponent();
+		AbilitySystemComponent->InitAbilityActorInfo(GASPlayerState, this);
+		AttributeSet = const_cast<UHCharacterAttributeSet*>(AbilitySystemComponent->GetSet<UHCharacterAttributeSet>());
+
+		// ASC 초기화 완료 후 어트리뷰트 바인딩 수행 (클라이언트)
+		BindAttributeCallbacks();
+
+		SetupGASInputComponent();
 	}
 }
 

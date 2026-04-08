@@ -53,22 +53,42 @@
 
 ---
 
-## 4. Economy: Interest System (이자 시스템)
+## 4. UI Integration: HWaveResultUI (웨이브 결과 UI)
 
-웨이브 종료 시점에 플레이어의 자산을 기반으로 보너스 골드를 지급합니다.
+웨이브가 종료되면 플레이어의 성과와 경제적 보상을 시각적으로 표시하고, 다음 단계로 넘어가는 브릿지 역할을 수행합니다.
 
-*   **위치**: `UHWaveManager::EndWave()` 내부에서 호출.
-*   **로직**:
-    1.  `AHPlayerState`에서 현재 `Gold` 잔액 확인.
-    2.  `Earned = FMath::Min(FMath::FloorToInt(CurrentGold * InterestRate), MaxInterest)` 계산.
-    3.  플레이어에게 골드 추가 및 UI 알림 발송.
+### 4.1 표시 데이터
+*   현재 웨이브 번호 및 타입 (Battle, Boss 등)
+*   획득한 이자 골드 (Interest Gold)
+*   현재 총 보유 골드 (Total Gold)
+
+### 4.2 게임 흐름 제어 (Flow Control)
+1.  **Wave End**: `UHWaveManager::EndWave()` 호출 시 `UGameplayStatics::SetGamePaused(true)`를 통해 게임 세계를 일시 정지합니다.
+2.  **UI Show**: `UHUIManager`를 통해 `HWaveResultUI`를 화면에 출력합니다.
+3.  **User Interaction**: 플레이어가 UI 배경(또는 스킵 버튼)을 클릭하면 `UHWaveResultUI::OnClickBackground()`가 호출됩니다.
+4.  **Resume & Next**:
+    *   `SetGamePaused(false)`로 게임을 재개합니다.
+    *   `HWaveResultUI`를 숨깁니다.
+    *   `UHWaveManager::PrepareNextWave()` 및 `StartWave()`를 호출하여 즉시 다음 웨이브를 시작합니다.
 
 ---
 
-## 5. Implementation Strategy (구현 우선순위)
+## 5. Economy: Interest System (이자 시스템)
 
-1.  **기반 타입 정의**: `HGlobalTypes.h` 또는 `HWaveTypes.h`에 Enums 및 Struct 정의.
-2.  **데이터 에셋 생성**: `UHWaveConfigDataAsset` 클래스 구현 및 에디터 테스트 데이터 생성.
-3.  **웨이브 매니저 골격**: `UHWaveManager` 서브시스템 생성 및 `StartWave` 기본 루프 구현.
-4.  **몬스터 스폰 연동**: 기존 `UHMonsterSpawnManager`를 웨이브 시스템에 통합.
-5.  **이자 시스템 및 UI**: 웨이브 클리어 시 골드 지급 로직 및 간단한 UI 연동.
+웨이브 종료 시점에 플레이어의 자산을 기반으로 보너스 골드를 지급하여 전략적인 저축을 유도합니다.
+
+*   **위치**: `UHWaveManager::CalculateInterest()` (EndWave 내부에서 호출).
+*   **로직**:
+    1.  `AHPlayerState`에서 현재 `Gold` 잔액 확인.
+    2.  `Earned = FMath::Min(FMath::FloorToInt(CurrentGold * InterestRate), MaxInterest)` 계산.
+    3.  플레이어에게 골드 추가 및 결과 UI에 데이터 전달.
+
+---
+
+## 6. Implementation Strategy (구현 상태)
+
+1.  **[Done] 기반 타입 정의**: `HGlobalTypes.h` 또는 `HWaveTypes.h`에 Enums 및 Struct 정의.
+2.  **[Done] 데이터 에셋 생성**: `UHWaveConfigDataAsset` 클래스 구현 및 에디터 테스트 데이터 생성.
+3.  **[Done] 웨이브 매니저 골격**: `UHWaveManager` 서브시스템 생성 및 `StartWave` 기본 루프 구현.
+4.  **[Done] 몬스터 스폰 연동**: 기존 `UHMonsterSpawnManager`를 웨이브 시스템에 통합.
+5.  **[Done] 이자 시스템 및 UI**: `HWaveResultUI` 구현, 웨이브 클리어 시 일시 정지 및 결과 표시 로직 통합.

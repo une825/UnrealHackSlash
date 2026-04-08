@@ -135,4 +135,24 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
 	FGameplayAttributeData MaxExperience;
 	ATTRIBUTE_ACCESSORS(UHCharacterAttributeSet, MaxExperience);
+
+	/** 현재 골드 */
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData Gold;
+	ATTRIBUTE_ACCESSORS(UHCharacterAttributeSet, Gold);
+
+	/** 최대 골드 (필요 시 사용) */
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData MaxGold;
+	ATTRIBUTE_ACCESSORS(UHCharacterAttributeSet, MaxGold);
+
+	/** 처치 시 지급 경험치 (보상용) */
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData ExpReward;
+	ATTRIBUTE_ACCESSORS(UHCharacterAttributeSet, ExpReward);
+
+	/** 처치 시 지급 골드 (보상용) */
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData GoldReward;
+	ATTRIBUTE_ACCESSORS(UHCharacterAttributeSet, GoldReward);
 };

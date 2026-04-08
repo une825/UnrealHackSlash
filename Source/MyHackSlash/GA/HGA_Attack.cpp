@@ -34,8 +34,8 @@ void UHGA_Attack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 	}
 
 	// 2. PlayMontageAndWait 태스크 생성 및 실행
-	// 공격 속도 배율도 캐릭터 스탯(CurrentStat)에서 가져오도록 설정
-	float AttackSpeedRate = Character->GetCurrentStat().AttackSpeedRate;
+	// 공격 속도 배율도 캐릭터 스탯(AttributeSet)에서 가져오도록 설정
+	float AttackSpeedRate = Character->GetAttackSpeedRate();
 	UAbilityTask_PlayMontageAndWait* PlayMontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 		this,
 		TEXT("Attack"),

@@ -4,10 +4,10 @@
 #include "Unit/Player/HPlayerCharacter.h"
 #include "Item/HCoin.h"
 #include "AbilitySystemComponent.h"
+#include <AbilitySystemBlueprintLibrary.h>
 #include "System/HMonsterAIController.h"
 #include "System/HObjectPoolManager.h"
 #include "DataAsset/HUnitProfileData.h"
-#include "DataAsset/HMonsterStatRow.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine/EngineTypes.h"
@@ -21,34 +21,19 @@ AHBaseMonster::AHBaseMonster()
 
 float AHBaseMonster::GetExpReward() const
 {
-	return CurrentMonsterStat.ExpReward;
+	return AttributeSet ? AttributeSet->GetExpReward() : 0.0f;
 }
 
 void AHBaseMonster::InitializeStat(int32 InNewLevel)
 {
+	// Super::InitializeStat에서 InitStatEffect를 실행함.
 	Super::InitializeStat(InNewLevel);
 
-	if (UnitProfileData && UnitProfileData->UnitType == EHUnitType::Monster)
+	if (AttributeSet)
 	{
-		if (FMonsterStatRow* StatRow = UnitProfileData->GetMonsterStatRowByLevel(Level))
-		{
-			// 공통 스탯 복사
-			CurrentStat = *StatRow;
-			CurrentMonsterStat = *StatRow;
-
-			// 체력 초기화 (AttributeSet 사용)
-			if (AttributeSet)
-			{
-				AttributeSet->SetMaxHealth(StatRow->MaxHP);
-				AttributeSet->SetHealth(StatRow->MaxHP);
-			}
-
-			GetCharacterMovement()->MaxWalkSpeed = CurrentStat.MovementSpeed;
-			
-			OnHPChanged.Broadcast(GetCurrentHP(), GetMaxHP());
-
-			UE_LOG(LogTemp, Log, TEXT("Monster Initialized Level %d (HP: %f)"), Level, GetMaxHP());
-		}
+		OnHPChanged.Broadcast(GetCurrentHP(), GetMaxHP());
+		UE_LOG(LogTemp, Log, TEXT("Monster Initialized Level %d (HP: %f, ExpReward: %f)"), 
+			InNewLevel, GetMaxHP(), AttributeSet->GetExpReward());
 	}
 }
 
@@ -56,31 +41,55 @@ void AHBaseMonster::SetDead()
 {
 	Super::SetDead();
 
-	// AI 및 이동 로직 중지
+	// AI 로직 완전히 중지 및 포커스 해제
 	if (auto* AICon = Cast<AAIController>(GetController()))
 	{
 		AICon->StopMovement();
+		AICon->ClearFocus(EAIFocusPriority::Gameplay); // 모든 우선순위 포커스 해제
+		AICon->UnPossess(); // 컨트롤러와 폰 연결 끊기 (AI 로직 완전 정지)
 	}
 
-	// 가해자가 있는 경우 델리게이트 호출 (QuestManager 등에서 처리)
+	// 시체가 내비게이션 및 다른 AI의 경로 계산에 방해되지 않도록 설정
+	GetMesh()->SetCanEverAffectNavigation(false);
+	
+	// 가해자에게 사망 이벤트 전송 (GAS 기반 경험치 및 퀘스트 처리)
 	if (LastDamageCauser.IsValid())
 	{
-		OnMonsterDead.Broadcast(LastDamageCauser.Get(), this);
+		AActor* Killer = LastDamageCauser.Get();
+		
+		// 가해자의 ASC를 찾아서 이벤트를 보냅니다.
+		if (UAbilitySystemComponent* KillerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Killer))
+		{
+			FGameplayEventData Payload;
+			Payload.Instigator = this;
+			Payload.Target = Killer;
+			Payload.EventTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Character.MonsterKilled"));
+			Payload.EventMagnitude = GetExpReward(); // 보상 경험치를 Magnitude에 담음
+
+			KillerASC->HandleGameplayEvent(Payload.EventTag, &Payload);
+		}
+
+		// 기존 델리게이트 호출 (레거시/퀘스트 매니저 연동용 유지)
+		OnMonsterDead.Broadcast(Killer, this);
 	}
 
 	// 코인 드랍
-	if (CoinClass)
+	if (CoinClass && AttributeSet)
 	{
-		if (UHObjectPoolManager* PoolManager = GetWorld()->GetSubsystem<UHObjectPoolManager>())
+		float GoldReward = AttributeSet->GetGoldReward();
+		if (GoldReward > 0)
 		{
-			if (AHCoin* NewCoin = Cast<AHCoin>(PoolManager->SpawnFromPool(CoinClass, GetActorLocation(), GetActorRotation())))
+			if (UHObjectPoolManager* PoolManager = GetWorld()->GetSubsystem<UHObjectPoolManager>())
 			{
-				NewCoin->PrepareFromPool(CurrentMonsterStat.GoldReward);
+				if (AHCoin* NewCoin = Cast<AHCoin>(PoolManager->SpawnFromPool(CoinClass, GetActorLocation(), GetActorRotation())))
+				{
+					NewCoin->PrepareFromPool(GoldReward);
+				}
 			}
-		}
-		else if (AHCoin* NewCoin = GetWorld()->SpawnActor<AHCoin>(CoinClass, GetActorLocation(), GetActorRotation()))
-		{
-			NewCoin->SetGoldAmount(CurrentMonsterStat.GoldReward);
+			else if (AHCoin* NewCoin = GetWorld()->SpawnActor<AHCoin>(CoinClass, GetActorLocation(), GetActorRotation()))
+			{
+				NewCoin->SetGoldAmount(GoldReward);
+			}
 		}
 	}
 

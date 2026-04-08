@@ -13,8 +13,7 @@ void UHHPBarUI::NativeConstruct()
 		Character->OnHPChanged.AddDynamic(this, &UHHPBarUI::UpdateHPBar);
 
 		// 초기 값 설정
-		const FUnitStatRow& CurrentStat = Character->GetCurrentStat();
-		UpdateHPBar(Character->GetCurrentHP(), CurrentStat.MaxHP);
+		UpdateHPBar(Character->GetCurrentHP(), Character->GetMaxHP());
 		
 		// 초기에는 즉시 설정
 		CurrentHPPercent = TargetHPPercent;

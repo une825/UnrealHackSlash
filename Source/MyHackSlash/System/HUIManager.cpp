@@ -8,7 +8,7 @@
 UHUIManager::UHUIManager()
 {
 	// 생성자에서 UI 데이터 에셋을 자동으로 찾아서 할당합니다.
-	static ConstructorHelpers::FObjectFinder<UHUIDataAsset> UIDataAssetFinder(TEXT("/Game/System/BP_UIData"));
+	static ConstructorHelpers::FObjectFinder<UHUIDataAsset> UIDataAssetFinder(TEXT("/Game/Blueprint/DataAsset/BP_UIData"));
 	if (UIDataAssetFinder.Succeeded())
 	{
 		UIDataAsset = UIDataAssetFinder.Object;

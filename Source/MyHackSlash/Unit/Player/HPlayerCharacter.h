@@ -37,6 +37,12 @@ public:
 	// 레벨업 시 호출되는 이벤트
 	void OnLevelUp();
 
+protected:
+	virtual void PostInitializeComponents() override;
+
+	/** @brief Attribute 변경 시 호출될 콜백 */
+	virtual void OnExpAttributeChanged(const FOnAttributeChangeData& Data);
+
 public:
 	/** Returns TopDownCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent; }
@@ -47,12 +53,17 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float InDeltaTime) override;
 	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_PlayerState() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* InPlayerInputComponent) override;
 
 	// 플레이어 스탯 및 경험치 초기화
 	virtual void InitializeStat(int32 InNewLevel) override;
 
-	// 경험치 추가 및 레벨업 체크
+	/** 경험치 획득을 위한 GameplayEffect */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Effect")
+	TSubclassOf<class UGameplayEffect> GainExpEffect;
+
+	// 경험치 추가 (GAS 방식)
 	UFUNCTION(BlueprintCallable, Category = "Stat")
 	void AddExp(float InExp);
 
@@ -65,6 +76,11 @@ protected:
 	void GASInputReleased(const int32 InInputID);
 
 	virtual void SetDead() override;
+
+	virtual void BindAttributeCallbacks() override;
+
+	/** @brief 몬스터 처치 시 발생하는 GameplayEvent를 처리합니다. */
+	virtual void OnMonsterKilled(const FGameplayEventData* Payload);
 
 protected:
 	UPROPERTY(EditAnywhere, Category = "GAS")
@@ -79,10 +95,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* AttackAction;
-
-protected:
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
-	FPlayerStatRow CurrentPlayerStat;
 
 private:
 	/** Top down camera */

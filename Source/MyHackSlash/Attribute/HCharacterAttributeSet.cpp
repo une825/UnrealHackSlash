@@ -1,8 +1,6 @@
 #include "Attribute/HCharacterAttributeSet.h"
 #include "GameplayEffectExtension.h"
 #include "Unit/HBaseCharacter.h"
-#include <Unit/Player/HPlayerCharacter.h>
-#include <Item/HBreakableActor.h>
 
 UHCharacterAttributeSet::UHCharacterAttributeSet()
 	: Level(1.0f)
@@ -25,6 +23,8 @@ UHCharacterAttributeSet::UHCharacterAttributeSet()
 	, MaxCriticalMultiplier(10.0f)
 	, Experience(0.0f)
 	, MaxExperience(100.0f)
+	, Gold(0.0f)
+	, MaxGold(999999.0f)
 {
 }
 
@@ -72,6 +72,18 @@ void UHCharacterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attri
 	{
 		NewValue = FMath::Max(0.0f, NewValue);
 	}
+	else if (Attribute == GetGoldAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxGold());
+	}
+	else if (Attribute == GetExpRewardAttribute())
+	{
+		NewValue = FMath::Max(0.0f, NewValue);
+	}
+	else if (Attribute == GetGoldRewardAttribute())
+	{
+		NewValue = FMath::Max(0.0f, NewValue);
+	}
 }
 
 void UHCharacterAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue)
@@ -85,22 +97,13 @@ void UHCharacterAttributeSet::PostAttributeChange(const FGameplayAttribute& Attr
 
 		if (MaxExp > 0.0f && CurrentExp >= MaxExp)
 		{
-			// 레벨업 조건 충족
+			// 레벨업 조건 충족 (경험치 이월 및 레벨 증가)
 			float RemainingExp = CurrentExp - MaxExp;
 			
-			// 1. 경험치 초기화 (남은 경험치 이월) 및 레벨 증가
-			// 주의: 내부적으로 다시 PostAttributeChange를 트리거할 수 있으므로 설계에 유의
+			// 캐릭터 클래스를 직접 호출하는 대신 어트리뷰트 값만 변경합니다.
+			// 캐릭터는 이 변화를 스스로 감지하여 필요한 로직(OnLevelUp 등)을 수행합니다.
 			SetExperience(RemainingExp);
 			SetLevel(GetLevel() + 1.0f);
-
-			// 2. 캐릭터 클래스에 레벨업 알림
-			if (AActor* TargetActor = GetOwningAbilitySystemComponent()->GetAvatarActor())
-			{
-				if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(TargetActor))
-				{
-					Player->OnLevelUp();
-				}
-			}
 		}
 	}
 }
@@ -112,30 +115,12 @@ bool UHCharacterAttributeSet::PreGameplayEffectExecute(FGameplayEffectModCallbac
 		return false;
 	}
 
-	if (Data.EvaluatedData.Attribute == GetDamageAttribute())
-	{
-		if (Data.EvaluatedData.Magnitude > 0.f)
-		{
-			// TODO: 방어력 계산이나 무적 상태 확인 등 데미지가 최종 적용되기 전 처리를 수행합니다.
-		}
-	}
-
 	return true;
 }
 
 void UHCharacterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
 	Super::PostGameplayEffectExecute(Data);
-
-	// 로그 : 어떤 속성이든 변화가 생기면 무조건 출력
-	UE_LOG(LogTemp, Warning, TEXT("Attribute Changed: %s, Magnitude: %f"),
-		*Data.EvaluatedData.Attribute.GetName(), Data.EvaluatedData.Magnitude);
-
-	AActor* TargetActor = nullptr;
-	if (Data.Target.AbilityActorInfo.IsValid() && Data.Target.AbilityActorInfo->AvatarActor.IsValid())
-	{
-		TargetActor = Data.Target.AbilityActorInfo->AvatarActor.Get();
-	}
 
 	if (Data.EvaluatedData.Attribute == GetDamageAttribute())
 	{
@@ -144,85 +129,52 @@ void UHCharacterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMod
 
 		if (LocalDamageDone > 0.0f)
 		{
-			// 1. 실제 체력 차감 로직 (공통)
+			// 가해자 정보 추출
+			FGameplayEffectContextHandle Context = Data.EffectSpec.GetContext();
+			AActor* Instigator = Context.GetInstigator();
+			AActor* EffectCauser = Context.GetEffectCauser();
+
+			// 1. 실제 체력 차감 로직
 			const float NewHealth = FMath::Clamp(GetHealth() - LocalDamageDone, 0.0f, GetMaxHealth());
 			SetHealth(NewHealth);
 
 			UAbilitySystemComponent* TargetASC = GetOwningAbilitySystemComponent();
 			if (TargetASC)
 			{
-				// 2. 공통 피드백 실행 (데미지 텍스트 및 타격 이펙트)
+				// 타겟 캐릭터에게 가해자 정보 전달
+				AHBaseCharacter* TargetCharacter = Cast<AHBaseCharacter>(TargetASC->GetAvatarActor());
+				if (TargetCharacter)
+				{
+					TargetCharacter->SetLastDamageCauser(Instigator ? Instigator : EffectCauser);
+
+					// 데미지 로그 추가
+					FString InstigatorName = Instigator ? Instigator->GetName() : (EffectCauser ? EffectCauser->GetName() : TEXT("Unknown"));
+					UE_LOG(LogTemp, Warning, TEXT("[DAMAGE] %s -> %s : %f Damage (Remaining HP: %f/%f)"), 
+						*InstigatorName, *TargetCharacter->GetName(), LocalDamageDone, GetHealth(), GetMaxHealth());
+				}
+
+				// 2. 피드백 실행 (데미지 텍스트 등 시각적 효과는 GameplayCue를 통해 처리)
 				FGameplayCueParameters CueParams;
 				CueParams.RawMagnitude = LocalDamageDone;
-				CueParams.EffectContext = Data.EffectSpec.GetContext();
+				CueParams.EffectContext = Context;
 				TargetASC->ExecuteGameplayCue(FGameplayTag::RequestGameplayTag(TEXT("GameplayCue.Character.Hitted")), CueParams);
 
-				// 3. 타입별 특수 처리 (사망/파괴 태그 등)
-				if (AHBaseCharacter* Character = Cast<AHBaseCharacter>(TargetActor))
+				// 3. 사망 판정 (태그만 추가하여 캐릭터가 스스로 인지하게 함)
+				if (GetHealth() <= 0.0f)
 				{
-					// 가해자(Instigator) 정보 기록
-					AActor* Instigator = Data.EffectSpec.GetContext().GetInstigator();
-					if (Instigator)
-					{
-						Character->SetLastDamageCauser(Instigator);
-					}
-
-					// UI 업데이트 브로드캐스트
-					Character->OnHPChanged.Broadcast(GetHealth(), GetMaxHealth());
-
-					// 캐릭터 사망 판정
-					if (GetHealth() <= 0.0f)
-					{
-						TargetASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Character.State.IsDead")));
-					}
-				}
-				else if (AHBreakableActor* Breakable = Cast<AHBreakableActor>(TargetActor))
-				{
-					// 오브젝트 파괴 판정
-					if (GetHealth() <= 0.0f)
-					{
-						TargetASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Object.State.Broken")));
-					}
+					// 사망 상태 태그 추가 (HBaseCharacter 등이 이를 감지하여 SetDead 등을 호출함)
+					TargetASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Character.State.IsDead")));
+					
+					// Breakable Actor 등의 경우를 위해 공통적인 파괴/사망 태그 처리
+					TargetASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Object.State.Broken")));
 				}
 			}
 		}
 	}
 
-	// 나머지 속성들에 대한 클램핑 및 업데이트 처리
+	// 나머지 모든 속성들에 대한 클램핑 처리 (부동소수점 오차 방지 등)
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
 		SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
-		if (AHBaseCharacter* Character = Cast<AHBaseCharacter>(TargetActor))
-		{
-			Character->OnHPChanged.Broadcast(GetHealth(), GetMaxHealth());
-		}
-	}
-	else if (Data.EvaluatedData.Attribute == GetAttackDamageAttribute())
-	{
-		SetAttackDamage(FMath::Clamp(GetAttackDamage(), 0.0f, GetMaxAttackDamage()));
-	}
-	else if (Data.EvaluatedData.Attribute == GetAttackRangeAttribute())
-	{
-		SetAttackRange(FMath::Clamp(GetAttackRange(), 0.0f, GetMaxAttackRange()));
-	}
-	else if (Data.EvaluatedData.Attribute == GetAttackRadiusAttribute())
-	{
-		SetAttackRadius(FMath::Clamp(GetAttackRadius(), 0.0f, GetMaxAttackRadius()));
-	}
-	else if (Data.EvaluatedData.Attribute == GetAttackSpeedRateAttribute())
-	{
-		SetAttackSpeedRate(FMath::Clamp(GetAttackSpeedRate(), 0.0f, GetMaxAttackSpeedRate()));
-	}
-	else if (Data.EvaluatedData.Attribute == GetMovementSpeedAttribute())
-	{
-		SetMovementSpeed(FMath::Clamp(GetMovementSpeed(), 0.0f, GetMaxMovementSpeed()));
-	}
-	else if (Data.EvaluatedData.Attribute == GetCriticalRateAttribute())
-	{
-		SetCriticalRate(FMath::Clamp(GetCriticalRate(), 0.0f, GetMaxCriticalRate()));
-	}
-	else if (Data.EvaluatedData.Attribute == GetCriticalMultiplierAttribute())
-	{
-		SetCriticalMultiplier(FMath::Clamp(GetCriticalMultiplier(), 1.0f, GetMaxCriticalMultiplier()));
 	}
 }

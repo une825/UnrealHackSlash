@@ -36,12 +36,11 @@ void UHGA_FireBall::ActivateAbility(const FGameplayAbilitySpecHandle InHandle, c
 	if (MontageToPlay)
 	{
 		UAbilityTask_PlayMontageAndWait* PlayAttackTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
-			this, 
-			TEXT("PlayFireBall"), 
-			MontageToPlay, 
-			BaseCharacter->GetCurrentStat().AttackSpeedRate
+			this,
+			TEXT("PlayFireBall"),
+			MontageToPlay,
+			BaseCharacter->GetAttackSpeedRate()
 		);
-
 		if (PlayAttackTask)
 		{
 			PlayAttackTask->OnCompleted.AddDynamic(this, &UHGA_FireBall::OnCompleteCallback);
@@ -80,7 +79,7 @@ void UHGA_FireBall::SpawnProjectile()
 
 		if (AHBaseCharacter* BaseCharacter = Cast<AHBaseCharacter>(Avatar))
 		{
-			FinalDamage += BaseCharacter->GetCurrentStat().AttackDamage;
+			FinalDamage += BaseCharacter->GetAttackDamage();
 
 			if (BaseCharacter->GetUnitProfileData())
 			{

@@ -21,8 +21,8 @@ bool UBTD_AttackInRange::CalculateRawConditionValue(UBehaviorTreeComponent& Owne
 	APawn* TargetPawn = Cast<APawn>(OwnerComp.GetBlackboardComponent()->GetValueAsObject(TEXT("Target")));
 	if (TargetPawn)
 	{
-        // 실시간 공격 범위는 캐릭터의 스탯에서 가져옵니다.
-		float AttackRange = Character->GetCurrentStat().AttackRange;
+        // 실시간 공격 범위는 캐릭터의 Attribute에서 가져옵니다.
+		float AttackRange = Character->GetAttackRange();
 		float Distance = FVector::Distance(ControllingPawn->GetActorLocation(), TargetPawn->GetActorLocation());
 		return Distance <= AttackRange;
 	}

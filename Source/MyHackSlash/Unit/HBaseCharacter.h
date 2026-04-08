@@ -6,7 +6,6 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "Skill/HCombatInterface.h"
-#include "DataAsset/HUnitStatRow.h"
 #include "DataAsset/HUnitProfileData.h"
 #include <Attribute/HCharacterAttributeSet.h>
 
@@ -41,8 +40,16 @@ public:
 	int32 GetLevel() const;
 	float GetCurrentHP() const;
 	float GetMaxHP() const;
+
+	/** @brief GAS Attribute Getters */
+	float GetAttackDamage() const;
+	float GetAttackSpeedRate() const;
+	float GetAttackRange() const;
+	float GetCriticalRate() const;
+	float GetCriticalMultiplier() const;
+	float GetMovementSpeed() const;
+
 	const UHUnitProfileData* GetUnitProfileData() const { return UnitProfileData; }
-	const FUnitStatRow& GetCurrentStat() const { return CurrentStat; }
 
 	/** @brief 최종 데미지를 계산합니다. (치명타 등) */
 	virtual float CalculateActualDamage(float InDamageAmount, FDamageEvent const& InDamageEvent, AController* InEventInstigator, AActor* InDamageCauser, bool& OutIsCritical);
@@ -76,10 +83,16 @@ protected:
 protected:
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
+
+	/** @brief ASC가 유효해진 시점에 어트리뷰트 변경 콜백을 바인딩합니다. */
+	virtual void BindAttributeCallbacks();
+
 	virtual bool CanJumpInternal_Implementation() const override;
 	virtual float TakeDamage(float InDamageAmount, FDamageEvent const& InDamageEvent, AController* InEventInstigator, AActor* InDamageCauser) override;
 
-protected:
+	/** @brief Attribute 변경 시 호출될 콜백 */
+	virtual void OnHealthAttributeChanged(const FOnAttributeChangeData& Data);
+	virtual void OnMovementSpeedAttributeChanged(const FOnAttributeChangeData& Data);
 
 protected:
 	/** @brief 공격 로직의 진입점입니다. */
@@ -116,13 +129,6 @@ protected:
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = DataAsset)
 	TObjectPtr<class UHUnitProfileData> UnitProfileData;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stat")
-	int32 Level = 1;
-
-	// 공통적으로 사용되는 런타임 스탯 데이터
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stat")
-	FUnitStatRow CurrentStat;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = "true"))
 	bool Attackable = true;

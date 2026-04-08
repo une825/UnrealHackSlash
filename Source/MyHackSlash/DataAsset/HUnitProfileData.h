@@ -4,8 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "DataAsset/HMonsterStatRow.h"
-#include "DataAsset/HPlayerStatRow.h"
 #include "GameplayTagContainer.h"
 #include "HUnitProfileData.generated.h"
 
@@ -29,11 +27,6 @@ public:
 	// 이 프로필을 사용하는 유닛의 타입 (플레이어 또는 몬스터)
 	UPROPERTY(EditAnywhere, Category = "Unit")
 	EHUnitType UnitType = EHUnitType::Monster;
-
-	// --- 스탯 설정 ---
-	// 이 유닛이 사용할 레벨별 스탯 테이블
-	UPROPERTY(EditAnywhere, Category = "Stats")
-	TObjectPtr<class UDataTable> StatTable;
 
 	// --- 애니메이션 설정 ---
 	UPROPERTY(EditAnywhere, Category = "Animation")
@@ -65,21 +58,4 @@ public:
 	/** @brief 타격에 성공했을 때 재생할 사운드 목록 (랜덤 재생됨) */
 	UPROPERTY(EditAnywhere, Category = "Effects")
 	TArray<TObjectPtr<class USoundBase>> HitSounds;
-
-	// --- 헬퍼 함수 ---
-	// 특정 레벨의 몬스터 스탯 정보를 반환
-	FMonsterStatRow* GetMonsterStatRowByLevel(int32 Level) const
-	{
-		if (!StatTable || UnitType != EHUnitType::Monster) return nullptr;
-		FName RowName = FName(*FString::FromInt(Level));
-		return StatTable->FindRow<FMonsterStatRow>(RowName, TEXT("Monster Stat Context"));
-	}
-
-	// 특정 레벨의 플레이어 스탯 정보를 반환
-	FPlayerStatRow* GetPlayerStatRowByLevel(int32 Level) const
-	{
-		if (!StatTable || UnitType != EHUnitType::Player) return nullptr;
-		FName RowName = FName(*FString::FromInt(Level));
-		return StatTable->FindRow<FPlayerStatRow>(RowName, TEXT("Player Stat Context"));
-	}
 };

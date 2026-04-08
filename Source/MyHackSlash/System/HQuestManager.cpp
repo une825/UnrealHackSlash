@@ -12,21 +12,10 @@ void UHQuestManager::ProcessMonsterDeath(AActor* InAttacker, AHBaseMonster* InDe
 {
 	if (!InAttacker || !InDeadMonster) return;
 
-	// 가해자 액터 찾기 (PlayerState일 경우 Pawn으로 변환)
-	AActor* ActualAttacker = InAttacker;
-	if (APlayerState* PS = Cast<APlayerState>(InAttacker))
-	{
-		ActualAttacker = PS->GetPawn();
-	}
+	// 이제 경험치 지급은 GAS GameplayEvent를 통해 플레이어 ASC에서 직접 처리됩니다.
+	// QuestManager에서는 퀘스트 처치 카운트 등 다른 로직만 수행합니다.
 
-	// 가해자가 플레이어인 경우 경험치 지급
-	if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(ActualAttacker))
-	{
-		float RewardExp = InDeadMonster->GetExpReward();
-		Player->AddExp(RewardExp);
-		
-		UE_LOG(LogTemp, Log, TEXT("QuestManager: Player rewarded with %f EXP for killing monster."), RewardExp);
-	}
+	UE_LOG(LogTemp, Log, TEXT("QuestManager: Processing monster death for quest tracking..."));
 
 	// 여기에 퀘스트 카운트 증가 등 추가 로직 구현 가능
 }

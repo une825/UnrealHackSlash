@@ -8,9 +8,6 @@
 UHGA_MonsterMeleeAttack::UHGA_MonsterMeleeAttack()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
-
-	// 몬스터 공격을 식별하는 기본 태그 설정
-	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Monster.Attack")));
 }
 
 void UHGA_MonsterMeleeAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -42,7 +39,7 @@ void UHGA_MonsterMeleeAttack::ActivateAbility(const FGameplayAbilitySpecHandle H
 	}
 
 	// 3. 공격 속도 배율 가져오기
-	float AttackSpeedRate = Character->GetCurrentStat().AttackSpeedRate;
+	float AttackSpeedRate = Character->GetAttackSpeedRate();
 
 	// 4. PlayMontageAndWait 태스크 생성 및 실행
 	UAbilityTask_PlayMontageAndWait* PlayMontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(

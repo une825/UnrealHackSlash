@@ -33,11 +33,17 @@ public:
 
 	/** @brief 현재 보유 중인 골드를 반환합니다. */
 	UFUNCTION(BlueprintPure, Category = "H|Currency")
-	int32 GetCurrentGold() const { return CurrentGold; }
+	int32 GetCurrentGold() const;
 
 	/** @brief 골드 변경 시 알림을 위한 델리게이트 (UI 등에서 바인딩) */
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnGoldChanged, int32 /*NewGold*/);
 	FOnGoldChanged OnGoldChanged;
+
+protected:
+	virtual void PostInitializeComponents() override;
+
+	/** @brief Attribute 변경 시 호출될 콜백 */
+	virtual void OnGoldAttributeChanged(const FOnAttributeChangeData& Data);
 
 protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "GAS")
@@ -45,8 +51,4 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHCharacterAttributeSet> AttributeSet;
-
-	/** @brief 현재 보유 중인 골드 */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "H|Currency")
-	int32 CurrentGold = 0;
 };

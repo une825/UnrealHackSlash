@@ -29,8 +29,6 @@ AHBaseCharacter::AHBaseCharacter()
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("HCapsule"));
 
-	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
@@ -62,7 +60,9 @@ void AHBaseCharacter::Attack()
 void AHBaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	InitializeStat(Level);
+	
+	// 초기 레벨로 스탯 초기화 (Level 변수가 제거되었으므로 기본값 1 또는 외부 설정값 사용)
+	InitializeStat(GetLevel() > 0 ? GetLevel() : 1);
 
 	if (AbilitySystemComponent && DeadTag.IsValid())
 	{
@@ -84,7 +84,7 @@ int32 AHBaseCharacter::GetLevel() const
 	{
 		return static_cast<int32>(AttributeSet->GetLevel());
 	}
-	return Level;
+	return 1;
 }
 
 float AHBaseCharacter::GetCurrentHP() const
@@ -105,10 +105,38 @@ float AHBaseCharacter::GetMaxHP() const
 	return 0.0f;
 }
 
+float AHBaseCharacter::GetAttackDamage() const
+{
+	return AttributeSet ? AttributeSet->GetAttackDamage() : 0.0f;
+}
+
+float AHBaseCharacter::GetAttackSpeedRate() const
+{
+	return AttributeSet ? AttributeSet->GetAttackSpeedRate() : 1.0f;
+}
+
+float AHBaseCharacter::GetAttackRange() const
+{
+	return AttributeSet ? AttributeSet->GetAttackRange() : 0.0f;
+}
+
+float AHBaseCharacter::GetCriticalRate() const
+{
+	return AttributeSet ? AttributeSet->GetCriticalRate() : 0.0f;
+}
+
+float AHBaseCharacter::GetCriticalMultiplier() const
+{
+	return AttributeSet ? AttributeSet->GetCriticalMultiplier() : 1.5f;
+}
+
+float AHBaseCharacter::GetMovementSpeed() const
+{
+	return AttributeSet ? AttributeSet->GetMovementSpeed() : 0.0f;
+}
+
 void AHBaseCharacter::InitializeStat(int32 InNewLevel)
 {
-	Level = InNewLevel;
-
 	if (AttributeSet)
 	{
 		AttributeSet->SetLevel(static_cast<float>(InNewLevel));
@@ -141,7 +169,7 @@ void AHBaseCharacter::ResetCharacter()
 		AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(AllCharacterTags);
 	}
 
-	InitializeStat(Level);
+	InitializeStat(GetLevel());
 
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 	GetCharacterMovement()->SetComponentTickEnabled(true);
@@ -180,6 +208,40 @@ float AHBaseCharacter::GetAIDetectRadius() const
 void AHBaseCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
+
+	if (AbilitySystemComponent)
+	{
+		BindAttributeCallbacks();
+	}
+}
+
+void AHBaseCharacter::BindAttributeCallbacks()
+{
+	if (AbilitySystemComponent)
+	{
+		// Health Attribute 변경 시 OnHealthAttributeChanged 호출되도록 바인딩
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UHCharacterAttributeSet::GetHealthAttribute())
+			.AddUObject(this, &AHBaseCharacter::OnHealthAttributeChanged);
+
+		// MaxHealth도 동일하게 감지하여 델리게이트 호출
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UHCharacterAttributeSet::GetMaxHealthAttribute())
+			.AddUObject(this, &AHBaseCharacter::OnHealthAttributeChanged);
+
+		// MovementSpeed 변경 감지
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UHCharacterAttributeSet::GetMovementSpeedAttribute())
+			.AddUObject(this, &AHBaseCharacter::OnMovementSpeedAttributeChanged);
+	}
+}
+
+void AHBaseCharacter::OnHealthAttributeChanged(const FOnAttributeChangeData& Data)
+{
+	// HP 변경 델리게이트 브로드캐스트 (UI 등에서 사용)
+	OnHPChanged.Broadcast(GetCurrentHP(), GetMaxHP());
+}
+
+void AHBaseCharacter::OnMovementSpeedAttributeChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateWalkSpeed(Data.NewValue);
 }
 
 bool AHBaseCharacter::CanJumpInternal_Implementation() const
@@ -320,7 +382,7 @@ void AHBaseCharacter::AttackBegin()
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && UnitProfileData && UnitProfileData->AttackMontage)
 	{
-		const float AttackSpeedRate = CurrentStat.AttackSpeedRate;
+		const float AttackSpeedRate = GetAttackSpeedRate();
 		AnimInstance->Montage_Play(UnitProfileData->AttackMontage, AttackSpeedRate);
 
 		FOnMontageEnded EndDelegate;

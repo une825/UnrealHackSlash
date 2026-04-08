@@ -18,6 +18,7 @@
 *   **획득 경로**:
     *   보상 팝업 (`UHSelectAbilityPopupUI`) 선택지 보상.
     *   몬스터 처치 시 드랍되는 **코인 액터(`AHCoin`)**와 충돌하여 획득.
+    *   **웨이브 이자(Interest)**: 각 웨이브 종료 시 보유 골드에 비례하여 추가 골드 지급 (`UHWaveManager`).
 *   **드랍 연출 및 기술 구현**:
     *   **팝콘 효과**: 코인 생성 시 임의의 상단 대각선 방향으로 물리 속도(`SetPhysicsLinearVelocity`)를 부여하여 튀어 오르는 연출을 수행.
     *   **회전 효과**: `URotatingMovementComponent`를 활용하여 메쉬가 Z축(Yaw)을 기준으로 팽이처럼 지속적으로 회전.

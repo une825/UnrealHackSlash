@@ -10,6 +10,7 @@
 class UTileView;
 class UTextBlock;
 class UImage;
+class UButton;
 
 /**
  * 상점 메인 화면을 담당하는 위젯 클래스입니다.
@@ -41,7 +42,14 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> CurrencyText; // 보유 재화
 
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UButton> NextWaveButton;
+
 protected:
 	/** @brief 웨이브 정보를 기반으로 상단 텍스트를 초기화합니다. */
 	void InitWaveInfo();
+
+	/** @brief 다음 웨이브 진행 버튼 클릭 시 호출됩니다. */
+	UFUNCTION()
+	void OnClickNextWave();
 };
