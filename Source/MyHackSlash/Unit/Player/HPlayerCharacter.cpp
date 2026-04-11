@@ -17,6 +17,7 @@
 
 #include "NavigationInvokerComponent.h"
 #include <System/HSoundManager.h>
+#include "System/HFunctionLibrary.h"
 
 AHPlayerCharacter::AHPlayerCharacter()
 {
@@ -106,29 +107,39 @@ void AHPlayerCharacter::OnGemRewardReceived(const FGameplayEventData* Payload)
 	const UHGemDataAsset* GemCollection = Cast<UHGemDataAsset>(Payload->OptionalObject);
 	if (!GemCollection) return;
 
-	// 태그에서 GemID 추출 (Data.GemID.XXX 형태)
+	// 태그에서 GemID 추출 (Data.GemID.XXX 형태) 및 Tier 추출 (Data.Tier.N 형태)
 	FName GemID = NAME_None;
+	int32 Tier = 1;
+
 	for (const FGameplayTag& Tag : Payload->InstigatorTags)
 	{
 		FString TagString = Tag.ToString();
 		if (TagString.StartsWith(TEXT("Data.GemID.")))
 		{
 			GemID = FName(*TagString.RightChop(11));
-			break;
+		}
+		else if (TagString.StartsWith(TEXT("Data.Tier.")))
+		{
+			Tier = FCString::Atoi(*TagString.RightChop(10));
 		}
 	}
 
 	if (GemID != NAME_None)
 	{
+		// GemID(베이스)와 Tier를 결합하여 실제 데이터 식별자(예: FireBall_T1)를 만듭니다.
+		FName FullGemID = FName(*FString::Printf(TEXT("%s_T%d"), *GemID.ToString(), Tier));
+
 		FHGemData FoundData;
-		if (GemCollection->FindGemData(GemID, FoundData))
+		if (GemCollection->FindGemData(FullGemID, FoundData))
 		{
+			FoundData.Tier = Tier;
+
 			const int32 Count = FMath::Max(1, static_cast<int32>(Payload->EventMagnitude));
 			for (int32 i = 0; i < Count; ++i)
 			{
 				GemInventoryComponent->AddGem(FoundData);
 			}
-			UE_LOG(LogTemp, Log, TEXT("Player received %d Gem(s) (%s) via GameplayEvent."), Count, *GemID.ToString());
+			UE_LOG(LogTemp, Log, TEXT("Player received %d Gem(s) (%s, Tier: %d) via GameplayEvent."), Count, *FullGemID.ToString(), Tier);
 		}
 	}
 }

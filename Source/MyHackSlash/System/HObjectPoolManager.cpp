@@ -89,13 +89,13 @@ void UHObjectPoolManager::ReturnToPool(AActor* InActor)
 		UNiagaraSystem* SystemAsset = NiagaraActor->GetNiagaraComponent()->GetAsset();
 		if (SystemAsset)
 		{
-			NiagaraPools.FindOrAdd(SystemAsset).InactiveActors.Add(InActor);
+			NiagaraPools.FindOrAdd(SystemAsset).InactiveActors.AddUnique(InActor);
 			return;
 		}
 	}
 
 	UClass* ActorClass = InActor->GetClass();
-	ObjectPools.FindOrAdd(ActorClass).InactiveActors.Add(InActor);
+	ObjectPools.FindOrAdd(ActorClass).InactiveActors.AddUnique(InActor);
 }
 
 void UHObjectPoolManager::ActivateActor(AActor* InActor, FVector InLocation, FRotator InRotation)

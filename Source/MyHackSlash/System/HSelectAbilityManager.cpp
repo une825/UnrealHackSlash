@@ -6,6 +6,7 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include <Unit/Player/HPlayerState.h>
+#include "System/HFunctionLibrary.h"
 
 void UHSelectAbilityManager::InitializeManager(UHSelectAbilityGradeDataAsset* InGradeDataAsset, UDataTable* InRewardTable, UHGemDataAsset* InGemCollection, TSubclassOf<class UGameplayEffect> InAddGoldEffectClass)
 {
@@ -119,7 +120,7 @@ void UHSelectAbilityManager::ExecuteReward(const FHRewardOptionData& InSelectedO
 			break;
 		}
 
-		FString TagString = FString::Printf(TEXT("Data.GemID.%s"), *InSelectedOption.TargetID.ToString());
+		FString TagString = UHFunctionLibrary::MakeGemTagString(InSelectedOption.TargetID);
 		FGameplayTag GemIDTag = FGameplayTag::RequestGameplayTag(FName(*TagString), false);
 		
 		if (GemIDTag.IsValid())
@@ -128,14 +129,20 @@ void UHSelectAbilityManager::ExecuteReward(const FHRewardOptionData& InSelectedO
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("UHSelectAbilityManager: Could not find or create GameplayTag for %s. Ensure it is defined in DefaultGameplayTags.ini"), *TagString);
-			// 태그가 없더라도 ID 정보를 전달하기 위해 Name을 직접 활용하는 방안이나, 
-			// 최소한 부모 태그라도 넣어줄 수 있습니다.
+			// 태그가 없더라도 ID 정보를 전달하기 위해 최소한 부모 태그라도 넣어줄 수 있습니다.
 			Payload.InstigatorTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Data.GemID")));
 		}
 
+		// 티어 정보를 추가합니다. (예: Data.Tier.1)
+		FString TierTagString = FString::Printf(TEXT("Data.Tier.%d"), InSelectedOption.Tier);
+		FGameplayTag TierTag = FGameplayTag::RequestGameplayTag(FName(*TierTagString), false);
+		if (TierTag.IsValid())
+		{
+			Payload.InstigatorTags.AddTag(TierTag);
+		}
+
 		TargetASC->HandleGameplayEvent(Payload.EventTag, &Payload);
-		UE_LOG(LogTemp, Log, TEXT("Reward Event Sent: GetGem (%s)"), *InSelectedOption.TargetID.ToString());
+		UE_LOG(LogTemp, Log, TEXT("Reward Event Sent: GetGem (%s, Tier: %d)"), *InSelectedOption.TargetID.ToString(), InSelectedOption.Tier);
 		break;
 	}
 

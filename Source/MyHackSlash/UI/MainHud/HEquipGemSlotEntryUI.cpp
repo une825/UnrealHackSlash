@@ -19,9 +19,9 @@ void UHEquipGemSlotEntryUI::NativeOnListItemObjectSet(UObject* InListItemObject)
 
 	// 보조 젬 데이터에서 아이콘을 가져와 설정
 	const FHGemData& GemData = CurrentEntryData->SupportGem->GetGemData();
-	if (IconImage && GemData.GemIcon)
+	if (IconImage && GemData.Icon)
 	{
-		IconImage->SetBrushFromTexture(GemData.GemIcon);
+		IconImage->SetBrushFromTexture(GemData.Icon);
 		IconImage->SetVisibility(ESlateVisibility::Visible);
 	}
 	else if (IconImage)
@@ -57,12 +57,12 @@ void UHEquipGemSlotEntryUI::NativeOnDragDetected(const FGeometry& InGeometry, co
 
 	// 2. 비주얼 설정 (아이콘 잔상)
 	const FHGemData& GemData = CurrentEntryData->SupportGem->GetGemData();
-	if (GemData.GemIcon)
+	if (GemData.Icon)
 	{
 		UImage* DragVisual = NewObject<UImage>(this);
 		if (DragVisual)
 		{
-			DragVisual->SetBrushFromTexture(GemData.GemIcon);
+			DragVisual->SetBrushFromTexture(GemData.Icon);
 
 			FVector2D DragIconSize = FVector2D(64, 64);
 			if (IconImage)

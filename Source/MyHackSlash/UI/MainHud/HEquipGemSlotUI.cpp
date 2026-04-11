@@ -22,9 +22,9 @@ void UHEquipGemSlotUI::SetMainGem(UHMainGem* InMainGem)
 	if (MainGemIcon)
 	{
 		const FHGemData& GemData = InMainGem->GetGemData();
-		if (GemData.GemIcon)
+		if (GemData.Icon)
 		{
-			MainGemIcon->SetBrushFromTexture(GemData.GemIcon);
+			MainGemIcon->SetBrushFromTexture(GemData.Icon);
 			MainGemIcon->SetVisibility(ESlateVisibility::Visible);
 		}
 		else
@@ -123,12 +123,12 @@ void UHEquipGemSlotUI::NativeOnDragDetected(const FGeometry& InGeometry, const F
 
 	// 2. 비주얼 설정 (아이콘 잔상)
 	const FHGemData& GemData = CurrentGem->GetGemData();
-	if (GemData.GemIcon)
+	if (GemData.Icon)
 	{
 		UImage* DragVisual = NewObject<UImage>(this);
 		if (DragVisual)
 		{
-			DragVisual->SetBrushFromTexture(GemData.GemIcon);
+			DragVisual->SetBrushFromTexture(GemData.Icon);
 
 			FVector2D DragIconSize = FVector2D(128, 128);
 			if (MainGemIcon)

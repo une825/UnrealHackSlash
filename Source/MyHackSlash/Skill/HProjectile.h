@@ -31,6 +31,10 @@ public:
 	void SetDamage(float InDamageAmount) { DamageAmount = InDamageAmount; }
 	void SetElement(HEElement InElement) { Element = InElement; }
 	void SetOwningUnitType(EHUnitType InUnitType) { OwningUnitType = InUnitType; }
+	void SetProjectileLifeSpan(float InLifeSpan) { LifeSpan = InLifeSpan; }
+
+	/** @brief 풀에서 꺼낼 때 호출하여 상태를 초기화합니다. */
+	void ResetProjectile(FVector InLocation, FRotator InRotation);
 
 public:
 	/** @brief 데미지 적용 시 사용할 GameplayEffect 클래스 */
@@ -39,6 +43,14 @@ public:
 
 protected:
 	void Explode();
+
+	/** @brief 수명이 다하면 풀에 반납하기 위한 타이머 함수 */
+	void OnLifeSpanExpired();
+
+	FTimerHandle LifeSpanTimerHandle;
+
+	/** @brief 중복 반납 방지를 위한 플래그 */
+	bool bIsActive = false;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")

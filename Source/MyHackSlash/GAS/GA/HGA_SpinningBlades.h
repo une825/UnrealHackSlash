@@ -18,6 +18,10 @@ public:
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 
 protected:
+	/** @brief 투사체 개별 소환 로직 */
+	void SpawnProjectile(int32 Index, float AngleStep, const FGameplayEffectSpecHandle& DamageSpecHandle);
+
+protected:
 	/** 소환할 투사체 클래스 (BP로 지정) */
 	UPROPERTY(EditAnywhere, Category = "H|SpinningBlades")
 	TSubclassOf<class AHProjectile_SpinningBlade> ProjectileClass;

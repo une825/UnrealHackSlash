@@ -24,9 +24,9 @@ void UHGemInventoryEntryUI::NativeOnListItemObjectSet(UObject* InListItemObject)
 
 	// 젬 아이콘 표시
 	const FHGemData& GemData = CurrentEntryData->GemBase->GetGemData();
-	if (AbilityIconImage && GemData.GemIcon)
+	if (AbilityIconImage && GemData.Icon)
 	{
-		AbilityIconImage->SetBrushFromTexture(GemData.GemIcon);
+		AbilityIconImage->SetBrushFromTexture(GemData.Icon);
 		AbilityIconImage->SetVisibility(ESlateVisibility::Visible);
 	}
 }
@@ -59,13 +59,13 @@ void UHGemInventoryEntryUI::NativeOnDragDetected(const FGeometry& InGeometry, co
 
 	// 2. 드래그 시 마우스를 따라다닐 비주얼 설정 (아이콘 잔상)
 	const FHGemData& GemData = CurrentEntryData->GemBase->GetGemData();
-	if (GemData.GemIcon)
+	if (GemData.Icon)
 	{
 		// UUserWidget 대신 UImage를 직접 생성하여 비주얼로 사용
 		UImage* DragVisual = NewObject<UImage>(this);
 		if (DragVisual)
 		{
-			DragVisual->SetBrushFromTexture(GemData.GemIcon);
+			DragVisual->SetBrushFromTexture(GemData.Icon);
 			
 			// 이미지 크기 조절
 			FVector2D DragIconSize = FVector2D(128, 128);

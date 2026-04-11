@@ -30,12 +30,17 @@ AHProjectile::AHProjectile()
 	ProjectileMovement->bRotationFollowsVelocity = true;
 	ProjectileMovement->bShouldBounce = false;
 
-	InitialLifeSpan = LifeSpan;
+	// InitialLifeSpan = LifeSpan; // 생성 시 수명 관리 대신 타이머로 관리할 것이므로 주석 처리하거나 제거 가능
 }
 
 void AHProjectile::BeginPlay()
 {
 	Super::BeginPlay();
+
+	bIsActive = true;
+
+	// 생성 직후 라이프사이클 타이머 시작
+	GetWorld()->GetTimerManager().SetTimer(LifeSpanTimerHandle, this, &AHProjectile::OnLifeSpanExpired, LifeSpan, false);
 
 	if (FlightEffect)
 	{
@@ -50,9 +55,57 @@ void AHProjectile::BeginPlay()
 	}
 }
 
+void AHProjectile::ResetProjectile(FVector InLocation, FRotator InRotation)
+{
+	bIsActive = true;
+
+	SetActorLocationAndRotation(InLocation, InRotation);
+	
+	// 1. 발사체 이동 컴포넌트 초기화 및 재활성화
+	if (ProjectileMovement)
+	{
+		ProjectileMovement->Activate(true);
+		ProjectileMovement->Velocity = InRotation.Vector() * ProjectileMovement->InitialSpeed;
+		ProjectileMovement->UpdateComponentVelocity();
+	}
+	
+	// 2. 라이프사이클 타이머 초기화 및 시작
+	GetWorld()->GetTimerManager().ClearTimer(LifeSpanTimerHandle);
+	GetWorld()->GetTimerManager().SetTimer(LifeSpanTimerHandle, this, &AHProjectile::OnLifeSpanExpired, LifeSpan, false);
+
+	// 3. 비행 이펙트 다시 부착
+	if (FlightEffect)
+	{
+		if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
+		{
+			UNiagaraComponent* NiagaraComp = Pool->SpawnNiagaraFromPool(FlightEffect, InLocation, InRotation);
+			if (NiagaraComp)
+			{
+				NiagaraComp->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+			}
+		}
+	}
+}
+
+void AHProjectile::OnLifeSpanExpired()
+{
+	if (!bIsActive) return;
+
+	// 수명이 다하면 풀에 반납
+	if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
+	{
+		bIsActive = false;
+		Pool->ReturnToPool(this);
+	}
+	else
+	{
+		Destroy(); // 매니저를 못 찾으면 파괴
+	}
+}
+
 void AHProjectile::OnHit(UPrimitiveComponent* InHitComp, AActor* InOtherActor, UPrimitiveComponent* InOtherComp, FVector InNormalImpulse, const FHitResult& InHit)
 {
-	if ((InOtherActor != nullptr) && (InOtherActor != this) && (InOtherComp != nullptr))
+	if (bIsActive && (InOtherActor != nullptr) && (InOtherActor != this) && (InOtherComp != nullptr))
 	{
 		Explode();
 	}
@@ -60,7 +113,7 @@ void AHProjectile::OnHit(UPrimitiveComponent* InHitComp, AActor* InOtherActor, U
 
 void AHProjectile::OnOverlap(UPrimitiveComponent* InOverlappedComponent, AActor* InOtherActor, UPrimitiveComponent* InOtherComp, int32 InOtherBodyIndex, bool bInFromSweep, const FHitResult& InSweepResult)
 {
-	if ((InOtherActor != nullptr) && (InOtherActor != this) && (InOtherComp != nullptr))
+	if (bIsActive && (InOtherActor != nullptr) && (InOtherActor != this) && (InOtherComp != nullptr))
 	{
 		// 아군 체크
 		if (AHBaseCharacter* TargetCharacter = Cast<AHBaseCharacter>(InOtherActor))
@@ -78,30 +131,40 @@ void AHProjectile::OnOverlap(UPrimitiveComponent* InOverlappedComponent, AActor*
 
 void AHProjectile::Explode()
 {
-	// 1. 시각 효과 재생 및 크기 조절
-	if (ExplosionEffect)
+	if (!bIsActive) return;
+	bIsActive = false;
+
+	// 타이머 해제
+	GetWorld()->GetTimerManager().ClearTimer(LifeSpanTimerHandle);
+
+	if (ProjectileMovement)
 	{
-		if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
+		ProjectileMovement->Deactivate();
+	}
+
+	UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>();
+
+	// 1. 시각 효과 재생 및 크기 조절
+	if (ExplosionEffect && Pool)
+	{
+		UNiagaraComponent* NiagaraComp = Pool->SpawnNiagaraFromPool(ExplosionEffect, GetActorLocation(), GetActorRotation());
+		if (NiagaraComp)
 		{
-			UNiagaraComponent* NiagaraComp = Pool->SpawnNiagaraFromPool(ExplosionEffect, GetActorLocation(), GetActorRotation());
-			if (NiagaraComp)
+			// 에셋의 기본 반지름을 100.0f라고 가정하여 스케일 계산
+			float EffectScale = ExplosionRadius / 10.0f;
+			
+			// 소유자 액터(ANiagaraActor)의 스케일을 조절하여 전체 크기 변경
+			if (AActor* NiagaraOwner = NiagaraComp->GetOwner())
 			{
-				// 에셋의 기본 반지름을 100.0f라고 가정하여 스케일 계산
-				float EffectScale = ExplosionRadius / 10.0f;
-				
-				// 소유자 액터(ANiagaraActor)의 스케일을 조절하여 전체 크기 변경
-				if (AActor* NiagaraOwner = NiagaraComp->GetOwner())
-				{
-					NiagaraOwner->SetActorScale3D(FVector(EffectScale));
-				}
-
-				// 컴포넌트 자체의 스케일도 설정 (안전장치)
-				NiagaraComp->SetWorldScale3D(FVector(EffectScale));
-
-				// 나이아가라 시스템 내부 변수 제어 시도 (에셋에 따라 작동 여부가 다름)
-				NiagaraComp->SetFloatParameter(TEXT("User.Scale"), EffectScale);
-				NiagaraComp->SetFloatParameter(TEXT("User.Radius"), ExplosionRadius);
+				NiagaraOwner->SetActorScale3D(FVector(EffectScale));
 			}
+
+			// 컴포넌트 자체의 스케일도 설정 (안전장치)
+			NiagaraComp->SetWorldScale3D(FVector(EffectScale));
+
+			// 나이아가라 시스템 내부 변수 제어 시도 (에셋에 따라 작동 여부가 다름)
+			NiagaraComp->SetFloatParameter(TEXT("User.Scale"), EffectScale);
+			NiagaraComp->SetFloatParameter(TEXT("User.Radius"), ExplosionRadius);
 		}
 	}
 
@@ -110,16 +173,14 @@ void AHProjectile::Explode()
 	FVector ExplodeLocation = GetActorLocation();
 	FCollisionShape SphereShape = FCollisionShape::MakeSphere(ExplosionRadius);
 
-	// 대상 필터링을 위한 콜리전 쿼리 설정
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this);
 	QueryParams.AddIgnoredActor(GetInstigator());
 
-	// 범위 내의 모든 대상을 검출 (Pawn 채널 기준)
 	bool bHasHit = GetWorld()->SweepMultiByChannel(
 		OutHits,
 		ExplodeLocation,
-		ExplodeLocation + FVector(0.1f, 0.f, 0.f), // 아주 미세한 이동으로 Sweep 수행
+		ExplodeLocation + FVector(0.1f, 0.f, 0.f),
 		FQuat::Identity,
 		ECC_Pawn,
 		SphereShape,
@@ -134,7 +195,6 @@ void AHProjectile::Explode()
 			AActor* HitActor = Hit.GetActor();
 			if (HitActor && !DamagedActors.Contains(HitActor))
 			{
-				// 아군 여부 재확인 (OnOverlap과 동일 로직)
 				if (AHBaseCharacter* TargetCharacter = Cast<AHBaseCharacter>(HitActor))
 				{
 					if (TargetCharacter->GetUnitProfileData() && TargetCharacter->GetUnitProfileData()->UnitType == OwningUnitType)
@@ -143,7 +203,6 @@ void AHProjectile::Explode()
 					}
 				}
 
-				// 데미지 적용
 				if (DamageEffectClass)
 				{
 					if (UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(HitActor))
@@ -156,18 +215,14 @@ void AHProjectile::Explode()
 							FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(DamageEffectClass, 1.0f, ContextHandle);
 							if (SpecHandle.IsValid())
 							{
-								// 치명타 여부 판별 (데미지 배율 적용은 GE의 ExecutionCalculation에서 담당함)
 								if (AHBaseCharacter* SourceCharacter = Cast<AHBaseCharacter>(GetInstigator()))
 								{
 									const float CritChance = SourceCharacter->GetCriticalRate();
 									if (FMath::FRandRange(0.0f, 100.0f) <= CritChance)
 									{
-										// 치명타 정보를 태그로 심어서 전달 (GameplayCue 및 ExecutionCalculation에서 인식 가능)
 										SpecHandle.Data->DynamicAssetTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical")));
 									}
 								}
-
-								// 최종 데미지 적용 (ExecutionCalculation이 설정된 GE를 적용)
 								SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 							}
 						}
@@ -175,7 +230,6 @@ void AHProjectile::Explode()
 				}
 				else
 				{
-					// 예외 처리: 이펙트 클래스가 없는 경우 기존 방식(TakeDamage)을 폴백으로 유지하거나 로그 출력
 					FDamageEvent DamageEvent;
 					HitActor->TakeDamage(DamageAmount, DamageEvent, GetInstigatorController(), this);
 				}
@@ -184,6 +238,13 @@ void AHProjectile::Explode()
 		}
 	}
 
-	// 3. 투사체 파괴
-	Destroy();
+	// 3. 투사체 파괴 대신 풀에 반납
+	if (Pool)
+	{
+		Pool->ReturnToPool(this);
+	}
+	else
+	{
+		Destroy();
+	}
 }

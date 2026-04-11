@@ -5,6 +5,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Skill/HGemInventoryComponent.h"
 #include "Unit/Player/HPlayerCharacter.h"
+#include "Mode/MyHackSlashGameMode.h"
 
 UHEquipmentComponent::UHEquipmentComponent()
 {
@@ -44,14 +45,21 @@ bool UHEquipmentComponent::EquipGem(int32 InSlotIndex, UHMainGem* InGem)
 	// 3. 새로운 젬 장착
 	EquippedMainGems[InSlotIndex] = InGem;
 
-	// GAS 연동: Ability 부여
-	if (ASC && InGem->GetGemData().SkillAbilityClass)
+	if (AMyHackSlashGameMode* GameMode = Cast<AMyHackSlashGameMode>(GetWorld()->GetAuthGameMode()))
 	{
-		FGameplayAbilitySpec Spec(InGem->GetGemData().SkillAbilityClass);
-		// 슬롯 인덱스 0은 InputID 1 (기본 공격), 1은 InputID 2 ...
-		Spec.InputID = InSlotIndex + 1; 
-		
-		EquippedAbilityHandles.Add(InSlotIndex, ASC->GiveAbility(Spec));
+		if (UHGemDataAsset* GemCollection = GameMode->GetGemCollectionDataAsset())
+		{
+			// GAS 연동: Ability 부여
+			TSubclassOf<UGameplayAbility> FindAbility = GemCollection->FindAbilityClassByTagName(InGem->GetGemData().AbilityTagName);
+			if (ASC && FindAbility)
+			{
+				FGameplayAbilitySpec Spec(FindAbility);
+				// 슬롯 인덱스 0은 InputID 1 (기본 공격), 1은 InputID 2 ...
+				Spec.InputID = InSlotIndex + 1;
+
+				EquippedAbilityHandles.Add(InSlotIndex, ASC->GiveAbility(Spec));
+			}
+		}
 	}
 
 	OnEquipmentChanged.Broadcast();

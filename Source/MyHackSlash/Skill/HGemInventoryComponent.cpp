@@ -91,7 +91,7 @@ void UHGemInventoryComponent::CheckAndUpgradeGems()
 	{
 		bHasUpgraded = false;
 
-		// 1. GemID별로 현재 보유 중인 모든 인스턴스(인벤토리 + 장착) 리스트 작성
+		// 1. GemID와 Tier별로 현재 보유 중인 모든 인스턴스(인벤토리 + 장착) 리스트 작성
 		TMap<FName, TArray<UHGemBase*>> GemGroups;
 		
 		// 인벤토리 젬 추가
@@ -99,7 +99,10 @@ void UHGemInventoryComponent::CheckAndUpgradeGems()
 		{
 			if (Gem)
 			{
-				GemGroups.FindOrAdd(Gem->GetGemData().GemID).Add(Gem);
+				const FHGemData& Data = Gem->GetGemData();
+				// 동일한 GemID와 Tier를 가진 젬끼리 묶기 위해 FullID를 생성하여 키로 사용합니다.
+				FName FullID = FName(*FString::Printf(TEXT("%s_T%d"), *Data.GemID.ToString(), Data.Tier));
+				GemGroups.FindOrAdd(FullID).Add(Gem);
 			}
 		}
 
@@ -111,7 +114,9 @@ void UHGemInventoryComponent::CheckAndUpgradeGems()
 			{
 				if (UHMainGem* EquippedGem = EquipComp->GetEquippedGem(i))
 				{
-					GemGroups.FindOrAdd(EquippedGem->GetGemData().GemID).Add(EquippedGem);
+					const FHGemData& Data = EquippedGem->GetGemData();
+					FName FullID = FName(*FString::Printf(TEXT("%s_T%d"), *Data.GemID.ToString(), Data.Tier));
+					GemGroups.FindOrAdd(FullID).Add(EquippedGem);
 					EquippedSlotMap.Add(EquippedGem, i);
 				}
 			}
@@ -120,18 +125,17 @@ void UHGemInventoryComponent::CheckAndUpgradeGems()
 		// 2. 그룹별로 3개 이상인지 체크
 		for (auto& Pair : GemGroups)
 		{
-			const FName CurrentGemID = Pair.Key;
 			TArray<UHGemBase*>& Group = Pair.Value;
 
 			if (Group.Num() >= 3)
 			{
 				const FHGemData& CurrentData = Group[0]->GetGemData();
-				if (CurrentData.NextTierGemID != NAME_None)
+				FHGemData NextTierData;
+				
+				// NextTierGemID 대신 FindNextTierGemData를 사용하여 다음 티어 데이터가 있는지 확인합니다.
+				if (GemCollection->FindNextTierGemData(CurrentData, NextTierData))
 				{
-					FHGemData NextTierData;
-					if (GemCollection->FindGemData(CurrentData.NextTierGemID, NextTierData))
-					{
-						// --- 업그레이드 실행 ---
+					// --- 업그레이드 실행 ---
 						
 						// 장착된 젬이 그룹에 포함되어 있는지 확인 (우선순위)
 						UHGemBase* EquippedGemToUpgrade = nullptr;
@@ -201,7 +205,6 @@ void UHGemInventoryComponent::CheckAndUpgradeGems()
 					}
 				}
 			}
-		}
 
 	} while (bHasUpgraded);
 }
