@@ -92,6 +92,44 @@ void AHPlayerCharacter::BindAttributeCallbacks()
 		// 몬스터 처치 이벤트 바인딩
 		AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(FGameplayTag::RequestGameplayTag(TEXT("Event.Character.MonsterKilled")))
 			.AddUObject(this, &AHPlayerCharacter::OnMonsterKilled);
+
+		// 보상 젬 획득 이벤트 바인딩
+		AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(FGameplayTag::RequestGameplayTag(TEXT("Event.Character.Reward.GetGem")))
+			.AddUObject(this, &AHPlayerCharacter::OnGemRewardReceived);
+	}
+}
+
+void AHPlayerCharacter::OnGemRewardReceived(const FGameplayEventData* Payload)
+{
+	if (!Payload || !GemInventoryComponent) return;
+
+	const UHGemDataAsset* GemCollection = Cast<UHGemDataAsset>(Payload->OptionalObject);
+	if (!GemCollection) return;
+
+	// 태그에서 GemID 추출 (Data.GemID.XXX 형태)
+	FName GemID = NAME_None;
+	for (const FGameplayTag& Tag : Payload->InstigatorTags)
+	{
+		FString TagString = Tag.ToString();
+		if (TagString.StartsWith(TEXT("Data.GemID.")))
+		{
+			GemID = FName(*TagString.RightChop(11));
+			break;
+		}
+	}
+
+	if (GemID != NAME_None)
+	{
+		FHGemData FoundData;
+		if (GemCollection->FindGemData(GemID, FoundData))
+		{
+			const int32 Count = FMath::Max(1, static_cast<int32>(Payload->EventMagnitude));
+			for (int32 i = 0; i < Count; ++i)
+			{
+				GemInventoryComponent->AddGem(FoundData);
+			}
+			UE_LOG(LogTemp, Log, TEXT("Player received %d Gem(s) (%s) via GameplayEvent."), Count, *GemID.ToString());
+		}
 	}
 }
 
@@ -108,15 +146,7 @@ void AHPlayerCharacter::OnExpAttributeChanged(const FOnAttributeChangeData& Data
 {
 	if (AttributeSet)
 	{
-		// Level Attribute가 변경된 경우 레벨업 처리 체크
-		if (Data.Attribute == UHCharacterAttributeSet::GetLevelAttribute())
-		{
-			if (Data.NewValue > Data.OldValue)
-			{
-				OnLevelUp();
-			}
-		}
-
+		// UI 업데이트를 위한 델리게이트 브로드캐스트
 		OnExpChanged.Broadcast(GetLevel(), AttributeSet->GetExperience(), AttributeSet->GetMaxExperience());
 	}
 }
@@ -173,36 +203,6 @@ float AHPlayerCharacter::GetMaxExp() const
 		return AttributeSet->GetMaxExperience();
 	}
 	return 0.0f;
-}
-
-void AHPlayerCharacter::OnLevelUp()
-{
-	if (AttributeSet)
-	{
-		const int32 NewLevel = GetLevel();
-		
-		// 레벨업 시 스탯 재초기화 (새로운 MaxExp 등 적용)
-		InitializeStat(NewLevel);
-		
-		// 레벨업 시 체력을 충전한다. (이것도 나중에는 GE_Heal 등으로 전환 가능)
-		AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
-
-		OnHPChanged.Broadcast(AttributeSet->GetHealth(), AttributeSet->GetMaxHealth());
-		OnExpChanged.Broadcast(NewLevel, AttributeSet->GetExperience(), AttributeSet->GetMaxExperience());
-
-		UE_LOG(LogTemp, Warning, TEXT("Player LEVELED UP! Now Level %d"), NewLevel);
-
-		if (UHSoundManager* SoundManager = GetWorld()->GetSubsystem<UHSoundManager>())
-		{
-			SoundManager->PlaySFXByKey(TEXT("LevelUpSound"), GetActorLocation(), 1.0, true);
-		}
-
-		// 팝업 띄우기 (UI 시스템 연동)
-		if (UHUIManager* UIManager = GetGameInstance()->GetSubsystem<UHUIManager>())
-		{
-			UIManager->ShowWidgetByName(TEXT("SelectAbilityPopupUI"));
-		}
-	}
 }
 
 void AHPlayerCharacter::SetDead()

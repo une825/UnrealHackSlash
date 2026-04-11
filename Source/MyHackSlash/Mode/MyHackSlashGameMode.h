@@ -55,6 +55,10 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Select Ability")
 	TObjectPtr<UHGemDataAsset> GemCollectionDataAsset;
 
+	/** @brief 골드 지급용 GameplayEffect 클래스 */
+	UPROPERTY(EditAnywhere, Category = "Select Ability")
+	TSubclassOf<class UGameplayEffect> AddGoldEffectClass;
+
 	// --- Infinite Map Settings ---
 	UPROPERTY(EditAnywhere, Category = "Map")
 	TObjectPtr<class UHMapConfigDataAsset> MapConfig;

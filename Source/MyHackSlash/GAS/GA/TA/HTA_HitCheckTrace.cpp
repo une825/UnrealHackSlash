@@ -1,6 +1,6 @@
 // Source/MyHackSlash/GA/TA/HTA_HitCheckTrace.cpp
 
-#include "GA/TA/HTA_HitCheckTrace.h"
+#include "GAS/GA/TA/HTA_HitCheckTrace.h"
 #include "Abilities/GameplayAbility.h"
 #include "GameFramework/Character.h"
 #include "Components/CapsuleComponent.h"

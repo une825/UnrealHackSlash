@@ -16,13 +16,14 @@ class MYHACKSLASH_API UHSelectAbilityManager : public UGameInstanceSubsystem
 
 public:
 	/**
-	 * @brief 시스템 초기화를 위해 확률 데이터 에셋과 보상 테이블을 설정합니다.
+	 * @brief 시스템 초기화를 위해 필요한 데이터와 클래스들을 설정합니다.
 	 * @param InGradeDataAsset 등급별 확률 데이터 에셋
 	 * @param InRewardTable 보상 옵션 데이터 테이블
 	 * @param InGemCollection 젬 데이터 컬렉션 에셋
+	 * @param InAddGoldEffectClass 골드 지급용 GameplayEffect 클래스
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Select Ability")
-	void InitializeManager(UHSelectAbilityGradeDataAsset* InGradeDataAsset, UDataTable* InRewardTable, UHGemDataAsset* InGemCollection);
+	void InitializeManager(UHSelectAbilityGradeDataAsset* InGradeDataAsset, UDataTable* InRewardTable, UHGemDataAsset* InGemCollection, TSubclassOf<class UGameplayEffect> InAddGoldEffectClass);
 
 	/**
 	 * @brief 무작위로 3개의 보상 선택지를 생성합니다.
@@ -58,6 +59,10 @@ public:
 protected:
 	/** @brief 확률 기반으로 이번 팝업의 등급을 결정합니다. */
 	EHAbilityGrade RollGrade() const;
+
+	/** @brief 골드 보상을 지급하기 위한 GameplayEffect 클래스 */
+	UPROPERTY(EditAnywhere, Category = "Select Ability")
+	TSubclassOf<class UGameplayEffect> AddGoldEffectClass;
 
 private:
 	/** @brief 최대 새로고침 가능 횟수 */

@@ -1,4 +1,4 @@
-#include "GA/HGA_FireBall.h"
+#include "GAS/GA/HGA_FireBall.h"
 #include "Unit/HBaseCharacter.h"
 #include "DataAsset/HUnitProfileData.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"

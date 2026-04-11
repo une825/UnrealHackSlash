@@ -56,6 +56,26 @@ void UHSoundManager::PlaySFXByKey(FName InKey, FVector InLocation, float InVolum
 	}
 }
 
+void UHSoundManager::PlaySFX(FGameplayTag InTag, FVector InLocation, float InVolumeMultiplier, bool bIsUI)
+{
+	if (!SoundConfig) return;
+
+	if (USoundBase* SFX = SoundConfig->GetSound(InTag))
+	{
+		if (bIsUI)
+		{
+			if (UAudioComponent* AudioComp = UGameplayStatics::SpawnSoundAtLocation(this, SFX, InLocation, FRotator::ZeroRotator, InVolumeMultiplier))
+			{
+				AudioComp->SetUISound(true);
+			}
+		}
+		else
+		{
+			PlaySoundAtLocationThrottled(SFX, InLocation, InVolumeMultiplier);
+		}
+	}
+}
+
 void UHSoundManager::PlayBGM(USoundBase* InBGM, float InFadeInTime, float InFadeOutTime, bool bIsUI)
 {
 	if (!InBGM) return;
@@ -88,6 +108,16 @@ void UHSoundManager::PlayBGMByKey(FName InKey, float InFadeInTime, float InFadeO
 	if (!SoundConfig) return;
 
 	if (USoundBase* BGM = SoundConfig->GetBGM(InKey))
+	{
+		PlayBGM(BGM, InFadeInTime, InFadeOutTime, bIsUI);
+	}
+}
+
+void UHSoundManager::PlayBGMByTag(FGameplayTag InTag, float InFadeInTime, float InFadeOutTime, bool bIsUI)
+{
+	if (!SoundConfig) return;
+
+	if (USoundBase* BGM = SoundConfig->GetSound(InTag))
 	{
 		PlayBGM(BGM, InFadeInTime, InFadeOutTime, bIsUI);
 	}

@@ -97,13 +97,25 @@ void UHCharacterAttributeSet::PostAttributeChange(const FGameplayAttribute& Attr
 
 		if (MaxExp > 0.0f && CurrentExp >= MaxExp)
 		{
-			// 레벨업 조건 충족 (경험치 이월 및 레벨 증가)
 			float RemainingExp = CurrentExp - MaxExp;
-			
-			// 캐릭터 클래스를 직접 호출하는 대신 어트리뷰트 값만 변경합니다.
-			// 캐릭터는 이 변화를 스스로 감지하여 필요한 로직(OnLevelUp 등)을 수행합니다.
 			SetExperience(RemainingExp);
 			SetLevel(GetLevel() + 1.0f);
+		}
+	}
+	else if (Attribute == GetLevelAttribute())
+	{
+		if (NewValue > OldValue)
+		{
+			// 레벨업 이벤트 전송
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				FGameplayEventData Payload;
+				Payload.Instigator = ASC->GetAvatarActor();
+				Payload.EventTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Character.LevelUp"));
+				Payload.EventMagnitude = NewValue; // 새 레벨 전달
+
+				ASC->HandleGameplayEvent(Payload.EventTag, &Payload);
+			}
 		}
 	}
 }

@@ -156,25 +156,18 @@ void AHProjectile::Explode()
 							FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(DamageEffectClass, 1.0f, ContextHandle);
 							if (SpecHandle.IsValid())
 							{
-								// 치명타 계산 포함 최종 데미지 산출
-								bool bIsCritical = false;
-								float FinalDamage = DamageAmount;
-								
+								// 치명타 여부 판별 (데미지 배율 적용은 GE의 ExecutionCalculation에서 담당함)
 								if (AHBaseCharacter* SourceCharacter = Cast<AHBaseCharacter>(GetInstigator()))
 								{
-									FinalDamage = SourceCharacter->CalculateActualDamage(FinalDamage, FDamageEvent(), SourceCharacter->GetController(), SourceCharacter, bIsCritical);
-									
-									// 치명타 정보를 태그로 심어서 전달 (GameplayCue에서 인식 가능)
-									if (bIsCritical)
+									const float CritChance = SourceCharacter->GetCriticalRate();
+									if (FMath::FRandRange(0.0f, 100.0f) <= CritChance)
 									{
+										// 치명타 정보를 태그로 심어서 전달 (GameplayCue 및 ExecutionCalculation에서 인식 가능)
 										SpecHandle.Data->DynamicAssetTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical")));
 									}
 								}
 
-								// 아까 세팅한 GameplayTag "Data.Damage"를 사용하여 데미지 전달
-								FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(TEXT("Data.Damage"));
-								SpecHandle.Data->SetSetByCallerMagnitude(DamageTag, FinalDamage);
-
+								// 최종 데미지 적용 (ExecutionCalculation이 설정된 GE를 적용)
 								SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 							}
 						}

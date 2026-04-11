@@ -7,11 +7,12 @@
 #include "AbilitySystemInterface.h"
 #include <Unit/Player/HPlayerState.h>
 
-void UHSelectAbilityManager::InitializeManager(UHSelectAbilityGradeDataAsset* InGradeDataAsset, UDataTable* InRewardTable, UHGemDataAsset* InGemCollection)
+void UHSelectAbilityManager::InitializeManager(UHSelectAbilityGradeDataAsset* InGradeDataAsset, UDataTable* InRewardTable, UHGemDataAsset* InGemCollection, TSubclassOf<class UGameplayEffect> InAddGoldEffectClass)
 {
 	GradeDataAsset = InGradeDataAsset;
 	RewardDataTable = InRewardTable;
 	GemCollection = InGemCollection;
+	AddGoldEffectClass = InAddGoldEffectClass;
 
 	// 매니저 초기화 시 횟수 초기화
 	ResetRefreshCount();
@@ -75,50 +76,89 @@ void UHSelectAbilityManager::ExecuteReward(const FHRewardOptionData& InSelectedO
 	UE_LOG(LogTemp, Log, TEXT("Executing Reward: %s (Type: %d, ID: %s, Amount: %d)"), 
 		*InSelectedOption.Description.ToString(), (int32)InSelectedOption.RewardType, *InSelectedOption.TargetID.ToString(), InSelectedOption.Amount);
 
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	IAbilitySystemInterface* ASCInterface = Cast<IAbilitySystemInterface>(PlayerPawn);
+	if (!ASCInterface)
+	{
+		// 플레이어 스테이트에서도 확인
+		if (APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
+		{
+			ASCInterface = Cast<IAbilitySystemInterface>(PC->GetPlayerState<AHPlayerState>());
+		}
+	}
+
+	UAbilitySystemComponent* TargetASC = ASCInterface ? ASCInterface->GetAbilitySystemComponent() : nullptr;
+	if (!TargetASC)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UHSelectAbilityManager: Could not find Target ASC for reward execution!"));
+		return;
+	}
+
 	switch (InSelectedOption.RewardType)
 	{
 	case EHRewardType::GetSkillGem:
 	{
-		// 1. 젬 컬렉션에서 데이터 찾기
-		if (GemCollection)
+		// 젬 지급 이벤트를 전송합니다.
+		FGameplayEventData Payload;
+		Payload.EventTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Character.Reward.GetGem"));
+		Payload.OptionalObject = GemCollection; // 컬렉션 전달
+		Payload.Instigator = PlayerPawn;
+		Payload.Target = PlayerPawn;
+		Payload.EventMagnitude = static_cast<float>(InSelectedOption.Amount);
+		Payload.TargetData.Add(new FGameplayAbilityTargetData_ActorArray()); // 빈 타겟 데이터라도 추가 (안전용)
+		
+		// TargetID(젬 ID)를 컨텍스트나 다른 필드에 담아 보내야 하는데, 
+		// 여기서는 간단히 Payload의 OptionalObject2 등을 활용하거나 
+		// 특정 명명 규칙을 가진 태그를 추가하여 보낼 수 있습니다.
+		// 일단 가장 범용적인 HandleGameplayEvent를 사용합니다.
+		
+		// 젬 ID를 식별하기 위해 데이터 에셋의 정보를 Payload의 InstigatorTags 등에 임시로 담을 수도 있습니다.
+		if (InSelectedOption.TargetID.IsNone())
 		{
-			FHGemData FoundData;
-			if (GemCollection->FindGemData(InSelectedOption.TargetID, FoundData))
-			{
-				// 2. 플레이어 캐릭터로부터 젬 인벤토리 컴포넌트 가져오기
-				APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
-				if (PlayerPawn)
-				{
-					UHGemInventoryComponent* GemInventory = PlayerPawn->FindComponentByClass<UHGemInventoryComponent>();
-					if (GemInventory)
-					{
-						// 3. Amount 만큼 반복하여 인벤토리에 젬 추가
-						const int32 ActualGrantCount = FMath::Max(1, InSelectedOption.Amount);
-						for (int32 i = 0; i < ActualGrantCount; ++i)
-						{
-							GemInventory->AddGem(FoundData);
-						}
-						UE_LOG(LogTemp, Log, TEXT("%d Gem(s) (%s) added to inventory via UHGemInventoryComponent"), ActualGrantCount, *FoundData.GemName.ToString());
-					}
-				}
-			}
-			else
-			{
-				UE_LOG(LogTemp, Error, TEXT("UHSelectAbilityManager: GemID %s not found in GemCollection!"), *InSelectedOption.TargetID.ToString());
-			}
+			UE_LOG(LogTemp, Error, TEXT("UHSelectAbilityManager: TargetID is NONE for GetSkillGem reward!"));
+			break;
 		}
+
+		FString TagString = FString::Printf(TEXT("Data.GemID.%s"), *InSelectedOption.TargetID.ToString());
+		FGameplayTag GemIDTag = FGameplayTag::RequestGameplayTag(FName(*TagString), false);
+		
+		if (GemIDTag.IsValid())
+		{
+			Payload.InstigatorTags.AddTag(GemIDTag);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UHSelectAbilityManager: Could not find or create GameplayTag for %s. Ensure it is defined in DefaultGameplayTags.ini"), *TagString);
+			// 태그가 없더라도 ID 정보를 전달하기 위해 Name을 직접 활용하는 방안이나, 
+			// 최소한 부모 태그라도 넣어줄 수 있습니다.
+			Payload.InstigatorTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Data.GemID")));
+		}
+
+		TargetASC->HandleGameplayEvent(Payload.EventTag, &Payload);
+		UE_LOG(LogTemp, Log, TEXT("Reward Event Sent: GetGem (%s)"), *InSelectedOption.TargetID.ToString());
 		break;
 	}
 
 	case EHRewardType::GetGold:
 	{
-		// 플레이어 스테이트를 찾아 골드 추가
-		if (APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
+		if (AddGoldEffectClass)
 		{
-			if (AHPlayerState* PS = PC->GetPlayerState<AHPlayerState>())
+			FGameplayEffectContextHandle Context = TargetASC->MakeEffectContext();
+			FGameplayEffectSpecHandle SpecHandle = TargetASC->MakeOutgoingSpec(AddGoldEffectClass, 1.0f, Context);
+			if (SpecHandle.IsValid())
+			{
+				SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(TEXT("Data.Gold")), static_cast<float>(InSelectedOption.Amount));
+				TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				UE_LOG(LogTemp, Log, TEXT("Reward Executed via GAS: Added %d Gold."), InSelectedOption.Amount);
+			}
+		}
+		else
+		{
+			// 폴백: 클래스가 지정되지 않은 경우 기존 방식 유지 (또는 경고)
+			if (AHPlayerState* PS = Cast<AHPlayerState>(TargetASC->GetOwnerActor()))
 			{
 				PS->AddGold(InSelectedOption.Amount);
-				UE_LOG(LogTemp, Log, TEXT("Reward Executed: Added %d Gold. Total: %d"), InSelectedOption.Amount, PS->GetCurrentGold());
+				UE_LOG(LogTemp, Warning, TEXT("AddGoldEffectClass is NULL. Falling back to direct call."));
 			}
 		}
 		break;

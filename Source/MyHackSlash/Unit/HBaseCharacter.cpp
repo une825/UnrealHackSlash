@@ -137,16 +137,13 @@ float AHBaseCharacter::GetMovementSpeed() const
 
 void AHBaseCharacter::InitializeStat(int32 InNewLevel)
 {
-	if (AttributeSet)
-	{
-		AttributeSet->SetLevel(static_cast<float>(InNewLevel));
-	}
-
 	if (AbilitySystemComponent && InitStatEffect)
 	{
 		FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
 		EffectContext.AddInstigator(this, this);
 
+		// GE의 Level 파라미터로 InNewLevel을 넘깁니다. 
+		// GE 내부에서 이 Level 값을 기반으로 DataTable의 스탯을 참조하게 됩니다.
 		FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(InitStatEffect, static_cast<float>(InNewLevel), EffectContext);
 		if (SpecHandle.IsValid())
 		{
@@ -254,39 +251,6 @@ float AHBaseCharacter::TakeDamage(float InDamageAmount, FDamageEvent const& InDa
 {
 	if (IsDead) return 0.0f;
 	return Super::TakeDamage(InDamageAmount, InDamageEvent, InEventInstigator, InDamageCauser);
-}
-
-float AHBaseCharacter::CalculateActualDamage(float InDamageAmount, FDamageEvent const& InDamageEvent, AController* InEventInstigator, AActor* InDamageCauser, bool& OutIsCritical)
-{
-	float CalculatedDamage = InDamageAmount;
-	OutIsCritical = false;
-
-	AHBaseCharacter* Attacker = nullptr;
-	if (InEventInstigator)
-	{
-		Attacker = Cast<AHBaseCharacter>(InEventInstigator->GetPawn());
-	}
-	else if (InDamageCauser)
-	{
-		Attacker = Cast<AHBaseCharacter>(InDamageCauser->GetOwner());
-		if (!Attacker) Attacker = Cast<AHBaseCharacter>(InDamageCauser);
-	}
-
-	if (Attacker && Attacker->GetAbilitySystemComponent())
-	{
-		const UHCharacterAttributeSet* AttackerAttribute = Attacker->GetAbilitySystemComponent()->GetSet<UHCharacterAttributeSet>();
-		if (AttackerAttribute)
-		{
-			float CritChance = AttackerAttribute->GetCriticalRate();
-			if (FMath::FRandRange(0.0f, 100.0f) <= CritChance)
-			{
-				OutIsCritical = true;
-				CalculatedDamage *= AttackerAttribute->GetCriticalMultiplier();
-			}
-		}
-	}
-
-	return CalculatedDamage;
 }
 
 void AHBaseCharacter::ShowDamageText(float InActualDamage, bool bInIsCritical, AActor* InDamageCauser)

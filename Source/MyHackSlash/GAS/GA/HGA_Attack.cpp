@@ -1,4 +1,4 @@
-#include "GA/HGA_Attack.h"
+#include "GAS/GA/HGA_Attack.h"
 #include "Unit/HBaseCharacter.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "AbilitySystemComponent.h"

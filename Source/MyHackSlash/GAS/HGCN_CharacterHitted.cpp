@@ -1,4 +1,4 @@
-#include "System/HGCN_CharacterHitted.h"
+#include "GAS/HGCN_CharacterHitted.h"
 #include "Unit/HBaseCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"

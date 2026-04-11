@@ -1,9 +1,9 @@
 // Source/MyHackSlash/GA/AT/HAT_HitCheckTrace.cpp
 
-#include "GA/AT/HAT_HitCheckTrace.h"
+#include "GAS/GA/AT/HAT_HitCheckTrace.h"
 #include "AbilitySystemComponent.h"
 #include "Engine/World.h"
-#include <GA/TA/HTA_HitCheckTrace.h>
+#include <GAS/GA/TA/HTA_HitCheckTrace.h>
 
 UHAT_HitCheckTrace::UHAT_HitCheckTrace()
 {

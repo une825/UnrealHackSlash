@@ -34,9 +34,6 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Stat")
 	FOnExpChanged OnExpChanged;
 
-	// 레벨업 시 호출되는 이벤트
-	void OnLevelUp();
-
 protected:
 	virtual void PostInitializeComponents() override;
 
@@ -81,6 +78,9 @@ protected:
 
 	/** @brief 몬스터 처치 시 발생하는 GameplayEvent를 처리합니다. */
 	virtual void OnMonsterKilled(const FGameplayEventData* Payload);
+
+	/** @brief 보상 젬 획득 GameplayEvent를 처리합니다. */
+	virtual void OnGemRewardReceived(const FGameplayEventData* Payload);
 
 protected:
 	UPROPERTY(EditAnywhere, Category = "GAS")

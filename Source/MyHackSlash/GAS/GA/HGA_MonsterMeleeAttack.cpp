@@ -1,6 +1,6 @@
 // Source/MyHackSlash/GA/HGA_MonsterMeleeAttack.cpp
 
-#include "GA/HGA_MonsterMeleeAttack.h"
+#include "GAS/GA/HGA_MonsterMeleeAttack.h"
 #include "Unit/HBaseCharacter.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "AbilitySystemComponent.h"

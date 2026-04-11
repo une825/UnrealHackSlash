@@ -66,6 +66,8 @@
 *   **Smart Pointers**: `TObjectPtr<T>`를 `UPROPERTY` 변수에 사용하여 포인터 추적을 명확히 합니다.
 *   **Null Checks**: 모든 포인터 사용 전에는 반드시 유효성 검사(`nullptr == Ptr` 또는 `IsValid(Ptr)`)를 수행합니다.
 *   **Const Correctness**: 데이터를 변경하지 않는 함수는 `const`를 붙여 의도를 명확히 합니다.
+*   **GAS Standards**: 
+    *   `UGameplayAbility` 생성자에서 태그 설정 시 `AbilityTags.AddTag()` 대신 **`SetAssetTags()`**를 사용합니다. (향후 버전 호환성 및 경고 방지)
 
 ---
 

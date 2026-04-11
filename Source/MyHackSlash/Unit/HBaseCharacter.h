@@ -51,9 +51,6 @@ public:
 
 	const UHUnitProfileData* GetUnitProfileData() const { return UnitProfileData; }
 
-	/** @brief 최종 데미지를 계산합니다. (치명타 등) */
-	virtual float CalculateActualDamage(float InDamageAmount, FDamageEvent const& InDamageEvent, AController* InEventInstigator, AActor* InDamageCauser, bool& OutIsCritical);
-
 public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	UAnimMontage* GetAttackMontage() const;

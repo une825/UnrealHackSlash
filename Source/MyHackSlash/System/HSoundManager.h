@@ -24,17 +24,25 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "H|Sound")
 	void PlaySoundAtLocationThrottled(USoundBase* InSound, FVector InLocation, float InVolumeMultiplier = 1.0f, float InPitchMultiplier = 1.0f, float InStartTime = 0.0f);
 
-	/** @brief 키값을 이용하여 효과음(SFX)을 재생합니다. */
+	/** @brief 키값을 이용하여 효과음(SFX)을 재생합니다. (레거시) */
 	UFUNCTION(BlueprintCallable, Category = "H|Sound")
 	void PlaySFXByKey(FName InKey, FVector InLocation, float InVolumeMultiplier = 1.0f, bool bIsUI = false);
+
+	/** @brief GameplayTag를 이용하여 효과음(SFX)을 재생합니다. (권장) */
+	UFUNCTION(BlueprintCallable, Category = "H|Sound")
+	void PlaySFX(FGameplayTag InTag, FVector InLocation, float InVolumeMultiplier = 1.0f, bool bIsUI = false);
 
 	/** @brief BGM을 재생합니다. 이미 재생 중인 BGM이 있다면 페이드 아웃 후 교체합니다. */
 	UFUNCTION(BlueprintCallable, Category = "H|Sound")
 	void PlayBGM(USoundBase* InBGM, float InFadeInTime = 1.0f, float InFadeOutTime = 1.0f, bool bIsUI = false);
 
-	/** @brief 키값을 이용하여 BGM을 재생합니다. */
+	/** @brief 키값을 이용하여 BGM을 재생합니다. (레거시) */
 	UFUNCTION(BlueprintCallable, Category = "H|Sound")
 	void PlayBGMByKey(FName InKey, float InFadeInTime = 1.0f, float InFadeOutTime = 1.0f, bool bIsUI = false);
+
+	/** @brief GameplayTag를 이용하여 BGM을 재생합니다. (권장) */
+	UFUNCTION(BlueprintCallable, Category = "H|Sound")
+	void PlayBGMByTag(FGameplayTag InTag, float InFadeInTime = 1.0f, float InFadeOutTime = 1.0f, bool bIsUI = false);
 
 	/** @brief 현재 재생 중인 BGM을 정지합니다. */
 	UFUNCTION(BlueprintCallable, Category = "H|Sound")

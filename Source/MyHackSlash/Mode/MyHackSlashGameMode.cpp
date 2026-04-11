@@ -100,6 +100,6 @@ void AMyHackSlashGameMode::SetSelectAbilityManager()
 {
 	if (UHSelectAbilityManager* SelectAbilityManager = GetGameInstance()->GetSubsystem<UHSelectAbilityManager>())
 	{
-		SelectAbilityManager->InitializeManager(SelectAbilityGradeDataAsset, SelectAbilityRewardTable, GemCollectionDataAsset);
+		SelectAbilityManager->InitializeManager(SelectAbilityGradeDataAsset, SelectAbilityRewardTable, GemCollectionDataAsset, AddGoldEffectClass);
 	}
 }
