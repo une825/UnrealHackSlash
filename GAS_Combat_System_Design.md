@@ -34,15 +34,18 @@
 ### 2.1 Character Attribute Set (`UHCharacterAttributeSet`)
 유닛의 핵심 스탯을 정의하고 GAS와 연동합니다. 각 스탯은 대응하는 **Max** 속성을 통해 상한선이 제한됩니다.
 *   **Health / MaxHealth**: 현재 체력 및 최대 체력
+*   **Hunger / MaxHunger**: 현재 배고픔 및 최대 배고픔 (플레이어 전용)
 *   **AttackDamage / MaxAttackDamage**: 기본 공격력 및 최대 공격력
 *   **AttackRange / MaxAttackRange**: 공격 유효 거리 및 최대 공격 거리
 *   **AttackRadius / MaxAttackRadius**: 공격 반경 및 최대 공격 반경
 *   **AttackSpeedRate / MaxAttackSpeedRate**: 애니메이션 재생 속도 배율 및 최대 배율
 *   **MovementSpeed / MaxMovementSpeed**: 이동 속도 및 최대 이동 속도
 
-### 2.2 Unit Stats (`FUnitStatRow`)
-모든 유닛은 `FUnitStatRow` 구조체(DataTable 기반)를 통해 초기 스탯 데이터를 관리합니다.
-이 데이터는 `UHCharacterAttributeSet`의 초기화 시 사용됩니다.
+### 2.2 Hunger System (배고픔 시스템)
+플레이어의 생존을 위협하는 핵심 기믹으로, 시간에 따라 감소하며 전투를 통해 유지해야 합니다.
+*   **지속 감소**: `GE_Hunger_Decay`를 통해 일정 시간(Period)마다 `Hunger` 어트리뷰트가 감소합니다.
+*   **전투 시 회복**: 몬스터 처치 시 즉각적인(Instant) GE가 적용되어 `Hunger`를 일정량 회복합니다.
+*   **허기 상태 효과**: `Hunger`가 0이 되면 `Character.State.Starving` 태그가 부여되며, 지속적으로 `Health`가 감소하는 디버프가 발생합니다.
 
 ### 2.3 Damage Workflow
 1.  **Hit Detection**: `IHCombatInterface::AttackHitCheck()`에서 `SweepMulti`를 통해 타겟을 감지합니다.
@@ -55,7 +58,7 @@
 
 ### 2.4 Skill Damage Calculation
 *   **UHGA_FireBall**: 스킬 데미지는 본체의 기본 스탯과 어빌리티 고유 데미지를 합산하여 계산합니다.
-    *   `FinalDamage = UHGA_FireBall::ProjectileDamage + FUnitStatRow::AttackDamage`
+    *   `FinalDamage = UHGA_FireBall::ProjectileDamage + UHCharacterAttributeSet::AttackDamage`
     *   이를 통해 캐릭터의 레벨업이나 스탯 변화가 스킬 데미지에 즉각 반영되도록 설계되었습니다.
 
 ---

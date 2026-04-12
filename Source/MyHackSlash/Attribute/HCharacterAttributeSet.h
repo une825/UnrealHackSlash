@@ -56,6 +56,16 @@ public:
 	FGameplayAttributeData MaxHealth;
 	ATTRIBUTE_ACCESSORS(UHCharacterAttributeSet, MaxHealth);
 
+	/** 현재 배고픔 */
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData Hunger;
+	ATTRIBUTE_ACCESSORS(UHCharacterAttributeSet, Hunger);
+
+	/** 최대 배고픔 */
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData MaxHunger;
+	ATTRIBUTE_ACCESSORS(UHCharacterAttributeSet, MaxHunger);
+
 	/** 기본 공격력 */
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
 	FGameplayAttributeData AttackDamage;

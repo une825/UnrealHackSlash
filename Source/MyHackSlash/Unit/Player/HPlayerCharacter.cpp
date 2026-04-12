@@ -150,6 +150,18 @@ void AHPlayerCharacter::OnMonsterKilled(const FGameplayEventData* Payload)
 	{
 		// 이벤트에 담긴 경험치(Magnitude)를 플레이어에게 지급합니다.
 		AddExp(Payload->EventMagnitude);
+
+		// 배고픔 회복 효과 적용
+		if (HungerRestoreEffect && AbilitySystemComponent)
+		{
+			FGameplayEffectContextHandle RestoreContext = AbilitySystemComponent->MakeEffectContext();
+			RestoreContext.AddInstigator(this, this);
+			FGameplayEffectSpecHandle RestoreSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(HungerRestoreEffect, 1.0f, RestoreContext);
+			if (RestoreSpecHandle.IsValid())
+			{
+				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*RestoreSpecHandle.Data.Get());
+			}
+		}
 	}
 }
 
@@ -279,6 +291,18 @@ void AHPlayerCharacter::PossessedBy(AController* NewController)
 				{
 					EquipmentComponent->EquipGem(0, MainGem);
 				}
+			}
+		}
+
+		// 배고픔 지속 감소 효과 적용
+		if (HungerDecayEffect)
+		{
+			FGameplayEffectContextHandle HungerContext = AbilitySystemComponent->MakeEffectContext();
+			HungerContext.AddInstigator(this, this);
+			FGameplayEffectSpecHandle HungerSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(HungerDecayEffect, 1.0f, HungerContext);
+			if (HungerSpecHandle.IsValid())
+			{
+				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*HungerSpecHandle.Data.Get());
 			}
 		}
 	}

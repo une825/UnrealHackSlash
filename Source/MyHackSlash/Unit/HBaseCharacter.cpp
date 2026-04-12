@@ -105,6 +105,24 @@ float AHBaseCharacter::GetMaxHP() const
 	return 0.0f;
 }
 
+float AHBaseCharacter::GetCurrentHunger() const
+{
+	if (AttributeSet)
+	{
+		return AttributeSet->GetHunger();
+	}
+	return 0.0f;
+}
+
+float AHBaseCharacter::GetMaxHunger() const
+{
+	if (AttributeSet)
+	{
+		return AttributeSet->GetMaxHunger();
+	}
+	return 0.0f;
+}
+
 float AHBaseCharacter::GetAttackDamage() const
 {
 	return AttributeSet ? AttributeSet->GetAttackDamage() : 0.0f;
@@ -225,6 +243,13 @@ void AHBaseCharacter::BindAttributeCallbacks()
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UHCharacterAttributeSet::GetMaxHealthAttribute())
 			.AddUObject(this, &AHBaseCharacter::OnHealthAttributeChanged);
 
+		// Hunger Attribute 변경 감지
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UHCharacterAttributeSet::GetHungerAttribute())
+			.AddUObject(this, &AHBaseCharacter::OnHungerAttributeChanged);
+
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UHCharacterAttributeSet::GetMaxHungerAttribute())
+			.AddUObject(this, &AHBaseCharacter::OnHungerAttributeChanged);
+
 		// MovementSpeed 변경 감지
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UHCharacterAttributeSet::GetMovementSpeedAttribute())
 			.AddUObject(this, &AHBaseCharacter::OnMovementSpeedAttributeChanged);
@@ -235,6 +260,12 @@ void AHBaseCharacter::OnHealthAttributeChanged(const FOnAttributeChangeData& Dat
 {
 	// HP 변경 델리게이트 브로드캐스트 (UI 등에서 사용)
 	OnHPChanged.Broadcast(GetCurrentHP(), GetMaxHP());
+}
+
+void AHBaseCharacter::OnHungerAttributeChanged(const FOnAttributeChangeData& Data)
+{
+	// 배고픔 변경 델리게이트 브로드캐스트
+	OnHungerChanged.Broadcast(GetCurrentHunger(), GetMaxHunger());
 }
 
 void AHBaseCharacter::OnMovementSpeedAttributeChanged(const FOnAttributeChangeData& Data)

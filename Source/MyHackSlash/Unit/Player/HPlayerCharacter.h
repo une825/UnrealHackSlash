@@ -60,6 +60,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Effect")
 	TSubclassOf<class UGameplayEffect> GainExpEffect;
 
+	/** 배고픔 지속 감소를 위한 GameplayEffect */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Effect")
+	TSubclassOf<class UGameplayEffect> HungerDecayEffect;
+
+	/** 몬스터 처치 시 배고픔 회복을 위한 GameplayEffect */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Effect")
+	TSubclassOf<class UGameplayEffect> HungerRestoreEffect;
+
 	// 경험치 추가 (GAS 방식)
 	UFUNCTION(BlueprintCallable, Category = "Stat")
 	void AddExp(float InExp);

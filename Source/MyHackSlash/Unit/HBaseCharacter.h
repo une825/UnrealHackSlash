@@ -16,6 +16,7 @@ class UNiagaraSystem;
 class UAudioComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHPChanged, float, CurrentHP, float, MaxHP);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHungerChanged, float, CurrentHunger, float, MaxHunger);
 
 UCLASS()
 class MYHACKSLASH_API AHBaseCharacter : public ACharacter, public IAbilitySystemInterface, public IHCombatInterface
@@ -30,6 +31,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Stat")
 	FOnHPChanged OnHPChanged;
 
+	// 배고픔 변경 시 호출되는 델리게이트
+	UPROPERTY(BlueprintAssignable, Category = "Stat")
+	FOnHungerChanged OnHungerChanged;
+
 public:
 	// 유닛의 스탯을 초기화합니다. 하위 클래스에서 각자의 타입에 맞게 구현합니다.
 	UFUNCTION(BlueprintCallable, Category = "Stat")
@@ -40,6 +45,8 @@ public:
 	int32 GetLevel() const;
 	float GetCurrentHP() const;
 	float GetMaxHP() const;
+	float GetCurrentHunger() const;
+	float GetMaxHunger() const;
 
 	/** @brief GAS Attribute Getters */
 	float GetAttackDamage() const;
@@ -89,6 +96,7 @@ protected:
 
 	/** @brief Attribute 변경 시 호출될 콜백 */
 	virtual void OnHealthAttributeChanged(const FOnAttributeChangeData& Data);
+	virtual void OnHungerAttributeChanged(const FOnAttributeChangeData& Data);
 	virtual void OnMovementSpeedAttributeChanged(const FOnAttributeChangeData& Data);
 
 protected:

@@ -7,6 +7,8 @@ UHCharacterAttributeSet::UHCharacterAttributeSet()
 	, MaxLevel(100.0f)
 	, Health(100.0f)
 	, MaxHealth(100.0f)
+	, Hunger(100.0f)
+	, MaxHunger(100.0f)
 	, AttackDamage(100.0f)
 	, MaxAttackDamage(1000.0f)
 	, AttackRange(150.0f)
@@ -39,6 +41,10 @@ void UHCharacterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attri
 	else if (Attribute == GetHealthAttribute())
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxHealth());
+	}
+	else if (Attribute == GetHungerAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxHunger());
 	}
 	else if (Attribute == GetAttackDamageAttribute())
 	{
@@ -188,5 +194,24 @@ void UHCharacterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMod
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
 		SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
+	}
+	else if (Data.EvaluatedData.Attribute == GetHungerAttribute())
+	{
+		SetHunger(FMath::Clamp(GetHunger(), 0.0f, GetMaxHunger()));
+
+		if (GetHunger() <= 0.0f)
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Character.State.Starving")));
+			}
+		}
+		else
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				ASC->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Character.State.Starving")));
+			}
+		}
 	}
 }
