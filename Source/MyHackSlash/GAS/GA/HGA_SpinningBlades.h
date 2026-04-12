@@ -1,14 +1,13 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Abilities/GameplayAbility.h"
+#include "GAS/GA/HGA_ProjectileBase.h"
 #include "HGA_SpinningBlades.generated.h"
 
 /**
  * @brief 소환자 주변을 도는 칼날들을 생성하는 스킬 어빌리티
  */
 UCLASS()
-class MYHACKSLASH_API UHGA_SpinningBlades : public UGameplayAbility
+class MYHACKSLASH_API UHGA_SpinningBlades : public UHGA_ProjectileBase
 {
 	GENERATED_BODY()
 
@@ -19,21 +18,12 @@ public:
 
 protected:
 	/** @brief 투사체 개별 소환 로직 */
-	void SpawnProjectile(int32 Index, float AngleStep, const FGameplayEffectSpecHandle& DamageSpecHandle);
+	void SpawnSpinningBlade(int32 Index, float AngleStep, const FGameplayEffectSpecHandle& DamageSpecHandle);
+
+	UFUNCTION()
+	void OnDelayFinish();
 
 protected:
-	/** 소환할 투사체 클래스 (BP로 지정) */
-	UPROPERTY(EditAnywhere, Category = "H|SpinningBlades")
-	TSubclassOf<class AHProjectile_SpinningBlade> ProjectileClass;
-
-	/** 적용할 데미지 GE 클래스 */
-	UPROPERTY(EditAnywhere, Category = "H|SpinningBlades")
-	TSubclassOf<class UGameplayEffect> DamageEffectClass;
-
-	/** 칼날 개수 */
-	UPROPERTY(EditAnywhere, Category = "H|SpinningBlades")
-	int32 BladeCount;
-
 	/** 공전 반지름 */
 	UPROPERTY(EditAnywhere, Category = "H|SpinningBlades")
 	float OrbitRadius;

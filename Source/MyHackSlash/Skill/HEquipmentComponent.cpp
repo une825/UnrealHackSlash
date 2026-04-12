@@ -24,13 +24,12 @@ bool UHEquipmentComponent::EquipGem(int32 InSlotIndex, UHMainGem* InGem)
 {
 	if (!EquippedMainGems.IsValidIndex(InSlotIndex) || !InGem) return false;
 
-	// ASC가 유효하지 않으면 다시 시도 (PossessedBy 등 초기화 시점 대응)
+	// ASC가 유효하지 않으면 다시 시도
 	if (nullptr == ASC)
 	{
 		ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner());
 	}
 
-	// 1. 인벤토리에서 먼저 제거 시도 (이미 장착된 젬이 아닐 때만)
 	if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner()))
 	{
 		if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
@@ -39,25 +38,25 @@ bool UHEquipmentComponent::EquipGem(int32 InSlotIndex, UHMainGem* InGem)
 		}
 	}
 
-	// 2. 기존 슬롯 해제 (기존 젬을 인벤토리로 반환)
 	UnequipGem(InSlotIndex);
 
-	// 3. 새로운 젬 장착
 	EquippedMainGems[InSlotIndex] = InGem;
 
 	if (AMyHackSlashGameMode* GameMode = Cast<AMyHackSlashGameMode>(GetWorld()->GetAuthGameMode()))
 	{
 		if (UHGemDataAsset* GemCollection = GameMode->GetGemCollectionDataAsset())
 		{
-			// GAS 연동: Ability 부여
 			TSubclassOf<UGameplayAbility> FindAbility = GemCollection->FindAbilityClassByTagName(InGem->GetGemData().AbilityTagName);
 			if (ASC && FindAbility)
 			{
 				FGameplayAbilitySpec Spec(FindAbility);
-				// 슬롯 인덱스 0은 InputID 1 (기본 공격), 1은 InputID 2 ...
 				Spec.InputID = InSlotIndex + 1;
+				
+				// 핵심: 어빌리티의 소스 오브젝트를 메인 젬 인스턴스로 설정
+				Spec.SourceObject = InGem;
 
-				EquippedAbilityHandles.Add(InSlotIndex, ASC->GiveAbility(Spec));
+				FGameplayAbilitySpecHandle Handle = ASC->GiveAbility(Spec);
+				EquippedAbilityHandles.Add(InSlotIndex, Handle);
 			}
 		}
 	}
@@ -73,10 +72,8 @@ bool UHEquipmentComponent::EquipSupportGem(int32 InSlotIndex, UHSupportGem* InSu
 	UHMainGem* TargetMainGem = GetEquippedGem(InSlotIndex);
 	if (!TargetMainGem) return false;
 
-	// 1. 메인 젬에 보조 젬 추가 시도
 	if (TargetMainGem->AddSupportGem(InSupportGem))
 	{
-		// 2. 인벤토리에서 제거 시도
 		if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner()))
 		{
 			if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
@@ -85,11 +82,18 @@ bool UHEquipmentComponent::EquipSupportGem(int32 InSlotIndex, UHSupportGem* InSu
 			}
 		}
 
+		// SourceObject(메인젬)의 내부 데이터가 변경되었으므로 별도의 Spec 업데이트 로직 없이도 
+		// GA가 실행될 때 변경된 값을 참조하게 됩니다.
 		OnEquipmentChanged.Broadcast();
 		return true;
 	}
 
 	return false;
+}
+
+void UHEquipmentComponent::UpdateAbilitySpec(int32 InSlotIndex)
+{
+    // SourceObject 방식을 사용하므로 더 이상 필요하지 않습니다. 제거하거나 비워둡니다.
 }
 
 void UHEquipmentComponent::UnequipGem(int32 InSlotIndex, bool bInReturnToInventory)

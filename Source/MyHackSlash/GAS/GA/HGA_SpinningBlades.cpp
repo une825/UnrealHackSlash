@@ -1,22 +1,20 @@
 #include "GAS/GA/HGA_SpinningBlades.h"
 #include "Skill/HProjectile_SpinningBlade.h"
 #include "AbilitySystemComponent.h"
-#include "TimerManager.h"
+#include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "System/HObjectPoolManager.h"
 
 UHGA_SpinningBlades::UHGA_SpinningBlades()
-	: BladeCount(3), OrbitRadius(200.0f), RotationSpeed(180.0f), Duration(5.0f)
+	: OrbitRadius(200.0f), RotationSpeed(180.0f), Duration(5.0f)
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+	BaseDamage = 15.0f;
 }
 
 void UHGA_SpinningBlades::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	UE_LOG(LogTemp, Log, TEXT("UHGA_SpinningBlades: ActivateAbility Started."));
-
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UHGA_SpinningBlades: CommitAbility Failed (Cooldown or Cost)."));
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
@@ -26,81 +24,66 @@ void UHGA_SpinningBlades::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 
 	if (!AvatarActor || !ProjectileClass || !DamageEffectClass)
 	{
-		UE_LOG(LogTemp, Error, TEXT("UHGA_SpinningBlades: Missing required data! Avatar: %s, ProjectileClass: %s, DamageEffectClass: %s"),
-			AvatarActor ? *AvatarActor->GetName() : TEXT("Null"),
-			ProjectileClass ? *ProjectileClass->GetName() : TEXT("Null"),
-			DamageEffectClass ? *DamageEffectClass->GetName() : TEXT("Null"));
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
 
 	FGameplayEffectSpecHandle DamageSpecHandle = ASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ASC->MakeEffectContext());
-	float AngleStep = 360.0f / BladeCount;
 
-	UE_LOG(LogTemp, Log, TEXT("UHGA_SpinningBlades: Spawning %d blades with AngleStep %f."), BladeCount, AngleStep);
+	// 보조 젬 개수가 포함된 최종 개수를 가져옵니다.
+	int32 TotalBladeCount = GetProjectileCount();
+	float AngleStep = 360.0f / FMath::Max(1, TotalBladeCount);
 
-	for (int32 i = 0; i < BladeCount; ++i)
+	for (int32 i = 0; i < TotalBladeCount; ++i)
 	{
-		SpawnProjectile(i, AngleStep, DamageSpecHandle);
+		SpawnSpinningBlade(i, AngleStep, DamageSpecHandle);
 	}
 
-	FTimerHandle EndTimerHandle;
-	GetWorld()->GetTimerManager().SetTimer(EndTimerHandle, [this, Handle, ActorInfo, ActivationInfo]()
+	// 안전한 지연 처리를 위해 AbilityTask_WaitDelay 사용
+	UAbilityTask_WaitDelay* WaitDelayTask = UAbilityTask_WaitDelay::WaitDelay(this, Duration);
+	if (WaitDelayTask)
 	{
-		UE_LOG(LogTemp, Log, TEXT("UHGA_SpinningBlades: Duration ended, calling EndAbility."));
+		WaitDelayTask->OnFinish.AddDynamic(this, &UHGA_SpinningBlades::OnDelayFinish);
+		WaitDelayTask->ReadyForActivation();
+	}
+	else
+	{
+		// 태스크 생성 실패 시 즉시 종료 (안전장치)
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-	}, Duration, false);
+	}
 }
 
-void UHGA_SpinningBlades::SpawnProjectile(int32 Index, float AngleStep, const FGameplayEffectSpecHandle& DamageSpecHandle)
+void UHGA_SpinningBlades::OnDelayFinish()
 {
-	if (ProjectileClass == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("UHGA_SpinningBlades: SpawnProjectile[%d] failed - ProjectileClass is Null."), Index);
-		return;
-	}
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
 
+void UHGA_SpinningBlades::SpawnSpinningBlade(int32 Index, float AngleStep, const FGameplayEffectSpecHandle& DamageSpecHandle)
+{
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	if (AvatarActor == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("UHGA_SpinningBlades: SpawnProjectile[%d] failed - AvatarActor is Null."), Index);
-		return;
-	}
-
 	UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>();
-	if (Pool == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("UHGA_SpinningBlades: SpawnProjectile[%d] failed - Pool Manager is Null."), Index);
-		return;
-	}
+	if (!AvatarActor || !Pool) return;
 
 	float InitialAngle = Index * AngleStep;
 	float RadAngle = FMath::DegreesToRadians(InitialAngle);
 	FVector SpawnLoc = AvatarActor->GetActorLocation() + FVector(FMath::Cos(RadAngle) * OrbitRadius, FMath::Sin(RadAngle) * OrbitRadius, 0.0f);
 
-	UE_LOG(LogTemp, Log, TEXT("UHGA_SpinningBlades: Attempting to spawn blade[%d] at %s (InitialAngle: %f)"), Index, *SpawnLoc.ToString(), InitialAngle);
-
 	AActor* PooledActor = Pool->SpawnFromPool(ProjectileClass, SpawnLoc, FRotator::ZeroRotator);
-	if (PooledActor == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("UHGA_SpinningBlades: SpawnProjectile[%d] failed - SpawnFromPool returned Null."), Index);
-		return;
-	}
-
 	AHProjectile_SpinningBlade* Projectile = Cast<AHProjectile_SpinningBlade>(PooledActor);
+
 	if (Projectile)
 	{
 		Projectile->SetOwner(AvatarActor);
 		Projectile->SetInstigator(Cast<APawn>(AvatarActor));
 		Projectile->Initialize(AvatarActor, OrbitRadius, RotationSpeed, InitialAngle, DamageSpecHandle);
 		Projectile->SetProjectileLifeSpan(Duration);
-		Projectile->ResetProjectile(SpawnLoc, FRotator::ZeroRotator);
 
-		UE_LOG(LogTemp, Log, TEXT("UHGA_SpinningBlades: Successfully initialized blade[%d]."), Index);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("UHGA_SpinningBlades: SpawnProjectile[%d] failed - Cast to AHProjectile_SpinningBlade failed (Class: %s)."), 
-			Index, *PooledActor->GetClass()->GetName());
+		// 베이스 클래스에서 소스 오브젝트 설정 (보조 젬 효과 참조용)
+		if (const FGameplayAbilitySpec* Spec = GetCurrentAbilitySpec())
+		{
+			Projectile->SetSourceObject(Spec->SourceObject.Get());
+		}
+
+		Projectile->ResetProjectile(SpawnLoc, FRotator::ZeroRotator);
 	}
 }

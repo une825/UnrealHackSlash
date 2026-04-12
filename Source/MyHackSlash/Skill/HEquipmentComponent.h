@@ -41,6 +41,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Gem|Equipment")
 	UHMainGem* GetEquippedGem(int32 InSlotIndex) const;
 
+protected:
+	/** @brief 특정 슬롯의 어빌리티 스펙에 보조 젬 효과를 업데이트합니다. */
+	void UpdateAbilitySpec(int32 InSlotIndex);
+
 public:
 	/** @brief 장착 상태가 변경될 때 호출되는 델리게이트 */
 	UPROPERTY(BlueprintAssignable, Category = "Gem|Equipment")

@@ -44,6 +44,7 @@ enum class HEElement : uint8
 UENUM(BlueprintType)
 enum class HEShape : uint8
 {
+	None       UMETA(DisplayName = "None"),
 	Area       UMETA(DisplayName = "Area (AOE)"),
 	Projectile UMETA(DisplayName = "Projectile")
 };

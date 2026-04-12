@@ -58,6 +58,7 @@ void AHProjectile::BeginPlay()
 void AHProjectile::ResetProjectile(FVector InLocation, FRotator InRotation)
 {
 	bIsActive = true;
+	SourceObject = nullptr;
 
 	SetActorLocationAndRotation(InLocation, InRotation);
 	
@@ -134,6 +135,9 @@ void AHProjectile::Explode()
 	if (!bIsActive) return;
 	bIsActive = false;
 
+	UE_LOG(LogTemp, Log, TEXT("[AHProjectile] Explode Triggered. DamageAmount: %f, DamageEffectClass: %s"), 
+		DamageAmount, DamageEffectClass ? *DamageEffectClass->GetName() : TEXT("NULL"));
+
 	// 타이머 해제
 	GetWorld()->GetTimerManager().ClearTimer(LifeSpanTimerHandle);
 
@@ -189,6 +193,7 @@ void AHProjectile::Explode()
 
 	if (bHasHit)
 	{
+		UE_LOG(LogTemp, Log, TEXT("[AHProjectile] Explode Hit %d actors in radius %f"), OutHits.Num(), ExplosionRadius);
 		TArray<AActor*> DamagedActors;
 		for (const FHitResult& Hit : OutHits)
 		{
@@ -223,6 +228,7 @@ void AHProjectile::Explode()
 										SpecHandle.Data->AddDynamicAssetTag(FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical")));
 									}
 								}
+								UE_LOG(LogTemp, Log, TEXT("[AHProjectile] Applying GE to %s"), *HitActor->GetName());
 								SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 							}
 						}
@@ -230,12 +236,17 @@ void AHProjectile::Explode()
 				}
 				else
 				{
+					UE_LOG(LogTemp, Warning, TEXT("[AHProjectile] DamageEffectClass is NULL! Falling back to TakeDamage."));
 					FDamageEvent DamageEvent;
 					HitActor->TakeDamage(DamageAmount, DamageEvent, GetInstigatorController(), this);
 				}
 				DamagedActors.Add(HitActor);
 			}
 		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("[AHProjectile] Explode: No targets found."));
 	}
 
 	// 3. 투사체 파괴 대신 풀에 반납

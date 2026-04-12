@@ -3,11 +3,30 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "Engine/DataTable.h"
+#include "GameplayTagContainer.h"
 #include "System/HGlobalTypes.h"
 #include "HGemDataAsset.generated.h"
 
 class UTexture2D;
 class UGameplayAbility;
+
+/**
+ * @brief 보조 젬이 제공하는 개별 효과를 정의하는 구조체입니다.
+ */
+USTRUCT(BlueprintType)
+struct FHSupportEffect
+{
+	GENERATED_BODY()
+
+public:
+	/** @brief 적용할 파라미터 태그 (예: Data.ProjectileCount, Data.DamageMultiplier) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Support")
+	FGameplayTag SupportTag;
+
+	/** @brief 보너스 수치 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Support")
+	float ModifierValue = 0.0f;
+};
 
 /**
  * @brief 개별 스킬 젬의 상세 데이터를 정의하는 구조체입니다. (DataTable용)
@@ -55,13 +74,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gem")
 	HEShape GemShape = HEShape::Area;
 
-	/** @brief 보조 젬 전용 수치 */
+	/** @brief 보조 젬이 제공하는 효과 리스트 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gem|Support")
-	float EffectValue = 0.0f;
-
-	/** @brief 보조 젬 전용 효과 태그 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gem|Support")
-	FName SupportEffectTag = NAME_None;
+	TArray<FHSupportEffect> SupportEffects;
 };
 
 /**

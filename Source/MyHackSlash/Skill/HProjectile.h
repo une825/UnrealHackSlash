@@ -32,6 +32,7 @@ public:
 	void SetElement(HEElement InElement) { Element = InElement; }
 	void SetOwningUnitType(EHUnitType InUnitType) { OwningUnitType = InUnitType; }
 	void SetProjectileLifeSpan(float InLifeSpan) { LifeSpan = InLifeSpan; }
+	void SetSourceObject(UObject* InSourceObject) { SourceObject = InSourceObject; }
 
 	/** @brief 풀에서 꺼낼 때 호출하여 상태를 초기화합니다. */
 	void ResetProjectile(FVector InLocation, FRotator InRotation);
@@ -48,6 +49,10 @@ protected:
 	void OnLifeSpanExpired();
 
 	FTimerHandle LifeSpanTimerHandle;
+
+	/** @brief 보조 효과 등을 참조하기 위한 소스 오브젝트 (MainGem 등) */
+	UPROPERTY()
+	TObjectPtr<UObject> SourceObject;
 
 	/** @brief 중복 반납 방지를 위한 플래그 */
 	bool bIsActive = false;

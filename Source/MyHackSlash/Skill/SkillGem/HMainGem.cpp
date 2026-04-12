@@ -8,6 +8,12 @@ bool UHMainGem::AddSupportGem(UHSupportGem* InSupportGem)
 		return false;
 	}
 
+	// 최대 3개 보조 젬 슬롯 제한
+	if (SupportGems.Num() >= 3)
+	{
+		return false;
+	}
+
 	SupportGems.AddUnique(InSupportGem);
 	return true;
 }

@@ -14,6 +14,7 @@ void UHEquipGemSlotUI::SetMainGem(UHMainGem* InMainGem)
 {
 	if (nullptr == InMainGem)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[UHEquipGemSlotUI] SetMainGem: InMainGem is NULL for Slot %d"), SlotIndex);
 		ClearSlot();
 		return;
 	}
@@ -33,22 +34,35 @@ void UHEquipGemSlotUI::SetMainGem(UHMainGem* InMainGem)
 		}
 	}
 
-	// 2. 보조 젬 리스트 갱신
+	// 2. 보조 젬 리스트 갱신 (항상 3개 슬롯 유지)
 	if (SubGemSlotListView)
 	{
 		SubGemSlotListView->ClearListItems();
 
 		const TArray<UHSupportGem*>& SupportGems = InMainGem->GetSupportGems();
-		for (UHSupportGem* SupportGem : SupportGems)
+		const int32 MaxSubSlots = 3;
+
+		for (int32 i = 0; i < MaxSubSlots; ++i)
 		{
-			if (SupportGem)
+			UHEquipGemSlotEntryData* EntryData = NewObject<UHEquipGemSlotEntryData>(this);
+			EntryData->SourceSlotIndex = SlotIndex;
+
+			if (SupportGems.IsValidIndex(i) && SupportGems[i])
 			{
-				UHEquipGemSlotEntryData* EntryData = NewObject<UHEquipGemSlotEntryData>(this);
-				EntryData->SupportGem = SupportGem;
-				EntryData->SourceSlotIndex = SlotIndex;
-				SubGemSlotListView->AddItem(EntryData);
+				EntryData->SupportGem = SupportGems[i];
+				EntryData->bIsEmpty = false;
 			}
+			else
+			{
+				EntryData->SupportGem = nullptr;
+				EntryData->bIsEmpty = true;
+			}
+
+			SubGemSlotListView->AddItem(EntryData);
 		}
+		
+		// 리스트 뷰 위젯 갱신 강제 수행
+		SubGemSlotListView->RegenerateAllEntries();
 	}
 }
 
@@ -62,6 +76,18 @@ void UHEquipGemSlotUI::ClearSlot()
 	if (SubGemSlotListView)
 	{
 		SubGemSlotListView->ClearListItems();
+
+		// 메인 젬이 없어도 빈 슬롯 3개는 보여줌
+		for (int32 i = 0; i < 3; ++i)
+		{
+			UHEquipGemSlotEntryData* EntryData = NewObject<UHEquipGemSlotEntryData>(this);
+			EntryData->SourceSlotIndex = SlotIndex;
+			EntryData->bIsEmpty = true;
+			SubGemSlotListView->AddItem(EntryData);
+		}
+		
+		// 리스트 뷰 위젯 갱신 강제 수행
+		SubGemSlotListView->RegenerateAllEntries();
 	}
 }
 
@@ -92,6 +118,14 @@ void UHEquipGemSlotUI::Refresh()
 			UHMainGem* EquippedGem = EquipComp->GetEquippedGem(SlotIndex);
 			SetMainGem(EquippedGem);
 		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[UHEquipGemSlotUI] Refresh: FAILED to find EquipComp"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[UHEquipGemSlotUI] Refresh: FAILED to find PlayerCharacter"));
 	}
 }
 
