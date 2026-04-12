@@ -108,7 +108,7 @@ void UHGA_AttackHitCheck::OnTraceResultCallback(const FGameplayAbilityTargetData
 							if (FMath::FRandRange(0.0f, 100.0f) <= CritChance)
 							{
 								// 치명타 정보를 태그로 심어서 전달 (GameplayCue 및 ExecutionCalculation에서 인식 가능)
-								SpecHandle.Data->DynamicAssetTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical")));
+								SpecHandle.Data->AddDynamicAssetTag(FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical")));
 							}
 						}
 

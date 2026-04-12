@@ -45,7 +45,7 @@
 플레이어의 생존을 위협하는 핵심 기믹으로, 시간에 따라 감소하며 전투를 통해 유지해야 합니다.
 *   **지속 감소**: `GE_Hunger_Decay`를 통해 일정 시간(Period)마다 `Hunger` 어트리뷰트가 감소합니다.
 *   **전투 시 회복**: 몬스터 처치 시 즉각적인(Instant) GE가 적용되어 `Hunger`를 일정량 회복합니다.
-*   **허기 상태 효과**: `Hunger`가 0이 되면 `Character.State.Starving` 태그가 부여되며, 지속적으로 `Health`가 감소하는 디버프가 발생합니다.
+*   **허기 상태 효과**: `Hunger`가 0이 되면 `Character.State.IsStarving` 태그가 부여되며, 지속적으로 `Health`가 감소하는 디버프가 발생합니다.
 
 ### 2.3 Damage Workflow
 1.  **Hit Detection**: `IHCombatInterface::AttackHitCheck()`에서 `SweepMulti`를 통해 타겟을 감지합니다.

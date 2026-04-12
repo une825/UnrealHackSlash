@@ -220,7 +220,7 @@ void AHProjectile::Explode()
 									const float CritChance = SourceCharacter->GetCriticalRate();
 									if (FMath::FRandRange(0.0f, 100.0f) <= CritChance)
 									{
-										SpecHandle.Data->DynamicAssetTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical")));
+										SpecHandle.Data->AddDynamicAssetTag(FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical")));
 									}
 								}
 								SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);

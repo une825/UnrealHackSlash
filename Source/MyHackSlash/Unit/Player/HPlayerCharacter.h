@@ -68,9 +68,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Effect")
 	TSubclassOf<class UGameplayEffect> HungerRestoreEffect;
 
+	/** 배고픔이 0일 때 데미지를 주기 위한 GameplayEffect */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Effect")
+	TSubclassOf<class UGameplayEffect> StarvingDamageEffect;
+
 	// 경험치 추가 (GAS 방식)
 	UFUNCTION(BlueprintCallable, Category = "Stat")
 	void AddExp(float InExp);
+
+	/** 배고픔 변화 처리를 위한 콜백 함수 */
+	UFUNCTION()
+	void HandleHungerChanged(float CurrentHunger, float MaxHunger);
 
 	float GetCurrentExp() const;
 	float GetMaxExp() const;
@@ -124,4 +132,7 @@ private:
 	/** 네비게이션 인보커 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Navigation", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UNavigationInvokerComponent> NavInvokerComponent;
+
+	/** 현재 적용 중인 허기 데미지 GE 핸들 (제거용) */
+	FActiveGameplayEffectHandle ActiveStarvingEffectHandle;
 };

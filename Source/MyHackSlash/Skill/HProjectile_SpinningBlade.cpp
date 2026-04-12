@@ -3,6 +3,8 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "System/HObjectPoolManager.h"
+#include "NiagaraComponent.h"
 
 AHProjectile_SpinningBlade::AHProjectile_SpinningBlade()
 	: Radius(200.0f), RotationSpeed(180.0f), CurrentAngle(0.0f)
@@ -29,6 +31,40 @@ void AHProjectile_SpinningBlade::Initialize(AActor* InOwner, float InRadius, flo
 	RotationSpeed = InSpeed;
 	CurrentAngle = InInitialAngle;
 	DamageSpecHandle = InSpecHandle;
+
+	// 공전 투사체이므로 이동 컴포넌트는 항상 꺼져있어야 함
+	if (ProjectileMovement)
+	{
+		ProjectileMovement->Deactivate();
+	}
+}
+
+void AHProjectile_SpinningBlade::ResetProjectile(FVector InLocation, FRotator InRotation)
+{
+	bIsActive = true;
+	SetActorLocationAndRotation(InLocation, InRotation);
+
+	// 1. 부모의 ResetProjectile 로직 중 타이머와 이펙트 부분만 수동으로 수행 (이동 컴포넌트 활성화 방지)
+	GetWorld()->GetTimerManager().ClearTimer(LifeSpanTimerHandle);
+	GetWorld()->GetTimerManager().SetTimer(LifeSpanTimerHandle, this, &AHProjectile_SpinningBlade::OnLifeSpanExpired, LifeSpan, false);
+
+	if (FlightEffect)
+	{
+		if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
+		{
+			UNiagaraComponent* NiagaraComp = Pool->SpawnNiagaraFromPool(FlightEffect, InLocation, InRotation);
+			if (NiagaraComp)
+			{
+				NiagaraComp->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+			}
+		}
+	}
+
+	// 2. 공전 투사체는 ProjectileMovement를 사용하지 않으므로 Deactivate 유지
+	if (ProjectileMovement)
+	{
+		ProjectileMovement->Deactivate();
+	}
 }
 
 void AHProjectile_SpinningBlade::Tick(float DeltaTime)

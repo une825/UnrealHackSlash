@@ -29,10 +29,13 @@ public:
 	 * @param InSpeed 공전 속도 (도/초)
 	 * @param InInitialAngle 시작 각도
 	 * @param InSpecHandle 적용할 데미지 이펙트 스펙
-	 */
-	void Initialize(AActor* InOwner, float InRadius, float InSpeed, float InInitialAngle, const FGameplayEffectSpecHandle& InSpecHandle);
+	 /** 공전 투사체 초기화 */
+	 void Initialize(AActor* InOwner, float InRadius, float InSpeed, float InInitialAngle, const FGameplayEffectSpecHandle& InSpecHandle);
 
-protected:
+	 /** @brief 풀에서 꺼낼 때 호출하여 상태를 초기화합니다. (공전 전용으로 오버라이드) */
+	 void ResetProjectile(FVector InLocation, FRotator InRotation);
+
+	 protected:
 	/** 공전 중심 액터 */
 	UPROPERTY()
 	TObjectPtr<AActor> CenterActor;

@@ -12,8 +12,8 @@
 UENUM(BlueprintType)
 enum class EAttackType : uint8
 {
-	Melee       UMETA(DisplayName = "Melee (Sweep)"),      // ±ÙÁ¢ ½ºÀ¬
-	Projectile  UMETA(DisplayName = "Projectile (Spawn)"), // Åõ»çÃ¼ »ý¼º
+	Melee       UMETA(DisplayName = "Melee (Sweep)"),      // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+	Projectile  UMETA(DisplayName = "Projectile (Spawn)"), // ï¿½ï¿½ï¿½ï¿½Ã¼ ï¿½ï¿½ï¿½ï¿½
 };
 
 UCLASS()
@@ -21,19 +21,19 @@ class MYHACKSLASH_API UHAnimNotifyState_Attack : public UAnimNotifyState
 {
 	GENERATED_BODY()
 
-	virtual void NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration) override;
-	virtual void NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime) override;
-	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation) override;
+	virtual void NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference) override;
+	virtual void NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime, const FAnimNotifyEventReference& EventReference) override;
+	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 
 protected:
-	// Åõ»çÃ¼³ª È÷Æ®½ºÄµ ½Ã ÇÑ ¹ø¸¸ ½ÇÇàÇÒÁö, Æ½¸¶´Ù ½ÇÇàÇÒÁö °áÁ¤
+	// ï¿½ï¿½ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½Äµ ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½, Æ½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	UPROPERTY(EditAnywhere, Category = "Attack")
 	bool bExecuteOnce = true;
 
-	//// °ø°Ý µ¥ÀÌÅÍ (µ¥¹ÌÁö, Åõ»çÃ¼ Å¬·¡½º, ¹üÀ§ µî Á¤º¸°¡ ´ã±ä DataAsset)
+	//// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½Ã¼ Å¬ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ DataAsset)
 	//UPROPERTY(EditAnywhere, Category = "Attack")
 	//TObjectPtr<UAttackDataAsset> AttackData;
 
 private:
-	bool bHasExecuted = false; // ½ÇÇà ¿©ºÎ Ã¼Å©¿ë
+	bool bHasExecuted = false; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Ã¼Å©ï¿½ï¿½
 };

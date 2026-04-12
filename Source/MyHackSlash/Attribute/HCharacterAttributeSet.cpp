@@ -203,14 +203,14 @@ void UHCharacterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMod
 		{
 			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
 			{
-				ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Character.State.Starving")));
+				ASC->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Character.State.IsStarving")));
 			}
 		}
 		else
 		{
 			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
 			{
-				ASC->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Character.State.Starving")));
+				ASC->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Character.State.IsStarving")));
 			}
 		}
 	}

@@ -305,6 +305,44 @@ void AHPlayerCharacter::PossessedBy(AController* NewController)
 				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*HungerSpecHandle.Data.Get());
 			}
 		}
+
+		// [변경] 허기 데미지는 여기서 미리 걸지 않고, 배고픔이 0이 될 때 동적으로 적용합니다.
+		
+		// 배고픔 변화 콜백 바인딩
+		OnHungerChanged.AddDynamic(this, &AHPlayerCharacter::HandleHungerChanged);
+	}
+}
+
+void AHPlayerCharacter::HandleHungerChanged(float CurrentHunger, float MaxHunger)
+{
+	if (!AbilitySystemComponent || !StarvingDamageEffect) return;
+
+	// 1. 배고픔이 0 이하가 되었을 때 (데미지 GE 적용)
+	if (CurrentHunger <= 0.0f)
+	{
+		// 이미 적용 중이라면 중복 적용 방지
+		if (!ActiveStarvingEffectHandle.IsValid())
+		{
+			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+			Context.AddInstigator(this, this);
+			FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(StarvingDamageEffect, 1.0f, Context);
+			
+			if (SpecHandle.IsValid())
+			{
+				ActiveStarvingEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				UE_LOG(LogTemp, Warning, TEXT("Starving Damage Started (Hunger: %f)"), CurrentHunger);
+			}
+		}
+	}
+	// 2. 배고픔이 회복되었을 때 (데미지 GE 즉시 제거)
+	else
+	{
+		if (ActiveStarvingEffectHandle.IsValid())
+		{
+			AbilitySystemComponent->RemoveActiveGameplayEffect(ActiveStarvingEffectHandle);
+			ActiveStarvingEffectHandle.Invalidate();
+			UE_LOG(LogTemp, Warning, TEXT("Starving Damage Stopped (Hunger: %f)"), CurrentHunger);
+		}
 	}
 }
 

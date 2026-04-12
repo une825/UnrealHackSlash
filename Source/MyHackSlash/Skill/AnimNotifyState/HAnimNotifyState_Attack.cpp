@@ -5,13 +5,13 @@
 #include "HAnimNotifyState_Attack.h"
 #include "Skill/HCombatInterface.h"
 
-void UHAnimNotifyState_Attack::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration)
+void UHAnimNotifyState_Attack::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference)
 {
-	Super::NotifyBegin(MeshComp, Animation, TotalDuration);
+	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 
 	if (MeshComp && MeshComp->GetOwner())
 	{
-		// ÀÎÅÍÆäÀÌ½º¸¦ »ó¼Ó¹ŞÀº Ä³¸¯ÅÍÀÎÁö È®ÀÎ ÈÄ °ø°İ ·ÎÁ÷ È£Ãâ
+		// ì¸í„°í˜ì´ìŠ¤ë¥¼ ìƒì†ë°›ì€ ìºë¦­í„°ì¸ì§€ í™•ì¸ í›„ ê³µê²© ë¡œì§ í˜¸ì¶œ
 		if (IHCombatInterface* CombatInterface = Cast<IHCombatInterface>(MeshComp->GetOwner()))
 		{
             CombatInterface->ClearAlreadyHitActors();
@@ -20,9 +20,9 @@ void UHAnimNotifyState_Attack::NotifyBegin(USkeletalMeshComponent* MeshComp, UAn
 	}
 }
 
-void UHAnimNotifyState_Attack::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime)
+void UHAnimNotifyState_Attack::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime, const FAnimNotifyEventReference& EventReference)
 {
-    Super::NotifyTick(MeshComp, Animation, FrameDeltaTime);
+    Super::NotifyTick(MeshComp, Animation, FrameDeltaTime, EventReference);
 
     if (bExecuteOnce && bHasExecuted) return;
 
@@ -30,23 +30,12 @@ void UHAnimNotifyState_Attack::NotifyTick(USkeletalMeshComponent* MeshComp, UAni
     {
         if (IHCombatInterface* CombatInterface = Cast<IHCombatInterface>(MeshComp->GetOwner()))
         {
-            //switch (AttackType)
-            //{
-            //case EAttackType::Melee:
-            //    CombatInterface->ExecuteMeleeCheck(AttackData);
-            //    break;
-            //case EAttackType::Projectile:
-            //    CombatInterface->SpawnProjectile(AttackData);
-            //    break;
-            //case EAttackType::Hitscan:
-            //    CombatInterface->ExecuteHitscanCheck(AttackData);
-            //    break;
-            //}
             bHasExecuted = true;
         }
     }
 }
 
-void UHAnimNotifyState_Attack::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
+void UHAnimNotifyState_Attack::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
 {
+	Super::NotifyEnd(MeshComp, Animation, EventReference);
 }

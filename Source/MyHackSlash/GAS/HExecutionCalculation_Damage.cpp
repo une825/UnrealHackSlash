@@ -73,7 +73,7 @@ void UHExecutionCalculation_Damage::Execute_Implementation(const FGameplayEffect
 
 	// 4. 치명타 판정 (GA에서 이미 판별하여 태그를 심어주었다고 가정)
 	const FGameplayTag CriticalTag = FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical"));
-	if (Spec.DynamicAssetTags.HasTag(CriticalTag) || Spec.CapturedSourceTags.GetAggregatedTags()->HasTag(CriticalTag))
+	if (Spec.GetDynamicAssetTags().HasTag(CriticalTag) || Spec.CapturedSourceTags.GetAggregatedTags()->HasTag(CriticalTag))
 	{
 		FinalDamage *= CriticalMultiplier;
 	}
