@@ -12,21 +12,21 @@
 
 void UHEquipGemSlotUI::SetMainGem(UHMainGem* InMainGem)
 {
-	if (nullptr == InMainGem)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[UHEquipGemSlotUI] SetMainGem: InMainGem is NULL for Slot %d"), SlotIndex);
-		ClearSlot();
-		return;
-	}
-
 	// 1. 메인 젬 아이콘 설정
 	if (MainGemIcon)
 	{
-		const FHGemData& GemData = InMainGem->GetGemData();
-		if (GemData.Icon)
+		if (InMainGem)
 		{
-			MainGemIcon->SetBrushFromTexture(GemData.Icon);
-			MainGemIcon->SetVisibility(ESlateVisibility::Visible);
+			const FHGemData& GemData = InMainGem->GetGemData();
+			if (GemData.Icon)
+			{
+				MainGemIcon->SetBrushFromTexture(GemData.Icon);
+				MainGemIcon->SetVisibility(ESlateVisibility::Visible);
+			}
+			else
+			{
+				MainGemIcon->SetVisibility(ESlateVisibility::Hidden);
+			}
 		}
 		else
 		{
@@ -34,34 +34,39 @@ void UHEquipGemSlotUI::SetMainGem(UHMainGem* InMainGem)
 		}
 	}
 
-	// 2. 보조 젬 리스트 갱신 (항상 3개 슬롯 유지)
+	// 2. 보조 젬 리스트 갱신 (EquipComp에서 직접 가져옴)
 	if (SubGemSlotListView)
 	{
 		SubGemSlotListView->ClearListItems();
 
-		const TArray<UHSupportGem*>& SupportGems = InMainGem->GetSupportGems();
-		const int32 MaxSubSlots = 3;
-
-		for (int32 i = 0; i < MaxSubSlots; ++i)
+		if (AHPlayerCharacter* PlayerCharacter = Cast<AHPlayerCharacter>(GetOwningPlayerPawn()))
 		{
-			UHEquipGemSlotEntryData* EntryData = NewObject<UHEquipGemSlotEntryData>(this);
-			EntryData->SourceSlotIndex = SlotIndex;
-
-			if (SupportGems.IsValidIndex(i) && SupportGems[i])
+			if (UHEquipmentComponent* EquipComp = PlayerCharacter->GetEquipmentComponent())
 			{
-				EntryData->SupportGem = SupportGems[i];
-				EntryData->bIsEmpty = false;
-			}
-			else
-			{
-				EntryData->SupportGem = nullptr;
-				EntryData->bIsEmpty = true;
-			}
+				TArray<UHSupportGem*> SupportGems = EquipComp->GetEquippedSupportGems(SlotIndex);
+				const int32 MaxSubSlots = 3;
 
-			SubGemSlotListView->AddItem(EntryData);
+				for (int32 i = 0; i < MaxSubSlots; ++i)
+				{
+					UHEquipGemSlotEntryData* EntryData = NewObject<UHEquipGemSlotEntryData>(this);
+					EntryData->SourceSlotIndex = SlotIndex;
+
+					if (SupportGems.IsValidIndex(i) && SupportGems[i])
+					{
+						EntryData->SupportGem = SupportGems[i];
+						EntryData->bIsEmpty = false;
+					}
+					else
+					{
+						EntryData->SupportGem = nullptr;
+						EntryData->bIsEmpty = true;
+					}
+
+					SubGemSlotListView->AddItem(EntryData);
+				}
+			}
 		}
 		
-		// 리스트 뷰 위젯 갱신 강제 수행
 		SubGemSlotListView->RegenerateAllEntries();
 	}
 }
@@ -77,17 +82,8 @@ void UHEquipGemSlotUI::ClearSlot()
 	{
 		SubGemSlotListView->ClearListItems();
 
-		// 메인 젬이 없어도 빈 슬롯 3개는 보여줌
-		for (int32 i = 0; i < 3; ++i)
-		{
-			UHEquipGemSlotEntryData* EntryData = NewObject<UHEquipGemSlotEntryData>(this);
-			EntryData->SourceSlotIndex = SlotIndex;
-			EntryData->bIsEmpty = true;
-			SubGemSlotListView->AddItem(EntryData);
-		}
-		
-		// 리스트 뷰 위젯 갱신 강제 수행
-		SubGemSlotListView->RegenerateAllEntries();
+		// 보조 젬이 있을 수도 있으므로 단순히 비우지 않고 Refresh 유도하거나 직접 그림
+		// 여기서는 Refresh()가 결국 SetMainGem(nullptr)을 부를 것이므로 로직 통합됨
 	}
 }
 

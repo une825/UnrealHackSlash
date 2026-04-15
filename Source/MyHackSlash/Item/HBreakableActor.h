@@ -42,6 +42,9 @@ protected:
 	/** @brief 풀로 반납합니다. */
 	void ReturnToPool();
 
+	/** @brief 보상 드랍 로직 */
+	void DropReward();
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
@@ -59,13 +62,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "H|Component")
 	TObjectPtr<class UStaticMeshComponent> MeshComponent;
 
-	/** @brief 파괴 시 드랍할 코인 클래스 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "H|Reward")
-	TSubclassOf<class AHCoin> CoinClass;
+	/** @brief 이 액터의 보상 테이블 */
+	UPROPERTY(EditAnywhere, Category = "H|Reward")
+	TObjectPtr<class UHBreakableRewardDataAsset> RewardDataAsset;
 
-	/** @brief 드랍할 골드 양 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "H|Reward")
-	int32 GoldAmount = 20;
+	/** @brief 아이템 드랍 위치 높이 오프셋 */
+	UPROPERTY(EditAnywhere, Category = "H|Reward")
+	float DropHeightOffset = 50.0f;
 
 	/** @brief 파괴 시 이펙트 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "H|Effect")

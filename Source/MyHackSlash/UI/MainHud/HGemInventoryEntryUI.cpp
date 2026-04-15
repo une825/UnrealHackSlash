@@ -102,24 +102,11 @@ bool UHGemInventoryEntryUI::NativeOnDrop(const FGeometry& InGeometry, const FDra
 		EquipComp->UnequipGem(GemOp->SourceSlotIndex);
 		return true;
 	}
-	// 2. 보조 젬인 경우 (해당 메인 젬에서 보조 젬만 제거)
+	// 2. 보조 젬인 경우 (해당 슬롯에서 보조 젬만 제거)
 	else if (UHSupportGem* SupportGem = Cast<UHSupportGem>(GemOp->DraggedGem))
 	{
-		UHMainGem* CurrentMainGem = EquipComp->GetEquippedGem(GemOp->SourceSlotIndex);
-		if (CurrentMainGem)
-		{
-			CurrentMainGem->RemoveSupportGem(SupportGem);
-
-			// 보조 젬을 인벤토리에 다시 추가
-			if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
-			{
-				InvComp->AddGemInstance(SupportGem);
-			}
-
-			// UI 갱신 (EquipmentComponent의 델리게이트 브로드캐스트)
-			EquipComp->OnEquipmentChanged.Broadcast();
-			return true;
-		}
+		EquipComp->UnequipSupportGem(GemOp->SourceSlotIndex, SupportGem);
+		return true;
 	}
 
 	return false;

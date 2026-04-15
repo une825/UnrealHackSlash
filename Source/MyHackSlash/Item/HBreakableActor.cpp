@@ -9,6 +9,9 @@
 #include "NiagaraFunctionLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Attribute/HCharacterAttributeSet.h"
+#include "DataAsset/HBreakableRewardDataAsset.h"
+#include "Item/HMagnetItem.h"
+#include "Item/HPotionItem.h"
 
 AHBreakableActor::AHBreakableActor()
 {
@@ -115,20 +118,74 @@ void AHBreakableActor::OnBreak()
 		UGameplayStatics::PlaySoundAtLocation(this, BreakSound, GetActorLocation());
 	}
 
-	// 2. 보상 드랍 (코인)
-	if (CoinClass)
-	{
-		if (UHObjectPoolManager* PoolManager = GetWorld()->GetSubsystem<UHObjectPoolManager>())
-		{
-			if (AHCoin* NewCoin = Cast<AHCoin>(PoolManager->SpawnFromPool(CoinClass, GetActorLocation(), GetActorRotation())))
-			{
-				NewCoin->PrepareFromPool(GoldAmount);
-			}
-		}
-	}
+	// 2. 보상 드랍
+	DropReward();
 
 	// 3. 풀로 반납
 	ReturnToPool();
+}
+
+void AHBreakableActor::DropReward()
+{
+	if (!RewardDataAsset) return;
+
+	FHBreakableRewardEntry SelectedReward;
+	if (RewardDataAsset->GetRandomReward(SelectedReward))
+	{
+		if (SelectedReward.RewardClass)
+		{
+			// 드랍 개수 결정
+			int32 Count = FMath::RandRange(SelectedReward.MinAmount, SelectedReward.MaxAmount);
+			UHObjectPoolManager* PoolManager = GetWorld()->GetSubsystem<UHObjectPoolManager>();
+
+			for (int32 i = 0; i < Count; ++i)
+			{
+				// 약간의 랜덤 위치 분산
+				FVector SpawnLoc = GetActorLocation() + FVector(0, 0, DropHeightOffset);
+				SpawnLoc += FVector(FMath::FRandRange(-30.0f, 30.0f), FMath::FRandRange(-30.0f, 30.0f), 0.0f);
+
+				AActor* NewItem = nullptr;
+				if (PoolManager)
+				{
+					// 풀 매니저를 통한 스폰 시도
+					NewItem = PoolManager->SpawnFromPool(SelectedReward.RewardClass, SpawnLoc, FRotator::ZeroRotator);
+				}
+				
+				if (!NewItem)
+				{
+					// 풀링 대상이 아니거나 매니저가 없는 경우 일반 스폰
+					FActorSpawnParameters SpawnParams;
+					SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+					SpawnParams.Owner = this;
+					
+					NewItem = GetWorld()->SpawnActor<AActor>(SelectedReward.RewardClass, SpawnLoc, FRotator::ZeroRotator, SpawnParams);
+				}
+
+				if (NewItem)
+				{
+					// 코인인 경우 기본 금액 설정
+					if (AHCoin* Coin = Cast<AHCoin>(NewItem))
+					{
+						Coin->PrepareFromPool(20);
+					}
+					// 자석인 경우 초기화 호출
+					else if (AHMagnetItem* Magnet = Cast<AHMagnetItem>(NewItem))
+					{
+						Magnet->PrepareFromPool();
+					}
+					// 포션인 경우 초기화 호출
+					else if (AHPotionItem* Potion = Cast<AHPotionItem>(NewItem))
+					{
+						Potion->PrepareFromPool();
+					}
+				}
+				else
+				{
+					UE_LOG(LogTemp, Warning, TEXT("HBreakableActor: Failed to spawn reward item of class %s"), *SelectedReward.RewardClass->GetName());
+				}
+			}
+		}
+	}
 }
 
 void AHBreakableActor::ReturnToPool()
