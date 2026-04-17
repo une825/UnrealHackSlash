@@ -34,20 +34,13 @@ void UHSelectAbilityEntryUI::NativeOnListItemObjectSet(UObject* InListItemObject
 			DescText->SetText(RewardData.Description);
 		}
 
-		// 아이콘 설정 (소프트 레퍼런스 비동기 로드)
+		// 아이콘 설정 (RewardType에 따라 동적 로드)
 		if (IconImage)
 		{
-			if (!RewardData.Icon.IsNull())
+			if (UTexture2D* IconTexture = RewardData.GetRewardIcon(GetWorld()))
 			{
 				IconImage->SetVisibility(ESlateVisibility::Visible);
-				if (RewardData.Icon.IsValid())
-				{
-					IconImage->SetBrushFromTexture(RewardData.Icon.Get());
-				}
-				else
-				{
-					IconImage->SetBrushFromSoftTexture(RewardData.Icon);
-				}
+				IconImage->SetBrushFromTexture(IconTexture);
 			}
 			else
 			{

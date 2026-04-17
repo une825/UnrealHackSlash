@@ -89,7 +89,7 @@ AHProjectile* UHGA_ProjectileBase::CreateProjectileInstance(const FVector& InLoc
 
 		Projectile->SetDamage(FinalDamage);
 
-		// 보조 젬 정보 전달 (관통 등 처리용)
+		// 보조 젬 정보 전달 (관통 등 처리용) - ResetProjectile 이전에 설정해야 Reset 내부 로직에서 참조 가능
 		if (const FGameplayAbilitySpec* Spec = GetCurrentAbilitySpec())
 		{
 			Projectile->SetSourceObject(Spec->SourceObject.Get());

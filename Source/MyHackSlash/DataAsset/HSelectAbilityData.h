@@ -52,6 +52,14 @@ struct FHRewardOptionData : public FTableRowBase
 	GENERATED_BODY()
 
 public:
+	/**
+	 * @brief 보상의 아이콘을 가져옵니다. RewardType이 GetSkillGem이면 젬 아이콘을 검색하고, 아니면 설정된 아이콘을 반환합니다.
+	 * @param WorldContextObject 월드 컨텍스트
+	 * @return 아이콘 텍스처 (없으면 nullptr)
+	 */
+	class UTexture2D* GetRewardIcon(const UObject* WorldContextObject) const;
+
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Select Ability")
 	EHAbilityGrade Grade = EHAbilityGrade::Silver;
 
@@ -74,13 +82,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Select Ability")
 	int32 Amount = 1;
 
-	/** @brief UI에 표시될 아이콘 (선택 사항) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Select Ability")
-	TSoftObjectPtr<UTexture2D> Icon;
-
 	/** @brief UI에 표시될 설명 (선택 사항) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Select Ability")
 	FText Description;
+
+private:
+	/** @brief UI에 표시될 아이콘 (선택 사항) */
+	UPROPERTY(EditAnywhere, Category = "Select Ability")
+	TSoftObjectPtr<UTexture2D> Icon;
 };
 
 /**

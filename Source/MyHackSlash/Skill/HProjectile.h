@@ -50,6 +50,10 @@ protected:
 
 	FTimerHandle LifeSpanTimerHandle;
 
+	/** @brief 현재 재생 중인 비행 이펙트 컴포넌트 */
+	UPROPERTY()
+	TObjectPtr<class UNiagaraComponent> FlightComponent;
+
 	/** @brief 보조 효과 등을 참조하기 위한 소스 오브젝트 (MainGem 등) */
 	UPROPERTY()
 	TObjectPtr<UObject> SourceObject;

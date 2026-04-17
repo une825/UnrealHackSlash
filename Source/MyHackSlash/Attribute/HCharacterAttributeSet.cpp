@@ -175,6 +175,11 @@ void UHCharacterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMod
 				FGameplayCueParameters CueParams;
 				CueParams.RawMagnitude = LocalDamageDone;
 				CueParams.EffectContext = Context;
+				
+				// 소스 및 타겟 태그를 CueParams에 복사하여 GameplayCue에서 치명타(Effect.Critical) 등을 판별할 수 있게 함
+				CueParams.AggregatedSourceTags = *Data.EffectSpec.CapturedSourceTags.GetAggregatedTags();
+				CueParams.AggregatedTargetTags = *Data.EffectSpec.CapturedTargetTags.GetAggregatedTags();
+
 				TargetASC->ExecuteGameplayCue(FGameplayTag::RequestGameplayTag(TEXT("GameplayCue.Character.Hitted")), CueParams);
 
 				// 3. 사망 판정 (태그만 추가하여 캐릭터가 스스로 인지하게 함)

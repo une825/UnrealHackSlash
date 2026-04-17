@@ -43,7 +43,6 @@ UNiagaraComponent* UHObjectPoolManager::SpawnNiagaraFromPool(UNiagaraSystem* InN
 	if (Pool.InactiveActors.Num() > 0)
 	{
 		NiagaraActor = Cast<ANiagaraActor>(Pool.InactiveActors.Pop());
-		ActivateActor(NiagaraActor, InLocation, InRotation);
 	}
 	else
 	{
@@ -55,6 +54,9 @@ UNiagaraComponent* UHObjectPoolManager::SpawnNiagaraFromPool(UNiagaraSystem* InN
 
 	if (NiagaraActor)
 	{
+		// 풀에서 꺼내든 신규 생성하든 일관되게 활성화 로직 적용
+		ActivateActor(NiagaraActor, InLocation, InRotation);
+
 		UNiagaraComponent* NiagaraComp = NiagaraActor->GetNiagaraComponent();
 		NiagaraComp->Activate(true);
 

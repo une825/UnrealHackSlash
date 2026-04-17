@@ -20,4 +20,14 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "HackSlash|Utility")
 	static FString MakeGemTagString(FName InGemID);
+
+	/**
+	 * @brief GemID와 Tier를 사용하여 젬의 아이콘을 가져옵니다.
+	 * @param WorldContextObject 월드 컨텍스트
+	 * @param InGemID 젬의 기본 식별자 (예: FireBall)
+	 * @param InTier 젬의 티어 (1, 2, 3...)
+	 * @return 젬의 아이콘 텍스처 (없으면 nullptr)
+	 */
+	UFUNCTION(BlueprintPure, Category = "HackSlash|Gem", meta = (WorldContext = "WorldContextObject"))
+	static class UTexture2D* GetGemIcon(const UObject* WorldContextObject, FName InGemID, int32 InTier);
 };

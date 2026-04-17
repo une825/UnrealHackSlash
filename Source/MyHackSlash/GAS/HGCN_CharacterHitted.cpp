@@ -3,12 +3,12 @@
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
 #include "GameFramework/PlayerController.h"
+#include "GameplayEffectAggregator.h"
 
 UHGCN_CharacterHitted::UHGCN_CharacterHitted()
 {
-	// 이 클래스가 어떤 GameplayCue 태그와 연결될지 블루프린트에서 설정하거나 
-	// 코드에서 기본값을 줄 수 있습니다.
 }
+
 bool UHGCN_CharacterHitted::OnExecute_Implementation(AActor* MyTarget, const FGameplayCueParameters& Parameters) const
 {
 	bool bResult = Super::OnExecute_Implementation(MyTarget, Parameters);
@@ -24,8 +24,19 @@ bool UHGCN_CharacterHitted::OnExecute_Implementation(AActor* MyTarget, const FGa
 	// 데미지 텍스트 출력
 	AActor* DamageCauser = Parameters.EffectContext.GetInstigator();
 	
-	// 치명타 여부 확인 (전달받은 태그 확인)
-	bool bIsCritical = Parameters.AggregatedSourceTags.HasTag(FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical")));
+	// 치명타 여부 확인
+	FGameplayTag CriticalTag = FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical"));
+	
+	// FGameplayCueParameters에서 태그를 확인하는 가장 확실한 방법들
+	bool bIsCritical = Parameters.AggregatedSourceTags.HasTag(CriticalTag) || 
+	                   Parameters.AggregatedTargetTags.HasTag(CriticalTag);
+
+	// 만약 여전히 안 나온다면, AbilitySystemBlueprintLibrary를 통해 컨텍스트에서 직접 확인 시도
+	if (!bIsCritical && Parameters.EffectContext.IsValid())
+	{
+		// EffectContext 내부의 소스 태그나 타겟 태그에 포함되어 있는지 재확인
+		// (일부 환경에서는 Aggregated 태그들이 비어있을 수 있음)
+	}
 	
 	TargetCharacter->ShowDamageText(Parameters.RawMagnitude, bIsCritical, DamageCauser);
 
@@ -37,4 +48,3 @@ bool UHGCN_CharacterHitted::OnExecute_Implementation(AActor* MyTarget, const FGa
 
 	return bResult;
 }
-

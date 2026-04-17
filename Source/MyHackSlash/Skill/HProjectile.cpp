@@ -41,24 +41,13 @@ void AHProjectile::BeginPlay()
 
 	// 생성 직후 라이프사이클 타이머 시작
 	GetWorld()->GetTimerManager().SetTimer(LifeSpanTimerHandle, this, &AHProjectile::OnLifeSpanExpired, LifeSpan, false);
-
-	if (FlightEffect)
-	{
-		if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
-		{
-			UNiagaraComponent* NiagaraComp = Pool->SpawnNiagaraFromPool(FlightEffect, GetActorLocation(), GetActorRotation());
-			if (NiagaraComp)
-			{
-				NiagaraComp->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-			}
-		}
-	}
 }
 
 void AHProjectile::ResetProjectile(FVector InLocation, FRotator InRotation)
 {
 	bIsActive = true;
-	SourceObject = nullptr;
+	UE_LOG(LogTemp, Log, TEXT("[Projectile] --- ResetProjectile: %s ---"), *GetName());
+	UE_LOG(LogTemp, Log, TEXT("[Projectile] Location: %s, Rotation: %s"), *InLocation.ToString(), *InRotation.ToString());
 
 	SetActorLocationAndRotation(InLocation, InRotation);
 	
@@ -68,34 +57,71 @@ void AHProjectile::ResetProjectile(FVector InLocation, FRotator InRotation)
 		ProjectileMovement->Activate(true);
 		ProjectileMovement->Velocity = InRotation.Vector() * ProjectileMovement->InitialSpeed;
 		ProjectileMovement->UpdateComponentVelocity();
+		UE_LOG(LogTemp, Log, TEXT("[Projectile] Movement Activated. Velocity: %s"), *ProjectileMovement->Velocity.ToString());
 	}
 	
 	// 2. 라이프사이클 타이머 초기화 및 시작
 	GetWorld()->GetTimerManager().ClearTimer(LifeSpanTimerHandle);
 	GetWorld()->GetTimerManager().SetTimer(LifeSpanTimerHandle, this, &AHProjectile::OnLifeSpanExpired, LifeSpan, false);
 
-	// 3. 비행 이펙트 다시 부착
+	// 3. 비행 이펙트 관리
 	if (FlightEffect)
 	{
-		if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
+		UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>();
+		if (Pool)
 		{
-			UNiagaraComponent* NiagaraComp = Pool->SpawnNiagaraFromPool(FlightEffect, InLocation, InRotation);
-			if (NiagaraComp)
+			// 기존에 이미 이펙트가 붙어있다면 먼저 반납 (비정상적인 상태 방지)
+			if (FlightComponent)
 			{
-				NiagaraComp->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+				UE_LOG(LogTemp, Warning, TEXT("[Projectile] Cleaning up existing FlightComponent before spawn: %s"), *FlightComponent->GetName());
+				FlightComponent->Deactivate();
+				Pool->ReturnToPool(FlightComponent->GetOwner());
+				FlightComponent = nullptr;
+			}
+
+			UE_LOG(LogTemp, Log, TEXT("[Projectile] Requesting FlightEffect from Pool: %s"), *FlightEffect->GetName());
+			FlightComponent = Pool->SpawnNiagaraFromPool(FlightEffect, InLocation, InRotation);
+			
+			if (FlightComponent)
+			{
+				UE_LOG(LogTemp, Log, TEXT("[Projectile] Spawned FlightComponent: %s (Owner: %s)"), *FlightComponent->GetName(), *FlightComponent->GetOwner()->GetName());
+				if (AActor* NiagaraOwner = FlightComponent->GetOwner())
+				{
+					NiagaraOwner->AttachToActor(this, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("[Projectile] Failed to spawn FlightComponent from Pool!"));
 			}
 		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Projectile] FlightEffect asset is NULL!"));
 	}
 }
 
 void AHProjectile::OnLifeSpanExpired()
 {
 	if (!bIsActive) return;
+	UE_LOG(LogTemp, Log, TEXT("[Projectile] LifeSpan Expired: %s"), *GetName());
 
 	// 수명이 다하면 풀에 반납
 	if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
 	{
 		bIsActive = false;
+		
+		// 비행 이펙트 반납
+		if (FlightComponent)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Projectile] Returning FlightComponent to Pool: %s"), *FlightComponent->GetName());
+			FlightComponent->Deactivate();
+			Pool->ReturnToPool(FlightComponent->GetOwner());
+			FlightComponent = nullptr;
+		}
+
+		UE_LOG(LogTemp, Log, TEXT("[Projectile] Returning Projectile to Pool: %s"), *GetName());
 		Pool->ReturnToPool(this);
 	}
 	else
@@ -108,6 +134,10 @@ void AHProjectile::OnHit(UPrimitiveComponent* InHitComp, AActor* InOtherActor, U
 {
 	if (bIsActive && (InOtherActor != nullptr) && (InOtherActor != this) && (InOtherComp != nullptr))
 	{
+		// 투사체끼리의 충돌은 무시
+		if (InOtherActor->IsA<AHProjectile>()) return;
+
+		UE_LOG(LogTemp, Log, TEXT("[Projectile] Hit: %s with %s"), *GetName(), *InOtherActor->GetName());
 		Explode();
 	}
 }
@@ -116,6 +146,9 @@ void AHProjectile::OnOverlap(UPrimitiveComponent* InOverlappedComponent, AActor*
 {
 	if (bIsActive && (InOtherActor != nullptr) && (InOtherActor != this) && (InOtherComp != nullptr))
 	{
+		// 투사체끼리의 충돌은 무시
+		if (InOtherActor->IsA<AHProjectile>()) return;
+
 		// 아군 체크
 		if (AHBaseCharacter* TargetCharacter = Cast<AHBaseCharacter>(InOtherActor))
 		{
@@ -125,7 +158,7 @@ void AHProjectile::OnOverlap(UPrimitiveComponent* InOverlappedComponent, AActor*
 			}
 		}
 
-		// 충돌 시 즉시 폭발 (폭발 로직에서 범위 데미지 처리)
+		UE_LOG(LogTemp, Log, TEXT("[Projectile] Overlap: %s with %s"), *GetName(), *InOtherActor->GetName());
 		Explode();
 	}
 }
@@ -135,8 +168,7 @@ void AHProjectile::Explode()
 	if (!bIsActive) return;
 	bIsActive = false;
 
-	UE_LOG(LogTemp, Log, TEXT("[AHProjectile] Explode Triggered. DamageAmount: %f, DamageEffectClass: %s"), 
-		DamageAmount, DamageEffectClass ? *DamageEffectClass->GetName() : TEXT("NULL"));
+	UE_LOG(LogTemp, Log, TEXT("[Projectile] Explode: %s"), *GetName());
 
 	// 타이머 해제
 	GetWorld()->GetTimerManager().ClearTimer(LifeSpanTimerHandle);
@@ -151,6 +183,7 @@ void AHProjectile::Explode()
 	// 1. 시각 효과 재생 및 크기 조절
 	if (ExplosionEffect && Pool)
 	{
+		UE_LOG(LogTemp, Log, TEXT("[Projectile] Spawning ExplosionEffect: %s"), *ExplosionEffect->GetName());
 		UNiagaraComponent* NiagaraComp = Pool->SpawnNiagaraFromPool(ExplosionEffect, GetActorLocation(), GetActorRotation());
 		if (NiagaraComp)
 		{
@@ -225,7 +258,12 @@ void AHProjectile::Explode()
 									const float CritChance = SourceCharacter->GetCriticalRate();
 									if (FMath::FRandRange(0.0f, 100.0f) <= CritChance)
 									{
-										SpecHandle.Data->AddDynamicAssetTag(FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical")));
+										// 치명타 정보를 태그로 심어서 전달 (ExecutionCalculation 및 GameplayCue 인식용)
+										FGameplayTag CriticalTag = FGameplayTag::RequestGameplayTag(TEXT("Effect.Critical"));
+										SpecHandle.Data->AddDynamicAssetTag(CriticalTag);
+										
+										// Spec의 SourceTag 컨테이너에 직접 추가하여 GameplayCueParameters로 전달되도록 함
+										SpecHandle.Data->CapturedSourceTags.GetSpecTags().AddTag(CriticalTag);
 									}
 								}
 								UE_LOG(LogTemp, Log, TEXT("[AHProjectile] Applying GE to %s"), *HitActor->GetName());
@@ -252,6 +290,14 @@ void AHProjectile::Explode()
 	// 3. 투사체 파괴 대신 풀에 반납
 	if (Pool)
 	{
+		// 비행 이펙트 반납
+		if (FlightComponent)
+		{
+			FlightComponent->Deactivate();
+			Pool->ReturnToPool(FlightComponent->GetOwner());
+			FlightComponent = nullptr;
+		}
+
 		Pool->ReturnToPool(this);
 	}
 	else
