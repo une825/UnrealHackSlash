@@ -26,7 +26,11 @@ protected:
 	TObjectPtr<UListView> InventoryListView;
 
 private:
-	/** 항상 유지할 10개의 슬롯 데이터 객체들 */
+	/** 최대 인벤토리 슬롯 개수 */
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Inventory")
+	int32 MaxInventorySlotCount = 10;
+
+	/** 항상 유지할 슬롯 데이터 객체들 */
 	UPROPERTY()
 	TArray<TObjectPtr<class UHGemInventoryEntryData>> InventorySlotDatas;
 };

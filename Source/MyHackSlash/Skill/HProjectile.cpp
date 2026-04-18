@@ -46,8 +46,6 @@ void AHProjectile::BeginPlay()
 void AHProjectile::ResetProjectile(FVector InLocation, FRotator InRotation)
 {
 	bIsActive = true;
-	UE_LOG(LogTemp, Log, TEXT("[Projectile] --- ResetProjectile: %s ---"), *GetName());
-	UE_LOG(LogTemp, Log, TEXT("[Projectile] Location: %s, Rotation: %s"), *InLocation.ToString(), *InRotation.ToString());
 
 	SetActorLocationAndRotation(InLocation, InRotation);
 	
@@ -57,7 +55,6 @@ void AHProjectile::ResetProjectile(FVector InLocation, FRotator InRotation)
 		ProjectileMovement->Activate(true);
 		ProjectileMovement->Velocity = InRotation.Vector() * ProjectileMovement->InitialSpeed;
 		ProjectileMovement->UpdateComponentVelocity();
-		UE_LOG(LogTemp, Log, TEXT("[Projectile] Movement Activated. Velocity: %s"), *ProjectileMovement->Velocity.ToString());
 	}
 	
 	// 2. 라이프사이클 타이머 초기화 및 시작
@@ -73,18 +70,15 @@ void AHProjectile::ResetProjectile(FVector InLocation, FRotator InRotation)
 			// 기존에 이미 이펙트가 붙어있다면 먼저 반납 (비정상적인 상태 방지)
 			if (FlightComponent)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[Projectile] Cleaning up existing FlightComponent before spawn: %s"), *FlightComponent->GetName());
 				FlightComponent->Deactivate();
 				Pool->ReturnToPool(FlightComponent->GetOwner());
 				FlightComponent = nullptr;
 			}
 
-			UE_LOG(LogTemp, Log, TEXT("[Projectile] Requesting FlightEffect from Pool: %s"), *FlightEffect->GetName());
 			FlightComponent = Pool->SpawnNiagaraFromPool(FlightEffect, InLocation, InRotation);
 			
 			if (FlightComponent)
 			{
-				UE_LOG(LogTemp, Log, TEXT("[Projectile] Spawned FlightComponent: %s (Owner: %s)"), *FlightComponent->GetName(), *FlightComponent->GetOwner()->GetName());
 				if (AActor* NiagaraOwner = FlightComponent->GetOwner())
 				{
 					NiagaraOwner->AttachToActor(this, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
@@ -105,7 +99,6 @@ void AHProjectile::ResetProjectile(FVector InLocation, FRotator InRotation)
 void AHProjectile::OnLifeSpanExpired()
 {
 	if (!bIsActive) return;
-	UE_LOG(LogTemp, Log, TEXT("[Projectile] LifeSpan Expired: %s"), *GetName());
 
 	// 수명이 다하면 풀에 반납
 	if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
@@ -115,13 +108,11 @@ void AHProjectile::OnLifeSpanExpired()
 		// 비행 이펙트 반납
 		if (FlightComponent)
 		{
-			UE_LOG(LogTemp, Log, TEXT("[Projectile] Returning FlightComponent to Pool: %s"), *FlightComponent->GetName());
 			FlightComponent->Deactivate();
 			Pool->ReturnToPool(FlightComponent->GetOwner());
 			FlightComponent = nullptr;
 		}
 
-		UE_LOG(LogTemp, Log, TEXT("[Projectile] Returning Projectile to Pool: %s"), *GetName());
 		Pool->ReturnToPool(this);
 	}
 	else
@@ -137,7 +128,6 @@ void AHProjectile::OnHit(UPrimitiveComponent* InHitComp, AActor* InOtherActor, U
 		// 투사체끼리의 충돌은 무시
 		if (InOtherActor->IsA<AHProjectile>()) return;
 
-		UE_LOG(LogTemp, Log, TEXT("[Projectile] Hit: %s with %s"), *GetName(), *InOtherActor->GetName());
 		Explode();
 	}
 }
@@ -158,7 +148,6 @@ void AHProjectile::OnOverlap(UPrimitiveComponent* InOverlappedComponent, AActor*
 			}
 		}
 
-		UE_LOG(LogTemp, Log, TEXT("[Projectile] Overlap: %s with %s"), *GetName(), *InOtherActor->GetName());
 		Explode();
 	}
 }
@@ -167,8 +156,6 @@ void AHProjectile::Explode()
 {
 	if (!bIsActive) return;
 	bIsActive = false;
-
-	UE_LOG(LogTemp, Log, TEXT("[Projectile] Explode: %s"), *GetName());
 
 	// 타이머 해제
 	GetWorld()->GetTimerManager().ClearTimer(LifeSpanTimerHandle);
@@ -183,7 +170,6 @@ void AHProjectile::Explode()
 	// 1. 시각 효과 재생 및 크기 조절
 	if (ExplosionEffect && Pool)
 	{
-		UE_LOG(LogTemp, Log, TEXT("[Projectile] Spawning ExplosionEffect: %s"), *ExplosionEffect->GetName());
 		UNiagaraComponent* NiagaraComp = Pool->SpawnNiagaraFromPool(ExplosionEffect, GetActorLocation(), GetActorRotation());
 		if (NiagaraComp)
 		{
@@ -226,7 +212,6 @@ void AHProjectile::Explode()
 
 	if (bHasHit)
 	{
-		UE_LOG(LogTemp, Log, TEXT("[AHProjectile] Explode Hit %d actors in radius %f"), OutHits.Num(), ExplosionRadius);
 		TArray<AActor*> DamagedActors;
 		for (const FHitResult& Hit : OutHits)
 		{
@@ -266,7 +251,6 @@ void AHProjectile::Explode()
 										SpecHandle.Data->CapturedSourceTags.GetSpecTags().AddTag(CriticalTag);
 									}
 								}
-								UE_LOG(LogTemp, Log, TEXT("[AHProjectile] Applying GE to %s"), *HitActor->GetName());
 								SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 							}
 						}

@@ -106,18 +106,33 @@ void UHGemInventoryComponent::CheckAndUpgradeGems()
 			}
 		}
 
-		// 장착된 메인 젬 추가
-		TMap<UHGemBase*, int32> EquippedSlotMap; // 어떤 젬이 몇 번 슬롯에 있는지 기록
+		// 장착된 젬 추가 (메인 + 보조)
+		TMap<UHGemBase*, int32> EquippedMainSlotMap; // 메인 젬: 슬롯 인덱스
+		TMap<UHGemBase*, UHMainGem*> EquippedSupportMap; // 보조 젬: 소속 메인 젬
+		
 		if (EquipComp)
 		{
 			for (int32 i = 0; i < 4; ++i)
 			{
-				if (UHMainGem* EquippedGem = EquipComp->GetEquippedGem(i))
+				if (UHMainGem* EquippedMain = EquipComp->GetEquippedGem(i))
 				{
-					const FHGemData& Data = EquippedGem->GetGemData();
-					FName FullID = FName(*FString::Printf(TEXT("%s_T%d"), *Data.GemID.ToString(), Data.Tier));
-					GemGroups.FindOrAdd(FullID).Add(EquippedGem);
-					EquippedSlotMap.Add(EquippedGem, i);
+					// 메인 젬 추가
+					const FHGemData& MainData = EquippedMain->GetGemData();
+					FName MainFullID = FName(*FString::Printf(TEXT("%s_T%d"), *MainData.GemID.ToString(), MainData.Tier));
+					GemGroups.FindOrAdd(MainFullID).Add(EquippedMain);
+					EquippedMainSlotMap.Add(EquippedMain, i);
+
+					// 해당 메인 젬에 박힌 보조 젬들도 추가
+					for (UHSupportGem* Support : EquippedMain->GetSupportGems())
+					{
+						if (Support)
+						{
+							const FHGemData& SupportData = Support->GetGemData();
+							FName SupportFullID = FName(*FString::Printf(TEXT("%s_T%d"), *SupportData.GemID.ToString(), SupportData.Tier));
+							GemGroups.FindOrAdd(SupportFullID).Add(Support);
+							EquippedSupportMap.Add(Support, EquippedMain);
+						}
+					}
 				}
 			}
 		}
@@ -139,14 +154,12 @@ void UHGemInventoryComponent::CheckAndUpgradeGems()
 						
 						// 장착된 젬이 그룹에 포함되어 있는지 확인 (우선순위)
 						UHGemBase* EquippedGemToUpgrade = nullptr;
-						int32 TargetEquipSlot = -1;
 
 						for (int32 i = 0; i < 3; ++i)
 						{
-							if (EquippedSlotMap.Contains(Group[i]))
+							if (EquippedMainSlotMap.Contains(Group[i]) || EquippedSupportMap.Contains(Group[i]))
 							{
 								EquippedGemToUpgrade = Group[i];
-								TargetEquipSlot = EquippedSlotMap[Group[i]];
 								break; 
 							}
 						}
@@ -160,6 +173,15 @@ void UHGemInventoryComponent::CheckAndUpgradeGems()
 							{
 								InventoryGems.Remove(GemToRemove);
 							}
+							else if (EquippedSupportMap.Contains(GemToRemove))
+							{
+								// 장착된 보조 젬인 경우 메인 젬에서 제거
+								if (UHMainGem* OwnerMain = EquippedSupportMap[GemToRemove])
+								{
+									OwnerMain->RemoveSupportGem(Cast<UHSupportGem>(GemToRemove));
+								}
+							}
+							// 메인 젬 제거는 EquipComp->UnequipGem에서 처리됨
 						}
 
 						// 상위 젬 생성 및 초기화
@@ -172,22 +194,34 @@ void UHGemInventoryComponent::CheckAndUpgradeGems()
 						// 장착된 젬이 업그레이드된 경우 자동으로 다시 장착
 						if (EquippedGemToUpgrade && EquipComp)
 						{
-							if (UHMainGem* NewMainGem = Cast<UHMainGem>(NewTierGem))
+							// 1. 메인 젬 업그레이드인 경우
+							if (EquippedMainSlotMap.Contains(EquippedGemToUpgrade))
 							{
-								// 1. 기존에 장착되어 있던 보조 젬들도 계승
-								if (UHMainGem* OldMainGem = Cast<UHMainGem>(EquippedGemToUpgrade))
+								int32 TargetSlot = EquippedMainSlotMap[EquippedGemToUpgrade];
+								if (UHMainGem* NewMainGem = Cast<UHMainGem>(NewTierGem))
 								{
-									for (UHSupportGem* Support : OldMainGem->GetSupportGems())
+									// 기존 보조 젬 계승
+									if (UHMainGem* OldMainGem = Cast<UHMainGem>(EquippedGemToUpgrade))
 									{
-										NewMainGem->AddSupportGem(Support);
+										for (UHSupportGem* Support : OldMainGem->GetSupportGems())
+										{
+											NewMainGem->AddSupportGem(Support);
+										}
+									}
+									EquipComp->UnequipGem(TargetSlot, false);
+									EquipComp->EquipGem(TargetSlot, NewMainGem);
+								}
+							}
+							// 2. 보조 젬 업그레이드인 경우
+							else if (EquippedSupportMap.Contains(EquippedGemToUpgrade))
+							{
+								if (UHMainGem* OwnerMain = EquippedSupportMap[EquippedGemToUpgrade])
+								{
+									if (UHSupportGem* NewSupportGem = Cast<UHSupportGem>(NewTierGem))
+									{
+										OwnerMain->AddSupportGem(NewSupportGem);
 									}
 								}
-
-								// 2. 인벤토리 반환 없이 기존 슬롯 비우기 (중요: 루프 및 중복 생성 방지)
-								EquipComp->UnequipGem(TargetEquipSlot, false);
-
-								// 3. 새 젬을 같은 슬롯에 장착
-								EquipComp->EquipGem(TargetEquipSlot, NewMainGem);
 							}
 						}
 						else

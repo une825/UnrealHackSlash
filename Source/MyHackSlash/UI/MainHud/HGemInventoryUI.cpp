@@ -9,9 +9,9 @@ void UHGemInventoryUI::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	// 10개의 슬롯 데이터 객체 미리 생성 (한 번만 수행)
+	// 슬롯 데이터 객체 미리 생성 (한 번만 수행)
 	InventorySlotDatas.Empty();
-	for (int32 i = 0; i < 10; ++i)
+	for (int32 i = 0; i < MaxInventorySlotCount; ++i)
 	{
 		InventorySlotDatas.Add(NewObject<UHGemInventoryEntryData>(this));
 	}
@@ -41,8 +41,8 @@ void UHGemInventoryUI::RefreshInventory()
 		{
 			const TArray<UHGemBase*>& Gems = GemInventory->GetInventoryGems();
 			
-			// 인벤토리 컴포넌트의 젬 정보를 10개의 슬롯 데이터에 매핑하여 리스트 채우기
-			for (int32 i = 0; i < 10; ++i)
+			// 인벤토리 컴포넌트의 젬 정보를 슬롯 데이터에 매핑하여 리스트 채우기
+			for (int32 i = 0; i < MaxInventorySlotCount; ++i)
 			{
 				if (Gems.IsValidIndex(i))
 				{

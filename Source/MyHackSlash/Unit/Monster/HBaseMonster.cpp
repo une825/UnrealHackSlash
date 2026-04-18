@@ -32,8 +32,8 @@ void AHBaseMonster::InitializeStat(int32 InNewLevel)
 	if (AttributeSet)
 	{
 		OnHPChanged.Broadcast(GetCurrentHP(), GetMaxHP());
-		UE_LOG(LogTemp, Log, TEXT("Monster Initialized Level %d (HP: %f, ExpReward: %f)"), 
-			InNewLevel, GetMaxHP(), AttributeSet->GetExpReward());
+		//UE_LOG(LogTemp, Log, TEXT("Monster Initialized Level %d (HP: %f, ExpReward: %f)"), 
+		//	InNewLevel, GetMaxHP(), AttributeSet->GetExpReward());
 	}
 }
 
