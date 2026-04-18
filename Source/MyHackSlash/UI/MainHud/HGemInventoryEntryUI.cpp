@@ -5,6 +5,7 @@
 #include "Skill/SkillGem/HSupportGem.h"
 #include "DataAsset/HGemDataAsset.h"
 #include "UI/MainHud/HGemDragDropOp.h"
+#include "UI/CommonUI/HGemIconUI.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Unit/Player/HPlayerCharacter.h"
 #include "Skill/HEquipmentComponent.h"
@@ -15,19 +16,19 @@ void UHGemInventoryEntryUI::NativeOnListItemObjectSet(UObject* InListItemObject)
 	CurrentEntryData = Cast<UHGemInventoryEntryData>(InListItemObject);
 	if (!CurrentEntryData || CurrentEntryData->bIsEmpty || !CurrentEntryData->GemBase)
 	{
-		if (AbilityIconImage)
+		if (GemIconUI)
 		{
-			AbilityIconImage->SetVisibility(ESlateVisibility::Hidden);
+			GemIconUI->SetVisibility(ESlateVisibility::Hidden);
 		}
 		return;
 	}
 
 	// 젬 아이콘 표시
 	const FHGemData& GemData = CurrentEntryData->GemBase->GetGemData();
-	if (AbilityIconImage && GemData.Icon)
+	if (GemIconUI)
 	{
-		AbilityIconImage->SetBrushFromTexture(GemData.Icon);
-		AbilityIconImage->SetVisibility(ESlateVisibility::Visible);
+		GemIconUI->SetGemInfo(GemData.GemID, GemData.Tier);
+		GemIconUI->SetVisibility(ESlateVisibility::Visible);
 	}
 }
 
@@ -69,9 +70,9 @@ void UHGemInventoryEntryUI::NativeOnDragDetected(const FGeometry& InGeometry, co
 			
 			// 이미지 크기 조절
 			FVector2D DragIconSize = FVector2D(128, 128);
-			if (AbilityIconImage)
+			if (GemIconUI)
 			{
-				DragIconSize = AbilityIconImage->GetDesiredSize();
+				DragIconSize = GemIconUI->GetDesiredSize();
 			}
 			DragVisual->SetDesiredSizeOverride(DragIconSize);
 			

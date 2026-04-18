@@ -4,7 +4,8 @@
 #include "Components/Image.h"
 #include "Components/Overlay.h"
 #include "System/HSelectAbilityManager.h"
-#include <System/HUIManager.h>
+#include "System/HUIManager.h"
+#include "UI/CommonUI/HGemIconUI.h"
 
 void UHSelectAbilityEntryUI::NativeConstruct()
 {
@@ -34,17 +35,36 @@ void UHSelectAbilityEntryUI::NativeOnListItemObjectSet(UObject* InListItemObject
 			DescText->SetText(RewardData.Description);
 		}
 
-		// 아이콘 설정 (RewardType에 따라 동적 로드)
-		if (IconImage)
+		// 아이콘 설정
+		if (RewardData.RewardType == EHRewardType::GetSkillGem)
 		{
-			if (UTexture2D* IconTexture = RewardData.GetRewardIcon(GetWorld()))
+			if (GemIconUI)
 			{
-				IconImage->SetVisibility(ESlateVisibility::Visible);
-				IconImage->SetBrushFromTexture(IconTexture);
+				GemIconUI->SetGemInfo(RewardData.TargetID, RewardData.Tier);
+				GemIconUI->SetVisibility(ESlateVisibility::Visible);
 			}
-			else
+			if (IconImage)
 			{
 				IconImage->SetVisibility(ESlateVisibility::Collapsed);
+			}
+		}
+		else
+		{
+			if (GemIconUI)
+			{
+				GemIconUI->SetVisibility(ESlateVisibility::Collapsed);
+			}
+			if (IconImage)
+			{
+				if (UTexture2D* IconTexture = RewardData.GetRewardIcon(GetWorld()))
+				{
+					IconImage->SetVisibility(ESlateVisibility::Visible);
+					IconImage->SetBrushFromTexture(IconTexture);
+				}
+				else
+				{
+					IconImage->SetVisibility(ESlateVisibility::Collapsed);
+				}
 			}
 		}
 

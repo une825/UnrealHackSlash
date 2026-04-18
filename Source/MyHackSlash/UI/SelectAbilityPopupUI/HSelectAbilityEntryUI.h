@@ -52,6 +52,9 @@ protected:
 	UPROPERTY(meta = (BindWidget, OptionalWidget = true))
 	TObjectPtr<UImage> IconImage;
 
+	UPROPERTY(meta = (BindWidget, OptionalWidget = true))
+	TObjectPtr<class UHGemIconUI> GemIconUI;
+
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> DescText;
 

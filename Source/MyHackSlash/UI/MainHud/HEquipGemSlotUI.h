@@ -42,9 +42,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gem|UI")
 	int32 SlotIndex = 0;
 
-	/** @brief 메인 젬의 아이콘을 표시할 이미지 */
+	/** @brief 메인 젬의 아이콘과 티어를 표시할 위젯 */
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UImage> MainGemIcon;
+	TObjectPtr<class UHGemIconUI> MainGemIconUI;
 
 	/** @brief 연결된 보조 젬 리스트를 보여줄 리스트 뷰 */
 	UPROPERTY(meta = (BindWidget))

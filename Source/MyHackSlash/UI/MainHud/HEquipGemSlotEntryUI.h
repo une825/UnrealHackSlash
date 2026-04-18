@@ -47,9 +47,9 @@ protected:
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 
 protected:
-	/** @brief 보조 젬의 아이콘을 표시할 이미지 */
+	/** @brief 보조 젬의 아이콘과 티어를 표시할 위젯 */
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UImage> IconImage;
+	TObjectPtr<class UHGemIconUI> GemIconUI;
 
 	/** @brief 현재 이 슬롯에 할당된 데이터 */
 	UPROPERTY()

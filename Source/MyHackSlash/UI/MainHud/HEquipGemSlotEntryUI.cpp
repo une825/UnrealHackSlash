@@ -4,6 +4,7 @@
 #include "Skill/SkillGem/HMainGem.h"
 #include "DataAsset/HGemDataAsset.h"
 #include "UI/MainHud/HGemDragDropOp.h"
+#include "UI/CommonUI/HGemIconUI.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Unit/Player/HPlayerCharacter.h"
 #include "Skill/HEquipmentComponent.h"
@@ -15,39 +16,30 @@ void UHEquipGemSlotEntryUI::NativeOnListItemObjectSet(UObject* InListItemObject)
 	if (!CurrentEntryData)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[UHEquipGemSlotEntryUI] NativeOnListItemObjectSet: InListItemObject is NULL or not UHEquipGemSlotEntryData"));
-		if (IconImage) IconImage->SetVisibility(ESlateVisibility::Hidden);
+		if (GemIconUI) GemIconUI->SetVisibility(ESlateVisibility::Hidden);
 		return;
 	}
 
 	if (CurrentEntryData->bIsEmpty || !CurrentEntryData->SupportGem)
 	{
-		if (IconImage)
+		if (GemIconUI)
 		{
-			// 빈 슬롯: 아이콘을 숨기거나 완전히 투명하게 설정
-			IconImage->SetVisibility(ESlateVisibility::Hidden);
+			GemIconUI->SetVisibility(ESlateVisibility::Hidden);
 		}
 		return;
 	}
 
-	// 보조 젬 데이터에서 아이콘을 가져와 설정
+	// 보조 젬 데이터에서 아이콘과 티어를 설정
 	const FHGemData& GemData = CurrentEntryData->SupportGem->GetGemData();
-	if (IconImage)
+	if (GemIconUI)
 	{
-		if (GemData.Icon)
-		{
-			IconImage->SetBrushFromTexture(GemData.Icon);
-			IconImage->SetVisibility(ESlateVisibility::Visible);
-			IconImage->SetRenderOpacity(1.0f);
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[UHEquipGemSlotEntryUI] Gem %s has NO Icon!"), *GemData.GemID.ToString());
-			IconImage->SetVisibility(ESlateVisibility::Hidden);
-		}
+		GemIconUI->SetGemInfo(GemData.GemID, GemData.Tier);
+		GemIconUI->SetVisibility(ESlateVisibility::Visible);
+		GemIconUI->SetRenderOpacity(1.0f);
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("[UHEquipGemSlotEntryUI] IconImage widget is NOT bound (nullptr)! Check Widget Blueprint."));
+		UE_LOG(LogTemp, Error, TEXT("[UHEquipGemSlotEntryUI] GemIconUI widget is NOT bound (nullptr)! Check Widget Blueprint."));
 	}
 }
 
@@ -86,7 +78,14 @@ void UHEquipGemSlotEntryUI::NativeOnDragDetected(const FGeometry& InGeometry, co
 	{
 		UImage* DragVisual = NewObject<UImage>(this);
 		DragVisual->SetBrushFromTexture(GemData.Icon);
-		DragVisual->SetDesiredSizeOverride(FVector2D(64, 64)); // 보조 젬은 조금 작게
+		
+		FVector2D DragIconSize = FVector2D(64, 64);
+		if (GemIconUI)
+		{
+			DragIconSize = GemIconUI->GetDesiredSize();
+		}
+		DragVisual->SetDesiredSizeOverride(DragIconSize); 
+		
 		DragOp->DefaultDragVisual = DragVisual;
 	}
 

@@ -6,31 +6,25 @@
 #include "DataAsset/HGemDataAsset.h"
 #include "UI/MainHud/HEquipGemSlotEntryUI.h"
 #include "UI/MainHud/HGemDragDropOp.h"
+#include "UI/CommonUI/HGemIconUI.h"
 #include "Unit/Player/HPlayerCharacter.h"
 #include "Skill/HEquipmentComponent.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 
 void UHEquipGemSlotUI::SetMainGem(UHMainGem* InMainGem)
 {
-	// 1. 메인 젬 아이콘 설정
-	if (MainGemIcon)
+	// 1. 메인 젬 아이콘 및 티어 설정
+	if (MainGemIconUI)
 	{
 		if (InMainGem)
 		{
 			const FHGemData& GemData = InMainGem->GetGemData();
-			if (GemData.Icon)
-			{
-				MainGemIcon->SetBrushFromTexture(GemData.Icon);
-				MainGemIcon->SetVisibility(ESlateVisibility::Visible);
-			}
-			else
-			{
-				MainGemIcon->SetVisibility(ESlateVisibility::Hidden);
-			}
+			MainGemIconUI->SetGemInfo(GemData.GemID, GemData.Tier);
+			MainGemIconUI->SetVisibility(ESlateVisibility::Visible);
 		}
 		else
 		{
-			MainGemIcon->SetVisibility(ESlateVisibility::Hidden);
+			MainGemIconUI->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
 
@@ -73,17 +67,14 @@ void UHEquipGemSlotUI::SetMainGem(UHMainGem* InMainGem)
 
 void UHEquipGemSlotUI::ClearSlot()
 {
-	if (MainGemIcon)
+	if (MainGemIconUI)
 	{
-		MainGemIcon->SetVisibility(ESlateVisibility::Hidden);
+		MainGemIconUI->SetVisibility(ESlateVisibility::Hidden);
 	}
 
 	if (SubGemSlotListView)
 	{
 		SubGemSlotListView->ClearListItems();
-
-		// 보조 젬이 있을 수도 있으므로 단순히 비우지 않고 Refresh 유도하거나 직접 그림
-		// 여기서는 Refresh()가 결국 SetMainGem(nullptr)을 부를 것이므로 로직 통합됨
 	}
 }
 
@@ -161,9 +152,9 @@ void UHEquipGemSlotUI::NativeOnDragDetected(const FGeometry& InGeometry, const F
 			DragVisual->SetBrushFromTexture(GemData.Icon);
 
 			FVector2D DragIconSize = FVector2D(128, 128);
-			if (MainGemIcon)
+			if (MainGemIconUI)
 			{
-				DragIconSize = MainGemIcon->GetDesiredSize();
+				DragIconSize = MainGemIconUI->GetDesiredSize();
 			}
 			DragVisual->SetDesiredSizeOverride(DragIconSize);
 

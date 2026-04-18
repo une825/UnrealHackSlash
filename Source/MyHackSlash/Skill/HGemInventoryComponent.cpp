@@ -71,174 +71,185 @@ void UHGemInventoryComponent::CheckAndUpgradeGems()
 		GemCollection = GameMode->GetGemCollectionDataAsset();
 	}
 
-	if (nullptr == GemCollection)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("UHGemInventoryComponent: GemCollectionDataAsset is null! Upgrade failed."));
-		return;
-	}
+	if (!GemCollection) return;
 
-	// 장착 컴포넌트 가져오기
 	UHEquipmentComponent* EquipComp = nullptr;
 	if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner()))
 	{
 		EquipComp = Player->GetEquipmentComponent();
 	}
 
-	bool bHasUpgraded = false;
-
-	// 더 이상 업그레이드할 것이 없을 때까지 반복
-	do 
+	// 더 이상 업그레이드할 것이 없을 때까지 반복 (연쇄 업그레이드 지원)
+	while (TryUpgradeSingleGroup(GemCollection, EquipComp))
 	{
-		bHasUpgraded = false;
+		// 한 번이라도 업그레이드되면 다시 처음부터 체크 (새로운 조합 가능성 때문)
+	}
+}
 
-		// 1. GemID와 Tier별로 현재 보유 중인 모든 인스턴스(인벤토리 + 장착) 리스트 작성
-		TMap<FName, TArray<UHGemBase*>> GemGroups;
-		
-		// 인벤토리 젬 추가
-		for (UHGemBase* Gem : InventoryGems)
+void UHGemInventoryComponent::GatherAllGems(TMap<FName, TArray<UHGemBase*>>& OutGemGroups, TMap<UHGemBase*, int32>& OutMainSlotMap, TMap<UHGemBase*, int32>& OutSupportSlotMap) const
+{
+	// 1. 인벤토리 젬 수집
+	for (UHGemBase* Gem : InventoryGems)
+	{
+		if (Gem)
 		{
-			if (Gem)
+			const FHGemData& Data = Gem->GetGemData();
+			FName FullID = FName(*FString::Printf(TEXT("%s_T%d"), *Data.GemID.ToString(), Data.Tier));
+			OutGemGroups.FindOrAdd(FullID).Add(Gem);
+		}
+	}
+
+	// 2. 장착된 젬 수집 (메인 + 보조)
+	AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner());
+	UHEquipmentComponent* EquipComp = Player ? Player->GetEquipmentComponent() : nullptr;
+
+	if (EquipComp)
+	{
+		for (int32 i = 0; i < 4; ++i)
+		{
+			// 메인 젬 수집
+			if (UHMainGem* MainGem = EquipComp->GetEquippedGem(i))
 			{
-				const FHGemData& Data = Gem->GetGemData();
-				// 동일한 GemID와 Tier를 가진 젬끼리 묶기 위해 FullID를 생성하여 키로 사용합니다.
-				FName FullID = FName(*FString::Printf(TEXT("%s_T%d"), *Data.GemID.ToString(), Data.Tier));
-				GemGroups.FindOrAdd(FullID).Add(Gem);
+				const FHGemData& MainData = MainGem->GetGemData();
+				FName MainFullID = FName(*FString::Printf(TEXT("%s_T%d"), *MainData.GemID.ToString(), MainData.Tier));
+				OutGemGroups.FindOrAdd(MainFullID).Add(MainGem);
+				OutMainSlotMap.Add(MainGem, i);
+			}
+
+			// 슬롯에 있는 모든 보조 젬 수집 (메인 젬 장착 여부와 상관없이)
+			TArray<UHSupportGem*> SupportGems = EquipComp->GetEquippedSupportGems(i);
+			for (UHSupportGem* Support : SupportGems)
+			{
+				if (Support)
+				{
+					const FHGemData& SupportData = Support->GetGemData();
+					FName SupportFullID = FName(*FString::Printf(TEXT("%s_T%d"), *SupportData.GemID.ToString(), SupportData.Tier));
+					OutGemGroups.FindOrAdd(SupportFullID).Add(Support);
+					OutSupportSlotMap.Add(Support, i);
+				}
 			}
 		}
+	}
+}
 
-		// 장착된 젬 추가 (메인 + 보조)
-		TMap<UHGemBase*, int32> EquippedMainSlotMap; // 메인 젬: 슬롯 인덱스
-		TMap<UHGemBase*, UHMainGem*> EquippedSupportMap; // 보조 젬: 소속 메인 젬
-		
-		if (EquipComp)
+bool UHGemInventoryComponent::TryUpgradeSingleGroup(UHGemDataAsset* GemCollection, UHEquipmentComponent* EquipComp)
+{
+	TMap<FName, TArray<UHGemBase*>> GemGroups;
+	TMap<UHGemBase*, int32> MainSlotMap;
+	TMap<UHGemBase*, int32> SupportSlotMap;
+
+	GatherAllGems(GemGroups, MainSlotMap, SupportSlotMap);
+
+	for (auto& Pair : GemGroups)
+	{
+		TArray<UHGemBase*>& Group = Pair.Value;
+		if (Group.Num() < 3) continue;
+
+		const FHGemData& CurrentData = Group[0]->GetGemData();
+		FHGemData NextTierData;
+
+		if (GemCollection->FindNextTierGemData(CurrentData, NextTierData))
 		{
-			for (int32 i = 0; i < 4; ++i)
+			// 1. 업그레이드 대상 식별 (전체 그룹에서 장착 중인 것을 최우선으로 찾음)
+			UHGemBase* SourceGem = nullptr;
+			for (UHGemBase* Gem : Group)
 			{
-				if (UHMainGem* EquippedMain = EquipComp->GetEquippedGem(i))
+				if (MainSlotMap.Contains(Gem) || SupportSlotMap.Contains(Gem))
 				{
-					// 메인 젬 추가
-					const FHGemData& MainData = EquippedMain->GetGemData();
-					FName MainFullID = FName(*FString::Printf(TEXT("%s_T%d"), *MainData.GemID.ToString(), MainData.Tier));
-					GemGroups.FindOrAdd(MainFullID).Add(EquippedMain);
-					EquippedMainSlotMap.Add(EquippedMain, i);
+					SourceGem = Gem;
+					break;
+				}
+			}
 
-					// 해당 메인 젬에 박힌 보조 젬들도 추가
-					for (UHSupportGem* Support : EquippedMain->GetSupportGems())
+			// 2. 재료 3개 선정 (SourceGem이 있다면 반드시 포함)
+			TArray<UHGemBase*> Ingredients;
+			if (SourceGem) Ingredients.Add(SourceGem);
+			for (UHGemBase* Gem : Group)
+			{
+				if (Ingredients.Num() >= 3) break;
+				if (Gem != SourceGem) Ingredients.Add(Gem);
+			}
+
+			// 3. 데이터 캡처 (Distribution에 필요)
+			int32 MainSlot = SourceGem ? MainSlotMap.FindRef(SourceGem, -1) : -1;
+			int32 SupportSlot = SourceGem ? SupportSlotMap.FindRef(SourceGem, -1) : -1;
+
+			// 4. 하위 젬 3개 제거
+			ConsumeGems(Ingredients, SupportSlotMap, EquipComp);
+
+			// 5. 상위 젬 생성
+			TSubclassOf<UHGemBase> GemClass = (NextTierData.GemCategory == HEGemCategory::Main)
+				? UHMainGem::StaticClass() : UHSupportGem::StaticClass();
+			UHGemBase* NewTierGem = NewObject<UHGemBase>(this, GemClass);
+			NewTierGem->Initialize(NextTierData);
+
+			// 6. 결과물 배치 및 알림
+			DistributeUpgradedGem(NewTierGem, SourceGem, EquipComp, MainSlot, SupportSlot);
+
+			OnGemUpgraded.Broadcast(NewTierGem);
+			OnGemInventoryUpdated.Broadcast();
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void UHGemInventoryComponent::ConsumeGems(const TArray<UHGemBase*>& InGems, const TMap<UHGemBase*, int32>& InSupportSlotMap, UHEquipmentComponent* EquipComp)
+{
+	for (UHGemBase* Gem : InGems)
+	{
+		if (InventoryGems.Contains(Gem))
+		{
+			InventoryGems.Remove(Gem);
+		}
+		else if (EquipComp && InSupportSlotMap.Contains(Gem))
+		{
+			// 보조 젬은 EquipComp를 통해 해제 (슬롯에서도 제거됨)
+			int32 SlotIdx = InSupportSlotMap.FindRef(Gem);
+			EquipComp->UnequipSupportGem(SlotIdx, Cast<UHSupportGem>(Gem), false);
+		}
+		// 메인 젬은 DistributeUpgradedGem에서 Unequip을 통해 교체되므로 여기서 제거하지 않음
+	}
+}
+
+void UHGemInventoryComponent::DistributeUpgradedGem(UHGemBase* NewGem, UHGemBase* SourceGem, UHEquipmentComponent* EquipComp, int32 MainSlot, int32 SupportSlot)
+{
+	if (SourceGem && EquipComp)
+	{
+		// 1. 메인 젬 업그레이드인 경우
+		if (MainSlot != -1)
+		{
+			if (UHMainGem* NewMain = Cast<UHMainGem>(NewGem))
+			{
+				if (UHMainGem* OldMain = Cast<UHMainGem>(SourceGem))
+				{
+					// 중요: Unequip 전에 보조 젬들을 미리 복사 (Unequip이 내부 리스트를 비움)
+					TArray<UHSupportGem*> OldSupports = OldMain->GetSupportGems();
+					for (UHSupportGem* Support : OldSupports)
 					{
-						if (Support)
-						{
-							const FHGemData& SupportData = Support->GetGemData();
-							FName SupportFullID = FName(*FString::Printf(TEXT("%s_T%d"), *SupportData.GemID.ToString(), SupportData.Tier));
-							GemGroups.FindOrAdd(SupportFullID).Add(Support);
-							EquippedSupportMap.Add(Support, EquippedMain);
-						}
+						NewMain->AddSupportGem(Support);
 					}
 				}
+				// 기존 장착 해제 후 새 젬 장착
+				EquipComp->UnequipGem(MainSlot, false);
+				EquipComp->EquipGem(MainSlot, NewMain);
+				return;
 			}
 		}
-
-		// 2. 그룹별로 3개 이상인지 체크
-		for (auto& Pair : GemGroups)
+		// 2. 보조 젬 업그레이드인 경우
+		else if (SupportSlot != -1)
 		{
-			TArray<UHGemBase*>& Group = Pair.Value;
-
-			if (Group.Num() >= 3)
+			if (UHSupportGem* NewSupport = Cast<UHSupportGem>(NewGem))
 			{
-				const FHGemData& CurrentData = Group[0]->GetGemData();
-				FHGemData NextTierData;
-				
-				// NextTierGemID 대신 FindNextTierGemData를 사용하여 다음 티어 데이터가 있는지 확인합니다.
-				if (GemCollection->FindNextTierGemData(CurrentData, NextTierData))
-				{
-					// --- 업그레이드 실행 ---
-						
-						// 장착된 젬이 그룹에 포함되어 있는지 확인 (우선순위)
-						UHGemBase* EquippedGemToUpgrade = nullptr;
-
-						for (int32 i = 0; i < 3; ++i)
-						{
-							if (EquippedMainSlotMap.Contains(Group[i]) || EquippedSupportMap.Contains(Group[i]))
-							{
-								EquippedGemToUpgrade = Group[i];
-								break; 
-							}
-						}
-
-						// 하위 젬 3개 제거 (인벤토리 혹은 장착 슬롯에서)
-						for (int32 i = 0; i < 3; ++i)
-						{
-							UHGemBase* GemToRemove = Group[i];
-							
-							if (InventoryGems.Contains(GemToRemove))
-							{
-								InventoryGems.Remove(GemToRemove);
-							}
-							else if (EquippedSupportMap.Contains(GemToRemove))
-							{
-								// 장착된 보조 젬인 경우 메인 젬에서 제거
-								if (UHMainGem* OwnerMain = EquippedSupportMap[GemToRemove])
-								{
-									OwnerMain->RemoveSupportGem(Cast<UHSupportGem>(GemToRemove));
-								}
-							}
-							// 메인 젬 제거는 EquipComp->UnequipGem에서 처리됨
-						}
-
-						// 상위 젬 생성 및 초기화
-						TSubclassOf<UHGemBase> GemClass = (NextTierData.GemCategory == HEGemCategory::Main) 
-							? UHMainGem::StaticClass() : UHSupportGem::StaticClass();
-						
-						UHGemBase* NewTierGem = NewObject<UHGemBase>(this, GemClass);
-						NewTierGem->Initialize(NextTierData);
-
-						// 장착된 젬이 업그레이드된 경우 자동으로 다시 장착
-						if (EquippedGemToUpgrade && EquipComp)
-						{
-							// 1. 메인 젬 업그레이드인 경우
-							if (EquippedMainSlotMap.Contains(EquippedGemToUpgrade))
-							{
-								int32 TargetSlot = EquippedMainSlotMap[EquippedGemToUpgrade];
-								if (UHMainGem* NewMainGem = Cast<UHMainGem>(NewTierGem))
-								{
-									// 기존 보조 젬 계승
-									if (UHMainGem* OldMainGem = Cast<UHMainGem>(EquippedGemToUpgrade))
-									{
-										for (UHSupportGem* Support : OldMainGem->GetSupportGems())
-										{
-											NewMainGem->AddSupportGem(Support);
-										}
-									}
-									EquipComp->UnequipGem(TargetSlot, false);
-									EquipComp->EquipGem(TargetSlot, NewMainGem);
-								}
-							}
-							// 2. 보조 젬 업그레이드인 경우
-							else if (EquippedSupportMap.Contains(EquippedGemToUpgrade))
-							{
-								if (UHMainGem* OwnerMain = EquippedSupportMap[EquippedGemToUpgrade])
-								{
-									if (UHSupportGem* NewSupportGem = Cast<UHSupportGem>(NewTierGem))
-									{
-										OwnerMain->AddSupportGem(NewSupportGem);
-									}
-								}
-							}
-						}
-						else
-						{
-							// 인벤토리로 추가
-							InventoryGems.Add(NewTierGem);
-						}
-
-						// 알림 발송
-						OnGemUpgraded.Broadcast(NewTierGem);
-						OnGemInventoryUpdated.Broadcast();
-						
-						bHasUpgraded = true;
-						break; 
-					}
-				}
+				// EquipComp를 통해 장착 (MainGem 연결 및 슬롯 데이터 동기화)
+				EquipComp->EquipSupportGem(SupportSlot, NewSupport);
+				return;
 			}
+		}
+	}
 
-	} while (bHasUpgraded);
+	// 장착된 것이 없거나 배치 실패 시 인벤토리에 추가
+	InventoryGems.Add(NewGem);
 }

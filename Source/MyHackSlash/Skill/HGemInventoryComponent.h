@@ -50,6 +50,19 @@ protected:
 	/** @brief 동일한 젬 3개가 모였는지 확인하고 자동 업그레이드를 수행합니다. */
 	void CheckAndUpgradeGems();
 
+private:
+	/** @brief 모든 젬(인벤토리 + 장착)을 수집하여 그룹화합니다. */
+	void GatherAllGems(TMap<FName, TArray<UHGemBase*>>& OutGemGroups, TMap<UHGemBase*, int32>& OutMainSlotMap, TMap<UHGemBase*, int32>& OutSupportSlotMap) const;
+
+	/** @brief 단일 그룹에 대해 업그레이드 가능 여부를 판단하고 실행합니다. */
+	bool TryUpgradeSingleGroup(UHGemDataAsset* GemCollection, class UHEquipmentComponent* EquipComp);
+
+	/** @brief 업그레이드에 사용될 재료 젬 3개를 제거합니다. */
+	void ConsumeGems(const TArray<UHGemBase*>& InGems, const TMap<UHGemBase*, int32>& InSupportSlotMap, class UHEquipmentComponent* EquipComp);
+
+	/** @brief 생성된 상위 티어 젬을 적절한 위치(인벤토리 또는 기존 장착 슬롯)에 배치합니다. */
+	void DistributeUpgradedGem(UHGemBase* NewGem, UHGemBase* SourceGem, class UHEquipmentComponent* EquipComp, int32 MainSlot, int32 SupportSlot);
+
 public:
 	/** 인벤토리 데이터가 변할 때 호출되는 델리게이트 */
 	UPROPERTY(BlueprintAssignable, Category = "Gem|Events")

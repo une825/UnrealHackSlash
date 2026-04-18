@@ -42,7 +42,7 @@ protected:
 
 protected:
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UImage> AbilityIconImage;
+	TObjectPtr<class UHGemIconUI> GemIconUI;
 
 	/** @brief 현재 이 슬롯에 할당된 데이터 (드래그 시 페이로드로 사용) */
 	UPROPERTY()
