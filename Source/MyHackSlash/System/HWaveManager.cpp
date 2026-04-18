@@ -203,6 +203,15 @@ void UHWaveManager::GetCurrentWaveProgress(float& OutCurrent, float& OutTarget) 
 	}
 }
 
+const FHWaveData& UHWaveManager::GetCurrentWaveData() const
+{
+	if (WaveConfig && WaveConfig->WaveList.IsValidIndex(CurrentWaveIndex))
+	{
+		return WaveConfig->WaveList[CurrentWaveIndex];
+	}
+	return DefaultWaveData;
+}
+
 void UHWaveManager::CalculateInterest()
 {
 	if (!WaveConfig) return;

@@ -65,6 +65,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "H|Wave")
 	void GetCurrentWaveProgress(float& OutCurrent, float& OutTarget) const;
 
+	/** @brief 현재 웨이브의 상세 데이터를 반환합니다. */
+	UFUNCTION(BlueprintPure, Category = "H|Wave")
+	const FHWaveData& GetCurrentWaveData() const;
+
 public:
 	UPROPERTY(BlueprintAssignable, Category = "H|Wave|Event")
 	FOnWaveStarted OnWaveStarted;
@@ -85,6 +89,9 @@ protected:
 private:
 	UPROPERTY()
 	TObjectPtr<UHWaveConfigDataAsset> WaveConfig;
+
+	/** @brief 유효하지 않은 인덱스 접근 시 반환할 기본 데이터 */
+	FHWaveData DefaultWaveData;
 
 	UPROPERTY()
 	EHWaveState CurrentState = EHWaveState::Ready;

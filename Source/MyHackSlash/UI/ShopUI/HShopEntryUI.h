@@ -5,11 +5,29 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/IUserObjectListEntry.h"
+#include "DataAsset/HShopRow.h"
 #include "HShopEntryUI.generated.h"
 
 class UImage;
 class UTextBlock;
 class UButton;
+
+/**
+ * 상점 항목의 데이터를 담는 객체입니다. (TileView/ListView용)
+ */
+UCLASS(BlueprintType)
+class MYHACKSLASH_API UHShopEntryData : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FHShopRow ItemRowData;
+
+	/** 데이터 테이블에서의 행 이름 (구매 시 참조용) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName RowName;
+};
 
 /**
  * 상점의 개별 상품 항목을 표시하는 위젯 클래스입니다.
@@ -45,4 +63,9 @@ protected:
 protected:
 	UFUNCTION()
 	void OnSelectButtonClicked();
+
+private:
+	/** 현재 바인딩된 데이터 객체 */
+	UPROPERTY()
+	TWeakObjectPtr<class UHShopEntryData> CachedData;
 };

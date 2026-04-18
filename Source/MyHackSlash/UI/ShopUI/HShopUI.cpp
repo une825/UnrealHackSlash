@@ -1,6 +1,7 @@
 // Source/MyHackSlash/UI/ShopUI/HShopUI.cpp
 
 #include "UI/ShopUI/HShopUI.h"
+#include "UI/ShopUI/HShopEntryUI.h"
 #include "Components/TileView.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
@@ -9,6 +10,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "System/HUIManager.h"
 #include "System/HWaveManager.h"
+#include "DataAsset/HShopRow.h"
 
 void UHShopUI::NativeConstruct()
 {
@@ -31,6 +33,7 @@ void UHShopUI::NativeConstruct()
 	}
 
 	InitWaveInfo();
+	PopulateShopItems();
 }
 
 void UHShopUI::RefreshCurrency(int32 InNewCurrency)
@@ -38,6 +41,37 @@ void UHShopUI::RefreshCurrency(int32 InNewCurrency)
 	if (CurrencyText)
 	{
 		CurrencyText->SetText(FText::AsNumber(InNewCurrency));
+	}
+}
+
+void UHShopUI::PopulateShopItems()
+{
+	if (!ShopTileView) return;
+	ShopTileView->ClearListItems();
+
+	UHWaveManager* WaveManager = GetWorld()->GetSubsystem<UHWaveManager>();
+	if (!WaveManager) return;
+
+	const FHWaveData& CurrentWave = WaveManager->GetCurrentWaveData();
+	UDataTable* ShopTable = CurrentWave.ShopRewardTable;
+	if (!ShopTable)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UHShopUI: ShopRewardTable is null in current wave!"));
+		return;
+	}
+
+	// 테이블의 모든 행을 가져와서 배치
+	TArray<FName> RowNames = ShopTable->GetRowNames();
+	for (const FName& RowName : RowNames)
+	{
+		if (FHShopRow* ItemData = ShopTable->FindRow<FHShopRow>(RowName, TEXT("UHShopUI::PopulateShopItems")))
+		{
+			UHShopEntryData* EntryData = NewObject<UHShopEntryData>(this);
+			EntryData->ItemRowData = *ItemData;
+			EntryData->RowName = RowName;
+
+			ShopTileView->AddItem(EntryData);
+		}
 	}
 }
 

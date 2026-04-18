@@ -46,6 +46,9 @@ protected:
 	TObjectPtr<UButton> NextWaveButton;
 
 protected:
+	/** @brief 현재 웨이브 데이터를 기반으로 상점 상품을 배치합니다. */
+	void PopulateShopItems();
+
 	/** @brief 웨이브 정보를 기반으로 상단 텍스트를 초기화합니다. */
 	void InitWaveInfo();
 

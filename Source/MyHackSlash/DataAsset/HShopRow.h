@@ -14,8 +14,8 @@ UENUM(BlueprintType)
 enum class EHShopItemType : uint8
 {
 	Ability,    // 능력치 강화
+	InstantEffect, // 1회성 효과
 	SkillGem,   // 스킬 젬
-	Consumable, // 소모품
 	Equipment   // 장비
 };
 
@@ -37,6 +37,10 @@ public:
 	// 상품 고유 식별 태그 (구매 대상 아이템)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
 	FGameplayTag ItemTag;
+
+	/** @brief 아이템 효과 수치 (공격력 증가량, 회복량 등) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+	float EffectValue = 0.0f;
 
 	// --- 구매 비용 설정 ---
 	// 구매에 필요한 아이템(재화)의 ID 태그 (예: Currency.Gold, Item.Gem.Red 등)

@@ -27,17 +27,28 @@ This project implements core hack-and-slash gameplay mechanics, including a comb
 - **Enhanced Input:** Modern input handling for player controls.
 - **Monster Spawning:** Data-driven spawning system (`HMonsterSpawnerDataAsset`, `HMonsterSpawnManager`).
 
+### 💎 Gem Inventory & Upgrade System
+- **Inventory Component:** Manages gem instances with an event-driven UI binding.
+- **Auto-Upgrade (3-in-1):** 
+  - Automatically merges 3 identical gems (ID & Tier) into a higher-tier gem.
+  - **Smart Re-equipping:** If an equipped gem is upgraded, the new gem is automatically re-equipped in the same slot.
+  - **Support Gem Inheritance:** Main gems retain their linked support gems even after an upgrade.
+- **Data-Driven Design:** Gem properties and progression are defined via `UHGemDataAsset`.
+
 ## Project Structure (`Source/MyHackSlash`)
 
 | Directory | Description |
 |-----------|-------------|
-| `AI` | Behavior Tree nodes (Decorators, Services, Tasks) and AI interfaces. |
-| `DataAsset` | Data definitions for skills and spawning configurations. |
-| `GA` | Gameplay Ability implementations (`HGA_Attack`, etc.). |
-| `Mode` | Game Mode and Player Controller classes. |
-| `Skill` | Combat interfaces and Animation Notifies. |
-| `System` | Core subsystems (Object Pooling, Monster Spawning, AI Controller). |
-| `Unit` | Character base classes (`HBaseCharacter`), Player, and Monster definitions. |
+| `AI` | Behavior Tree nodes and AI controllers. |
+| `Attribute` | AttributeSets for health, mana, and combat stats. |
+| `DataAsset` | Data definitions for skills, items, and wave configurations. |
+| `GAS` | Gameplay Ability implementations (`HGA_Attack`, etc.). |
+| `Item` | Interactable items like coins and drops. |
+| `Mode` | Game Mode, State, and Player Controller classes. |
+| `Skill` | Core logic for the Gem system, Projectiles, and Inventory. |
+| `System` | Managers (UI, Pool, Quest, Wave) and global type definitions. |
+| `UI` | UserWidgets and ListView data objects. |
+| `Unit` | Character base classes (`HBaseCharacter`), Player, and Monsters. |
 
 ## Tech Stack
 - **Engine:** Unreal Engine 5.5

@@ -112,8 +112,8 @@ struct FHWaveData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
 	TObjectPtr<class UPrimaryDataAsset> RewardData;
 
-	/** @brief 엑셀(DataTable)에서 관리되는 상점 보상 데이터 참조 */
+	/** @brief 이 웨이브의 상점에서 판매할 상품들의 데이터 테이블 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
-	FDataTableRowHandle ShopRewardRow;
-	};
+	TObjectPtr<class UDataTable> ShopRewardTable;
+};
 
