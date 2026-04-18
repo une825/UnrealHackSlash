@@ -1,5 +1,8 @@
-# MyHackSlash
+🚫 Notice
+이 레포지토리는 개인 포트폴리오 용도로 공개된 프로젝트입니다.
+따라서 외부의 Pull Request나 Issue는 정중히 사양하며, 확인 없이 닫힐 수 있습니다.
 
+# MyHackSlash
 A Top-Down Hack & Slash game built with **Unreal Engine 5.5**.
 
 ## Overview
