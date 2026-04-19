@@ -5,6 +5,8 @@ DerivedDataCache/
 
 Content/Assets/StarterContent/
 
+gitignore*
+
 .vs/
 *.sln
 .vsconfig
