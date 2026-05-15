@@ -14,6 +14,8 @@
 #include "DataAsset/HMapConfigDataAsset.h"
 #include "DataAsset/HWaveConfigDataAsset.h"
 #include "DataAsset/HSoundDataAsset.h"
+#include "DataAsset/HPinkFogConfigDataAsset.h"
+#include "System/HPinkFogManager.h"
 #include "Engine/StreamableManager.h"
 #include "Engine/AssetManager.h"
 
@@ -44,7 +46,6 @@ void AMyHackSlashGameMode::BeginPlay()
 	Super::BeginPlay();
 
 	// SetMonsterSpawnManager(); // 이제 WaveManager가 담당하므로 직접 호출하지 않음
-	SetWaveManager();
 	SetSelectAbilityManager();
 
 	// Infinite Map 초기화 (DataAsset 사용)
@@ -72,6 +73,33 @@ void AMyHackSlashGameMode::BeginPlay()
 			SoundManager->PlayBGMByKey(TEXT("BGM_01"));
 		}
 	}
+
+	// 핑크 안개 시스템 초기화
+	if (PinkFogConfig)
+	{
+		UHPinkFogManager* PinkFogManager = GetWorld()->GetSubsystem<UHPinkFogManager>();
+		UHWaveManager* WaveManager = GetWorld()->GetSubsystem<UHWaveManager>();
+		UHMonsterSpawnManager* MonsterManager = GetWorld()->GetSubsystem<UHMonsterSpawnManager>();
+
+		if (PinkFogManager)
+		{
+			if (WaveManager)
+			{
+				// 웨이브 시작 이벤트에 핑크 안개 발생 체크 바인딩
+				WaveManager->OnWaveStarted.AddDynamic(PinkFogManager, &UHPinkFogManager::OnWaveStarted);
+				WaveManager->OnWaveCompleted.AddDynamic(PinkFogManager, &UHPinkFogManager::OnWaveCompleted);
+			}
+
+			if (MonsterManager)
+			{
+				// 안개 중 스폰되는 몬스터 버프를 위해 스폰 이벤트 바인딩
+				MonsterManager->OnMonsterSpawned.AddDynamic(PinkFogManager, &UHPinkFogManager::OnMonsterSpawned);
+			}
+		}
+	}
+
+	// Wave Manager 초기화 및 시작 (이벤트 바인딩이 완료된 후 호출)
+	SetWaveManager();
 }
 
 void AMyHackSlashGameMode::Tick(float InDeltaSeconds)

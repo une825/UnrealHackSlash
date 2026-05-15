@@ -9,7 +9,9 @@ UHGA_Magnet::UHGA_Magnet()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	
 	// 'State.MagnetActive' 태그가 있을 때만 활성화하거나 작동하도록 설정할 수 있습니다.
-	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Magnet")));
+	FGameplayTagContainer AssetTags;
+	AssetTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Magnet")));
+	SetAssetTags(AssetTags);
 }
 
 void UHGA_Magnet::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)

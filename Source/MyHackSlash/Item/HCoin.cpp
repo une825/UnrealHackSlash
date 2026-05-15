@@ -10,6 +10,7 @@
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "System/HObjectPoolManager.h"
+#include "System/HSoundManager.h"
 #include "Engine/EngineTypes.h"
 
 AHCoin::AHCoin()
@@ -106,7 +107,10 @@ void AHCoin::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* Ot
 
 			if (PickupSound)
 			{
-				UGameplayStatics::PlaySoundAtLocation(this, PickupSound, GetActorLocation());
+				if (UHSoundManager* SoundManager = GetWorld()->GetSubsystem<UHSoundManager>())
+				{
+					SoundManager->PlaySoundAtLocationThrottled(PickupSound, GetActorLocation());
+				}
 			}
 
 			ReturnToPool();

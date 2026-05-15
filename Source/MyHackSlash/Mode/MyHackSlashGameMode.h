@@ -22,6 +22,7 @@ public:
 	AMyHackSlashGameMode();
 
 	UHGemDataAsset* GetGemCollectionDataAsset() const { return GemCollectionDataAsset; }
+	class UHPinkFogConfigDataAsset* GetPinkFogConfig() const { return PinkFogConfig; }
 
 public:
 	virtual void BeginPlay() override;
@@ -66,6 +67,9 @@ private:
 	// --- Sound Settings ---
 	UPROPERTY(EditAnywhere, Category = "Sound")
 	TObjectPtr<UHSoundDataAsset> SoundConfig;
+
+	UPROPERTY(EditAnywhere, Category = "PinkFog")
+	TObjectPtr<class UHPinkFogConfigDataAsset> PinkFogConfig;
 
 	TSharedPtr<struct FStreamableHandle> LoadHandle;
 };

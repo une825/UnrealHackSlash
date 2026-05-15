@@ -25,6 +25,20 @@ void UHGA_Attack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 		return;
 	}
 
+	if (!IsPrimarySlotAbility())
+	{
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		{
+			FGameplayEventData Payload;
+			Payload.Instigator = Character;
+			Payload.EventTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Action.AttackHitCheck"));
+			ASC->HandleGameplayEvent(Payload.EventTag, &Payload);
+		}
+
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
+
 	// 1. 캐릭터가 소유한 공격 몽타주 가져오기
 	UAnimMontage* AttackMontage = Character->GetAttackMontage();
 	if (AttackMontage == nullptr)
@@ -65,6 +79,12 @@ void UHGA_Attack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 void UHGA_Attack::OnMontageEnded()
 {
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+bool UHGA_Attack::IsPrimarySlotAbility() const
+{
+	const FGameplayAbilitySpec* Spec = GetCurrentAbilitySpec();
+	return Spec && Spec->InputID == PrimarySkillInputID;
 }
 
 void UHGA_Attack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)

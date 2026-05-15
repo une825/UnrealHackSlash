@@ -2,13 +2,14 @@
 
 #include "GAS/GA/HGA_AttackHitCheck.h"
 #include "GAS/GA/AT/HAT_HitCheckTrace.h"
-#include "GAS/GA/TA/HTA_HitCheckTrace.h"
+#include "GAS/GA/TargetActor/HTargetActor_HitCheckTrace.h"
 #include "Unit/HBaseCharacter.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Attribute/HCharacterAttributeSet.h"
 #include "Engine/DamageEvents.h"
 #include "Kismet/GameplayStatics.h"
+#include "System/HSoundManager.h"
 
 UHGA_AttackHitCheck::UHGA_AttackHitCheck()
 {
@@ -41,7 +42,7 @@ void UHGA_AttackHitCheck::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 	}
 
 	// 트레이스 태스크 생성 및 실행
-	UHAT_HitCheckTrace* HitCheckTask = UHAT_HitCheckTrace::CreateTask(this, AHTA_HitCheckTrace::StaticClass());
+	UHAT_HitCheckTrace* HitCheckTask = UHAT_HitCheckTrace::CreateTask(this, AHTargetActor_HitCheckTrace::StaticClass());
 	if (HitCheckTask)
 	{
 		HitCheckTask->OnTargetDataReady.AddDynamic(this, &UHGA_AttackHitCheck::OnTraceResultCallback);
@@ -122,7 +123,13 @@ void UHGA_AttackHitCheck::OnTraceResultCallback(const FGameplayAbilityTargetData
 						// 5. 명중 사운드 재생
 						if (HitSound)
 						{
-							UGameplayStatics::PlaySoundAtLocation(this, HitSound, TargetActor->GetActorLocation());
+							if (UWorld* World = GetWorld())
+							{
+								if (UHSoundManager* SoundManager = World->GetSubsystem<UHSoundManager>())
+								{
+									SoundManager->PlaySoundAtLocationThrottled(HitSound, TargetActor->GetActorLocation());
+								}
+							}
 						}
 					}
 				}

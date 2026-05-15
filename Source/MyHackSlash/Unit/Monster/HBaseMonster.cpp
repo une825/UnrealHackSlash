@@ -7,9 +7,8 @@
 #include <AbilitySystemBlueprintLibrary.h>
 #include "System/HMonsterAIController.h"
 #include "System/HObjectPoolManager.h"
+#include "System/HPinkFogManager.h"
 #include "DataAsset/HUnitProfileData.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "Components/CapsuleComponent.h"
 #include "Engine/EngineTypes.h"
 #include "TimerManager.h"
 
@@ -21,7 +20,15 @@ AHBaseMonster::AHBaseMonster()
 
 float AHBaseMonster::GetExpReward() const
 {
-	return AttributeSet ? AttributeSet->GetExpReward() : 0.0f;
+	float BaseExp = AttributeSet ? AttributeSet->GetExpReward() : 0.0f;
+	
+	// 핑크 안개 보상 배율 적용
+	if (UHPinkFogManager* PinkFogManager = GetWorld()->GetSubsystem<UHPinkFogManager>())
+	{
+		BaseExp *= PinkFogManager->GetRewardMultiplier();
+	}
+
+	return BaseExp;
 }
 
 void AHBaseMonster::InitializeStat(int32 InNewLevel)
@@ -82,6 +89,13 @@ void AHBaseMonster::SetDead()
 	if (CoinClass && AttributeSet)
 	{
 		float GoldReward = AttributeSet->GetGoldReward();
+
+		// 핑크 안개 보상 배율 적용
+		if (UHPinkFogManager* PinkFogManager = GetWorld()->GetSubsystem<UHPinkFogManager>())
+		{
+			GoldReward *= PinkFogManager->GetRewardMultiplier();
+		}
+
 		if (GoldReward > 0)
 		{
 			if (UHObjectPoolManager* PoolManager = GetWorld()->GetSubsystem<UHObjectPoolManager>())
@@ -118,13 +132,19 @@ void AHBaseMonster::ReturnToPool()
 void AHBaseMonster::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
+
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+		
+		// ASC가 초기화되었으므로 부모 클래스의 바인딩 함수 재호출 (확실히 하기 위함)
+		BindAttributeCallbacks();
+	}
 }
 
 void AHBaseMonster::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-
-	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 
 	// 초기 어빌리티 부여
 	for (const TSubclassOf<UGameplayAbility>& AbilityClass : StartAbilities)

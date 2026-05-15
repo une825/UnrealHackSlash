@@ -30,6 +30,12 @@ void UHGA_FireBall::ActivateAbility(const FGameplayAbilitySpecHandle InHandle, c
 	// 베이스 클래스의 다중 발사 로직 호출
 	SpawnProjectiles();
 
+	if (!IsPrimarySlotAbility())
+	{
+		EndAbility(InHandle, InActorInfo, InActivationInfo, true, false);
+		return;
+	}
+
 	const UHUnitProfileData* Profile = BaseCharacter->GetUnitProfileData();
 	UAnimMontage* MontageToPlay = (Profile) ? Profile->GetActionMontage(MontageTag) : nullptr;
 

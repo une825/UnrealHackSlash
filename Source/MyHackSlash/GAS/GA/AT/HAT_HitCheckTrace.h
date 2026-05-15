@@ -7,7 +7,7 @@
 #include "Abilities/GameplayAbilityTargetActor.h"
 #include "HAT_HitCheckTrace.generated.h"
 
-class AHTA_HitCheckTrace;
+class AHTargetActor_HitCheckTrace;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHitCheckTraceDelegate, const FGameplayAbilityTargetDataHandle&, TargetData);
 
@@ -24,7 +24,7 @@ public:
 
 	/** @brief 타겟 액터를 활용한 히트 체크 태스크를 생성합니다. */
 	UFUNCTION(BlueprintCallable, Category = "Ability|Tasks", meta = (HidePin = "OwningAbility", DefaultToSelf = "OwningAbility", BlueprintInternalUseOnly = "TRUE"))
-	static UHAT_HitCheckTrace* CreateTask(UGameplayAbility* OwningAbility, TSubclassOf<AHTA_HitCheckTrace> TargetActorClass);
+	static UHAT_HitCheckTrace* CreateTask(UGameplayAbility* OwningAbility, TSubclassOf<AHTargetActor_HitCheckTrace> TargetActorClass);
 
 	virtual void Activate() override;
 	virtual void OnDestroy(bool bInOwnerFinished) override;

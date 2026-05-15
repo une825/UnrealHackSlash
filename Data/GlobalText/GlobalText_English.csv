@@ -1,0 +1,28 @@
+Name,Text
+UI.StartButton,Start
+UI.Common.WaveFormat,Wave {0}
+UI.Common.ValuePairFormat,{0} / {1}
+UI.MainHud.GoldOwnedFormat,Gold: {0}
+UI.MainHud.LevelFormat,Lv. {0}
+UI.MainHud.RemainTimeSecondsFormat,{0}s
+UI.MainHud.WaveCompletedFormat,Wave {0} Completed!
+UI.MainHud.PinkFog.FadingIn,The pink fog is covering the battlefield!
+UI.MainHud.PinkFog.Active,Monster enhancement and 2x rewards active!
+UI.MainHud.PinkFog.FadingOut,The pink fog is clearing...
+UI.Shop.WaveType.Preparation,Shop Preparation
+UI.WaveResult.Type.Battle,BATTLE
+UI.WaveResult.Type.Boss,BOSS
+UI.WaveResult.Type.Reward,REWARD
+UI.WaveResult.Type.Shop,SHOP
+UI.WaveResult.InterestGoldFormat,+ {0}
+UI.WaveResult.StartNextWaveGuide,Touch to start next wave
+UI.Settings.Title,Settings
+UI.Settings.Language,Language
+UI.Settings.Sound,Sound
+UI.Settings.MasterVolume,Master Volume
+UI.Settings.BGMVolume,BGM Volume
+UI.Settings.SFXVolume,SFX Volume
+UI.Settings.Mute,Mute
+UI.Settings.Apply,Apply
+UI.Settings.Reset,Reset
+UI.Settings.Close,Close

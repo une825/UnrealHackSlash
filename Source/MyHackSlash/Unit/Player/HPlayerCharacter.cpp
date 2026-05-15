@@ -279,17 +279,31 @@ void AHPlayerCharacter::PossessedBy(AController* NewController)
 
 		SetupGASInputComponent();
 
-		// 기본 젬 지급 및 장착 (FistAttack)
+		// 기본 젬 지급 및 장착 (FistAttack + FireBall)
 		AMyHackSlashGameMode* GameMode = Cast<AMyHackSlashGameMode>(GetWorld()->GetAuthGameMode());
 		if (GameMode && GameMode->GetGemCollectionDataAsset() && GemInventoryComponent && EquipmentComponent)
 		{
+			UHGemDataAsset* GemCollection = GameMode->GetGemCollectionDataAsset();
+
+			// 1. FistAttack (Slot 0)
 			FHGemData FistAttackData;
-			if (GameMode->GetGemCollectionDataAsset()->FindGemData(TEXT("FistAttack_T1"), FistAttackData))
+			if (GemCollection->FindGemData(TEXT("FistAttack_T1"), FistAttackData))
 			{
 				UHGemBase* NewGem = GemInventoryComponent->AddGem(FistAttackData);
 				if (UHMainGem* MainGem = Cast<UHMainGem>(NewGem))
 				{
 					EquipmentComponent->EquipGem(0, MainGem);
+				}
+			}
+
+			// 2. FireBall (Slot 1) - 테스트용 추가
+			FHGemData FireBallData;
+			if (GemCollection->FindGemData(TEXT("FireBall_T1"), FireBallData))
+			{
+				UHGemBase* NewGem = GemInventoryComponent->AddGem(FireBallData);
+				if (UHMainGem* MainGem = Cast<UHMainGem>(NewGem))
+				{
+					EquipmentComponent->EquipGem(1, MainGem);
 				}
 			}
 		}
@@ -384,7 +398,8 @@ void AHPlayerCharacter::SetupGASInputComponent()
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &AHPlayerCharacter::GASInputPressed, 1);
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Completed, this, &AHPlayerCharacter::GASInputReleased, 1);
 
-		// Additional Skills (InputID 2~ - Slot 1~)
+		// [수정] 슬롯 1~3의 추가 스킬은 자동 발동되므로 플레이어 입력 바인딩에서 제외합니다.
+		/*
 		for (int32 i = 0; i < SkillActions.Num(); ++i)
 		{
 			if (SkillActions[i])
@@ -394,6 +409,7 @@ void AHPlayerCharacter::SetupGASInputComponent()
 				EnhancedInputComponent->BindAction(SkillActions[i], ETriggerEvent::Completed, this, &AHPlayerCharacter::GASInputReleased, InputID);
 			}
 		}
+		*/
 	}
 }
 

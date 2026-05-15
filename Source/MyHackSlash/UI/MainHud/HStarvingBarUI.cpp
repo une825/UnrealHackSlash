@@ -2,6 +2,26 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Unit/HBaseCharacter.h"
+#include "System/HGlobalTextManager.h"
+
+namespace
+{
+FText GetGlobalText(const UUserWidget* InWidget, FName InTextKey)
+{
+	if (InWidget)
+	{
+		if (const UGameInstance* GameInstance = InWidget->GetGameInstance())
+		{
+			if (UHGlobalTextManager* TextManager = GameInstance->GetSubsystem<UHGlobalTextManager>())
+			{
+				return TextManager->GetText(InTextKey);
+			}
+		}
+	}
+
+	return FText::FromName(InTextKey);
+}
+}
 
 void UHStarvingBarUI::NativeConstruct()
 {
@@ -46,7 +66,7 @@ void UHStarvingBarUI::UpdateHungerBar(float InCurrentHunger, float InMaxHunger)
 	if (HungerText)
 	{
 		// "현재 / 최대" 형식으로 텍스트 설정
-		FText HungerDisplayText = FText::Format(NSLOCTEXT("UI", "HungerFormat", "{0} / {1}"), 
+		FText HungerDisplayText = FText::Format(GetGlobalText(this, TEXT("UI.Common.ValuePairFormat")),
 			FText::AsNumber(FMath::RoundToInt(InCurrentHunger)), 
 			FText::AsNumber(FMath::RoundToInt(InMaxHunger)));
 		HungerText->SetText(HungerDisplayText);

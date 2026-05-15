@@ -1,6 +1,6 @@
-// Source/MyHackSlash/GA/TA/HTA_HitCheckTrace.cpp
+// Source/MyHackSlash/GAS/GA/TargetActor/HTargetActor_HitCheckTrace.cpp
 
-#include "GAS/GA/TA/HTA_HitCheckTrace.h"
+#include "GAS/GA/TargetActor/HTargetActor_HitCheckTrace.h"
 #include "Abilities/GameplayAbility.h"
 #include "GameFramework/Character.h"
 #include "Components/CapsuleComponent.h"
@@ -9,19 +9,19 @@
 #include "AbilitySystemComponent.h"
 #include "Attribute/HCharacterAttributeSet.h"
 
-AHTA_HitCheckTrace::AHTA_HitCheckTrace()
+AHTargetActor_HitCheckTrace::AHTargetActor_HitCheckTrace()
 {
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-void AHTA_HitCheckTrace::StartTargeting(UGameplayAbility* Ability)
+void AHTargetActor_HitCheckTrace::StartTargeting(UGameplayAbility* Ability)
 {
 	Super::StartTargeting(Ability);
 	
 	SourceActor = Ability->GetAvatarActorFromActorInfo();
 }
 
-void AHTA_HitCheckTrace::ConfirmTargetingAndContinue()
+void AHTargetActor_HitCheckTrace::ConfirmTargetingAndContinue()
 {
 	if (SourceActor)
 	{
@@ -30,7 +30,7 @@ void AHTA_HitCheckTrace::ConfirmTargetingAndContinue()
 	}
 }
 
-FGameplayAbilityTargetDataHandle AHTA_HitCheckTrace::MakeTargetData() const
+FGameplayAbilityTargetDataHandle AHTargetActor_HitCheckTrace::MakeTargetData() const
 {
 	FGameplayAbilityTargetDataHandle DataHandle;
 

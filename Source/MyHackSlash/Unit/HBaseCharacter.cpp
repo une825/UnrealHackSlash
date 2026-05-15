@@ -70,6 +70,11 @@ void AHBaseCharacter::BeginPlay()
 	}
 }
 
+void AHBaseCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+}
+
 void AHBaseCharacter::OnDeadTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
 {
 	if (NewCount > 0 && !IsDead)
@@ -192,6 +197,11 @@ void AHBaseCharacter::ResetCharacter()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("HCapsule"));
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Ignore);
+
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->RotationRate = FRotator(0.f, 640.f, 0.f);
+	GetCharacterMovement()->bConstrainToPlane = true;
+	GetCharacterMovement()->bSnapToPlaneAtStart = true;
 
 	GetMesh()->SetSimulatePhysics(false);
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); // 충돌 명시적으로 복구
@@ -366,11 +376,40 @@ void AHBaseCharacter::HandleHitSound()
 
 void AHBaseCharacter::ProcessAttack()
 {
-	if (Attackable && !IsDead)
+	if (BeginAttackState())
 	{
-		Attackable = false;
 		AttackBegin();
 	}
+}
+
+bool AHBaseCharacter::BeginAttackState(bool bInStopMovementImmediately)
+{
+	if (!Attackable || IsDead)
+	{
+		return false;
+	}
+
+	Attackable = false;
+
+	if (bInStopMovementImmediately && GetCharacterMovement())
+	{
+		GetCharacterMovement()->MaxWalkSpeed = 0.0f;
+		GetCharacterMovement()->StopMovementImmediately();
+	}
+
+	return true;
+}
+
+void AHBaseCharacter::EndAttackState()
+{
+	Attackable = true;
+
+	if (GetCharacterMovement() && AttributeSet)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = AttributeSet->GetMovementSpeed();
+	}
+
+	NotifyAttackEnd();
 }
 
 void AHBaseCharacter::AttackBegin()
@@ -378,6 +417,12 @@ void AHBaseCharacter::AttackBegin()
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && UnitProfileData && UnitProfileData->AttackMontage)
 	{
+		// 이미 몽타주가 재생 중이면 중복 재생하지 않음 (GAS 어빌리티와의 충돌 방지)
+		if (AnimInstance->Montage_IsPlaying(UnitProfileData->AttackMontage))
+		{
+			return;
+		}
+
 		const float AttackSpeedRate = GetAttackSpeedRate();
 		AnimInstance->Montage_Play(UnitProfileData->AttackMontage, AttackSpeedRate);
 
@@ -387,14 +432,15 @@ void AHBaseCharacter::AttackBegin()
 	}
 	else
 	{
-		AttackEnd(nullptr, false);
+		// 몽타주가 없거나 재생 불가능한 경우에도 종료 처리는 필요 (속도 복구 등)
+		// 하지만 GAS 어빌리티가 대신 재생할 수 있으므로 즉시 종료하지 않고 기다릴 수도 있음
+		// 여기서는 최소한의 안전장치만 유지
 	}
 }
 
 void AHBaseCharacter::AttackEnd(UAnimMontage* InAnimMontage, bool bInInterrupted)
 {
-	Attackable = true;
-	NotifyAttackEnd();
+	EndAttackState();
 }
 
 void AHBaseCharacter::NotifyAttackEnd()

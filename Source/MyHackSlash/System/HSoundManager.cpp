@@ -3,6 +3,7 @@
 #include "Sound/SoundBase.h"
 #include "Components/AudioComponent.h"
 #include "DataAsset/HSoundDataAsset.h"
+#include "System/HSettingsManager.h"
 
 void UHSoundManager::InitializeManager(UHSoundDataAsset* InConfig)
 {
@@ -29,7 +30,7 @@ void UHSoundManager::PlaySoundAtLocationThrottled(USoundBase* InSound, FVector I
 	}
 
 	// 2. 사운드 재생
-	UGameplayStatics::PlaySoundAtLocation(this, InSound, InLocation, InVolumeMultiplier, InPitchMultiplier, InStartTime);
+	UGameplayStatics::PlaySoundAtLocation(this, InSound, InLocation, InVolumeMultiplier * GetEffectiveSFXVolume(), InPitchMultiplier, InStartTime);
 
 	// 3. 마지막 재생 시간 업데이트
 	LastPlayedTimes.Add(InSound, CurrentTime);
@@ -44,7 +45,7 @@ void UHSoundManager::PlaySFXByKey(FName InKey, FVector InLocation, float InVolum
 		if (bIsUI)
 		{
 			// UI 사운드는 Throttling 없이 즉시 재생 (결과 창 등 중요 사운드)
-			if (UAudioComponent* AudioComp = UGameplayStatics::SpawnSoundAtLocation(this, SFX, InLocation, FRotator::ZeroRotator, InVolumeMultiplier))
+			if (UAudioComponent* AudioComp = UGameplayStatics::SpawnSoundAtLocation(this, SFX, InLocation, FRotator::ZeroRotator, InVolumeMultiplier * GetEffectiveSFXVolume()))
 			{
 				AudioComp->SetUISound(true);
 			}
@@ -64,7 +65,7 @@ void UHSoundManager::PlaySFX(FGameplayTag InTag, FVector InLocation, float InVol
 	{
 		if (bIsUI)
 		{
-			if (UAudioComponent* AudioComp = UGameplayStatics::SpawnSoundAtLocation(this, SFX, InLocation, FRotator::ZeroRotator, InVolumeMultiplier))
+			if (UAudioComponent* AudioComp = UGameplayStatics::SpawnSoundAtLocation(this, SFX, InLocation, FRotator::ZeroRotator, InVolumeMultiplier * GetEffectiveSFXVolume()))
 			{
 				AudioComp->SetUISound(true);
 			}
@@ -94,12 +95,13 @@ void UHSoundManager::PlayBGM(USoundBase* InBGM, float InFadeInTime, float InFade
 
 	// 새로운 BGM 재생
 	CurrentBGMAsset = InBGM;
-	CurrentBGMComponent = UGameplayStatics::SpawnSound2D(this, InBGM, 1.0f, 1.0f, 0.0f, nullptr, true);
+	const float EffectiveBGMVolume = GetEffectiveBGMVolume();
+	CurrentBGMComponent = UGameplayStatics::SpawnSound2D(this, InBGM, EffectiveBGMVolume, 1.0f, 0.0f, nullptr, true);
 	
 	if (CurrentBGMComponent)
 	{
 		CurrentBGMComponent->SetUISound(bIsUI);
-		CurrentBGMComponent->FadeIn(InFadeInTime);
+		CurrentBGMComponent->FadeIn(InFadeInTime, EffectiveBGMVolume);
 	}
 }
 
@@ -138,6 +140,13 @@ void UHSoundManager::SetBGMVolume(float InVolumeMultiplier)
 	if (CurrentBGMComponent)
 	{
 		CurrentBGMComponent->SetVolumeMultiplier(InVolumeMultiplier);
+		CurrentBGMComponent->AdjustVolume(0.0f, InVolumeMultiplier);
+
+		if (InVolumeMultiplier > 0.0f && !CurrentBGMComponent->IsPlaying() && CurrentBGMAsset)
+		{
+			CurrentBGMComponent->Play();
+			CurrentBGMComponent->FadeIn(0.0f, InVolumeMultiplier);
+		}
 	}
 }
 
@@ -147,4 +156,38 @@ void UHSoundManager::SetBGMPitch(float InPitchMultiplier)
 	{
 		CurrentBGMComponent->SetPitchMultiplier(InPitchMultiplier);
 	}
+}
+
+float UHSoundManager::GetEffectiveBGMVolume() const
+{
+	if (const UWorld* World = GetWorld())
+	{
+		if (const UGameInstance* GameInstance = World->GetGameInstance())
+		{
+			if (const UHSettingsManager* SettingsManager = GameInstance->GetSubsystem<UHSettingsManager>())
+			{
+				const FHGameSettings& Settings = SettingsManager->GetSettings();
+				return Settings.bMute ? 0.0f : Settings.MasterVolume * Settings.BGMVolume;
+			}
+		}
+	}
+
+	return 1.0f;
+}
+
+float UHSoundManager::GetEffectiveSFXVolume() const
+{
+	if (const UWorld* World = GetWorld())
+	{
+		if (const UGameInstance* GameInstance = World->GetGameInstance())
+		{
+			if (const UHSettingsManager* SettingsManager = GameInstance->GetSubsystem<UHSettingsManager>())
+			{
+				const FHGameSettings& Settings = SettingsManager->GetSettings();
+				return Settings.bMute ? 0.0f : Settings.MasterVolume * Settings.SFXVolume;
+			}
+		}
+	}
+
+	return 1.0f;
 }

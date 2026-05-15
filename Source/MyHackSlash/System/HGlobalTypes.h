@@ -117,3 +117,15 @@ struct FHWaveData
 	TObjectPtr<class UDataTable> ShopRewardTable;
 };
 
+/**
+ * 핑크 안개(Pink Fog) 이벤트 상태
+ */
+UENUM(BlueprintType)
+enum class EHPinkFogState : uint8
+{
+	Inactive   UMETA(DisplayName = "Inactive"),
+	FadingIn   UMETA(DisplayName = "FadingIn"),
+	Active     UMETA(DisplayName = "Active"),
+	FadingOut  UMETA(DisplayName = "FadingOut")
+};
+

@@ -56,6 +56,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "H|Sound")
 	void SetBGMPitch(float InPitchMultiplier);
 
+private:
+	float GetEffectiveBGMVolume() const;
+	float GetEffectiveSFXVolume() const;
+
 protected:
 	/** @brief 사운드 데이터 에셋 */
 	UPROPERTY()

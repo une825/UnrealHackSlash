@@ -62,6 +62,7 @@
 유닛 프로필(`UHUnitProfileData`)은 단일 몽타주 대신 태그 기반의 맵을 사용하여 다양한 스킬 모션을 관리합니다.
 *   **ActionMontageMap**: `TMap<FGameplayTag, UAnimMontage*>`를 통해 `Ability.Attack`, `Ability.FireBall` 등의 태그에 맞는 애니메이션을 출력합니다.
 *   **Fallback**: 특정 태그에 해당하는 몽타주가 없을 경우 기본 `AttackMontage`를 사용합니다.
+*   **Primary Slot Rule**: `InputID == 1`인 대표 슬롯(장착 슬롯 0)에서 발동한 메인 젬만 몽타주를 재생합니다. 자동 슬롯(장착 슬롯 1~3)은 스킬 효과만 실행하고 몽타주는 재생하지 않습니다.
 
 ### 4.2 발사체 시스템 (Projectile System)
 `Projectile` 타입의 메인 젬은 `AHProjectile` 클래스를 사용하여 투사체를 생성합니다.

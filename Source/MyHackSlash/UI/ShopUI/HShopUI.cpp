@@ -10,7 +10,27 @@
 #include "Kismet/GameplayStatics.h"
 #include "System/HUIManager.h"
 #include "System/HWaveManager.h"
+#include "System/HGlobalTextManager.h"
 #include "DataAsset/HShopRow.h"
+
+namespace
+{
+FText GetGlobalText(const UUserWidget* InWidget, FName InTextKey)
+{
+	if (InWidget)
+	{
+		if (const UGameInstance* GameInstance = InWidget->GetGameInstance())
+		{
+			if (UHGlobalTextManager* TextManager = GameInstance->GetSubsystem<UHGlobalTextManager>())
+			{
+				return TextManager->GetText(InTextKey);
+			}
+		}
+	}
+
+	return FText::FromName(InTextKey);
+}
+}
 
 void UHShopUI::NativeConstruct()
 {
@@ -81,13 +101,13 @@ void UHShopUI::InitWaveInfo()
 	{
 		if (WaveText)
 		{
-			WaveText->SetText(FText::Format(FText::FromString(TEXT("Wave {0}")), FText::AsNumber(WaveManager->GetCurrentWaveDisplayIndex())));
+			WaveText->SetText(FText::Format(GetGlobalText(this, TEXT("UI.Common.WaveFormat")), FText::AsNumber(WaveManager->GetCurrentWaveDisplayIndex())));
 		}
 
 		if (WaveTypeText)
 		{
 			// 웨이브 타입에 따른 설명 설정 (예: 일반, 보스 등)
-			WaveTypeText->SetText(FText::FromString(TEXT("상점 준비 단계")));
+			WaveTypeText->SetText(GetGlobalText(this, TEXT("UI.Shop.WaveType.Preparation")));
 		}
 	}
 }

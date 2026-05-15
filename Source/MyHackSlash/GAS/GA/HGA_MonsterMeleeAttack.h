@@ -25,4 +25,6 @@ protected:
 	/** 몽타주 재생 종료 또는 취소 시 호출될 콜백 함수입니다. */
 	UFUNCTION()
 	void OnMontageEnded();
+
+	bool bAttackStateStarted = false;
 };

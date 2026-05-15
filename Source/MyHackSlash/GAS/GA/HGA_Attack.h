@@ -22,4 +22,9 @@ protected:
 	/** 몽타주 종료 시 호출될 콜백 */
 	UFUNCTION()
 	void OnMontageEnded();
+
+	bool IsPrimarySlotAbility() const;
+
+protected:
+	static constexpr int32 PrimarySkillInputID = 1;
 };

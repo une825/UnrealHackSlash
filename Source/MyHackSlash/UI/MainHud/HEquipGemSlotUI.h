@@ -17,6 +17,9 @@ class MYHACKSLASH_API UHEquipGemSlotUI : public UUserWidget
 	GENERATED_BODY()
 
 public:
+	/** @brief 이 UI가 담당하는 장착 슬롯 인덱스를 설정합니다. */
+	void SetSlotIndex(int32 InSlotIndex) { SlotIndex = InSlotIndex; }
+
 	/** @brief 특정 메인 젬의 데이터를 UI에 반영합니다. */
 	UFUNCTION(BlueprintCallable, Category = "Gem|UI")
 	void SetMainGem(UHMainGem* InMainGem);

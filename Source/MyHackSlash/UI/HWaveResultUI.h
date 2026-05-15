@@ -54,4 +54,6 @@ protected:
 	/** @brief 전체 화면 클릭을 감지하기 위한 투명 버튼 (Optional) */
 	UPROPERTY(meta = (BindWidget, OptionalWidget = true))
 	TObjectPtr<UButton> BackgroundButton;
+
+	FText GetGlobalText(FName InTextKey) const;
 };

@@ -69,6 +69,8 @@
 `UHUnitProfileData` 에셋을 통해 어빌리티 태그별 몽타주를 관리합니다.
 *   **ActionMontageMap**: `TMap<FGameplayTag, UAnimMontage*>`를 사용하여 어빌리티 실행 시 적절한 애니메이션을 동적으로 선택합니다.
 *   **Fallback**: 특정 태그에 대한 설정이 없을 경우 기본 `AttackMontage`를 사용합니다.
+*   **Primary Slot Only**: 플레이어 장착 스킬은 `FGameplayAbilitySpec::InputID == 1`일 때만 몽타주를 재생합니다. 슬롯 1~3의 자동 발동 스킬은 몽타주 없이 효과만 처리합니다.
+*   **AI Attack Flow**: 몬스터 공격 중 AI 경로 이동은 `BTT_Attack`에서 중단하고, 공격 상태는 `AHBaseCharacter::BeginAttackState(false)`/`EndAttackState()`로 관리합니다. 공격 몽타주 재생과 종료 판정은 `UHGA_MonsterMeleeAttack`의 `UAbilityTask_PlayMontageAndWait`가 단독으로 담당합니다.
 
 ### 3.2 Object Pooling (VFX)
 성능 최적화를 위해 `UHObjectPoolManager`를 통해 나이아가라 시스템을 관리합니다.

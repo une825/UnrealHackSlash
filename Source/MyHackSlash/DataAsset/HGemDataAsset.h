@@ -64,6 +64,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gem")
 	HEGemCategory GemCategory = HEGemCategory::Main;
 
+	/** @brief 자동 발동 또는 수동 발동 시의 기본 쿨타임 (초 단위) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gem")
+	float CoolDown = 1.0f;
+
 	/** @brief 젬의 등급 (Common, Rare 등 - 기존 유지) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gem")
 	HEGemType GemType = HEGemType::Common;

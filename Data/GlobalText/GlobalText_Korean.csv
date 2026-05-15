@@ -1,0 +1,28 @@
+Name,Text
+UI.StartButton,시작
+UI.Common.WaveFormat,웨이브 {0}
+UI.Common.ValuePairFormat,{0} / {1}
+UI.MainHud.GoldOwnedFormat,보유 골드 : {0}
+UI.MainHud.LevelFormat,Lv. {0}
+UI.MainHud.RemainTimeSecondsFormat,{0}초
+UI.MainHud.WaveCompletedFormat,웨이브 {0} 완료!
+UI.MainHud.PinkFog.FadingIn,핑크 안개가 전장을 뒤덮습니다!
+UI.MainHud.PinkFog.Active,몬스터 강화 및 보상 2배 활성화!
+UI.MainHud.PinkFog.FadingOut,핑크 안개가 걷히고 있습니다...
+UI.Shop.WaveType.Preparation,상점 준비 단계
+UI.WaveResult.Type.Battle,전투
+UI.WaveResult.Type.Boss,보스
+UI.WaveResult.Type.Reward,보상
+UI.WaveResult.Type.Shop,상점
+UI.WaveResult.InterestGoldFormat,+ {0}
+UI.WaveResult.StartNextWaveGuide,다음 웨이브를 시작하려면 터치
+UI.Settings.Title,설정
+UI.Settings.Language,언어
+UI.Settings.Sound,사운드
+UI.Settings.MasterVolume,마스터 볼륨
+UI.Settings.BGMVolume,BGM 볼륨
+UI.Settings.SFXVolume,SFX 볼륨
+UI.Settings.Mute,음소거
+UI.Settings.Apply,적용
+UI.Settings.Reset,초기화
+UI.Settings.Close,닫기

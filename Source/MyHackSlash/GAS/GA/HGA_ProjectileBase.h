@@ -31,7 +31,12 @@ protected:
 	/** @brief 개별 투사체를 생성하고 초기화합니다. (필요 시 하위 클래스에서 오버라이드) */
 	virtual AHProjectile* CreateProjectileInstance(const FVector& InLocation, const FRotator& InRotation);
 
+	/** @brief 대표 슬롯(InputID 1)에서 발동된 어빌리티인지 확인합니다. */
+	bool IsPrimarySlotAbility() const;
+
 protected:
+	static constexpr int32 PrimarySkillInputID = 1;
+
 	/** @brief 발사할 투사체 클래스 */
 	UPROPERTY(EditAnywhere, Category = "Projectile")
 	TSubclassOf<AHProjectile> ProjectileClass;

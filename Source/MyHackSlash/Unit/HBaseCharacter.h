@@ -36,10 +36,11 @@ public:
 	FOnHungerChanged OnHungerChanged;
 
 public:
-	// 유닛의 스탯을 초기화합니다. 하위 클래스에서 각자의 타입에 맞게 구현합니다.
+	/** @brief 유닛의 스탯을 초기화합니다. */
 	UFUNCTION(BlueprintCallable, Category = "Stat")
 	virtual void InitializeStat(int32 InNewLevel);
 
+	/** @brief 유닛의 상태를 리셋합니다. (오브젝트 풀링 등에서 재사용 시) */
 	virtual void ResetCharacter();
 
 	int32 GetLevel() const;
@@ -67,12 +68,14 @@ public:
 	/** @brief 마지막으로 데미지를 가한 액터를 설정합니다. */
 	void SetLastDamageCauser(AActor* InCauser) { LastDamageCauser = InCauser; }
 
-	/** @brief 공격 로직의 상태 관리를 위한 함수들입니다. (GAS 어빌리티 등에서 호출 가능) */
+	/** @brief 공격 실행 및 종료 관리 */
+	void Attack();
 	void ProcessAttack();
+	bool BeginAttackState(bool bInStopMovementImmediately = true);
+	void EndAttackState();
 	void AttackEnd(UAnimMontage* InAnimMontage, bool bInInterrupted);
 
-public:
-	void Attack();
+	/** @brief 피격 및 연출 관련 */
 	void HandleHitSound();
 	void HandleHUDDamageEffect();
 	void PlayHittedEffect();
@@ -80,12 +83,8 @@ public:
 	virtual void HandleCameraShake(float InDamageAmount);
 
 protected:
-	/** @brief 공격 어빌리티를 식별하는 태그 */
-	UPROPERTY(EditAnywhere, Category = "GAS")
-	FGameplayTag AttackAbilityTag;
-
-protected:
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 	virtual void PostInitializeComponents() override;
 
 	/** @brief ASC가 유효해진 시점에 어트리뷰트 변경 콜백을 바인딩합니다. */
@@ -100,7 +99,7 @@ protected:
 	virtual void OnMovementSpeedAttributeChanged(const FOnAttributeChangeData& Data);
 
 protected:
-	/** @brief 공격 로직의 진입점입니다. */
+	/** @brief 공격 로직 내부 처리 */
 	void AttackBegin();
 	virtual void NotifyAttackEnd();
 
@@ -112,6 +111,9 @@ protected:
 	virtual void AttackHitCheck() override;
 
 protected:
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	FGameplayTag AttackAbilityTag;
+
 	UPROPERTY(EditAnywhere, Category = "GAS")
 	FGameplayTag DeadTag;
 

@@ -40,6 +40,12 @@ int32 UHGA_ProjectileBase::GetProjectileCount() const
 	return TotalCount;
 }
 
+bool UHGA_ProjectileBase::IsPrimarySlotAbility() const
+{
+	const FGameplayAbilitySpec* Spec = GetCurrentAbilitySpec();
+	return Spec && Spec->InputID == PrimarySkillInputID;
+}
+
 void UHGA_ProjectileBase::SpawnProjectiles()
 {
 	if (!ProjectileClass) return;

@@ -3,13 +3,13 @@
 #include "GAS/GA/AT/HAT_HitCheckTrace.h"
 #include "AbilitySystemComponent.h"
 #include "Engine/World.h"
-#include <GAS/GA/TA/HTA_HitCheckTrace.h>
+#include "GAS/GA/TargetActor/HTargetActor_HitCheckTrace.h"
 
 UHAT_HitCheckTrace::UHAT_HitCheckTrace()
 {
 }
 
-UHAT_HitCheckTrace* UHAT_HitCheckTrace::CreateTask(UGameplayAbility* OwningAbility, TSubclassOf<AHTA_HitCheckTrace> InTargetActorClass)
+UHAT_HitCheckTrace* UHAT_HitCheckTrace::CreateTask(UGameplayAbility* OwningAbility, TSubclassOf<AHTargetActor_HitCheckTrace> InTargetActorClass)
 {
 	UHAT_HitCheckTrace* MyObj = NewAbilityTask<UHAT_HitCheckTrace>(OwningAbility);
 	MyObj->TargetActorClass = InTargetActorClass;
@@ -28,7 +28,7 @@ void UHAT_HitCheckTrace::Activate()
 
 bool UHAT_HitCheckTrace::SpawnAndInitializeTargetActor()
 {
-	SpawnedTargetActor = Cast<AHTA_HitCheckTrace>(Ability->GetWorld()->SpawnActorDeferred<AGameplayAbilityTargetActor>(TargetActorClass, FTransform::Identity, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn));
+	SpawnedTargetActor = Cast<AHTargetActor_HitCheckTrace>(Ability->GetWorld()->SpawnActorDeferred<AGameplayAbilityTargetActor>(TargetActorClass, FTransform::Identity, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn));
 	if (SpawnedTargetActor)
 	{
 		SpawnedTargetActor->TargetDataReadyDelegate.AddUObject(this, &UHAT_HitCheckTrace::OnTargetDataReadyCallback);

@@ -8,6 +8,8 @@
 
 class UHMonsterSpawnerDataAsset;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMonsterSpawned, class AHBaseMonster*, Monster);
+
 /**
  * 
  */
@@ -17,15 +19,19 @@ class MYHACKSLASH_API UHMonsterSpawnManager : public UWorldSubsystem
 	GENERATED_BODY()
 
 public:
-    // ���� ��峪 UI���� ���̺긦 ������ �� ȣ��
-    // 몬스터 웨이브 시작
+    // ... 기존 코드
     UFUNCTION(BlueprintCallable, Category = "MonsterSpawn")
     void StartMonsterWave(UHMonsterSpawnerDataAsset* InConfig);
 
     UFUNCTION(BlueprintCallable, Category = "MonsterSpawn")
     void StopMonsterWave();
 
+public:
+    UPROPERTY(BlueprintAssignable, Category = "MonsterSpawn")
+    FOnMonsterSpawned OnMonsterSpawned;
+
 private:
+
     UFUNCTION()
     void OnMonsterDied(AActor* InAttacker, class AHBaseMonster* InDeadMonster);
 

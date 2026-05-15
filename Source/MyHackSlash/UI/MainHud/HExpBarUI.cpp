@@ -2,6 +2,26 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Unit/Player/HPlayerCharacter.h"
+#include "System/HGlobalTextManager.h"
+
+namespace
+{
+FText GetGlobalText(const UUserWidget* InWidget, FName InTextKey)
+{
+	if (InWidget)
+	{
+		if (const UGameInstance* GameInstance = InWidget->GetGameInstance())
+		{
+			if (UHGlobalTextManager* TextManager = GameInstance->GetSubsystem<UHGlobalTextManager>())
+			{
+				return TextManager->GetText(InTextKey);
+			}
+		}
+	}
+
+	return FText::FromName(InTextKey);
+}
+}
 
 void UHExpBarUI::NativeConstruct()
 {
@@ -44,13 +64,13 @@ void UHExpBarUI::UpdateExpBar(const int InLevel, const float InCurrentExp, const
 
 	if (ExpText)
 	{
-		FText ExpDisplayText = FText::Format(NSLOCTEXT("UI", "ExpFormat", "{0} / {1}"), FText::AsNumber(FMath::RoundToInt(InCurrentExp)), FText::AsNumber(FMath::RoundToInt(InMaxExp)));
+		FText ExpDisplayText = FText::Format(GetGlobalText(this, TEXT("UI.Common.ValuePairFormat")), FText::AsNumber(FMath::RoundToInt(InCurrentExp)), FText::AsNumber(FMath::RoundToInt(InMaxExp)));
 		ExpText->SetText(ExpDisplayText);
 	}
 
 	if (LevelText)
 	{
-		FText LevelDisplayText = FText::Format(NSLOCTEXT("UI", "LevelFormat", "Lv. {0}"), FText::AsNumber(InLevel));
+		FText LevelDisplayText = FText::Format(GetGlobalText(this, TEXT("UI.MainHud.LevelFormat")), FText::AsNumber(InLevel));
 		LevelText->SetText(LevelDisplayText);
 	}
 }

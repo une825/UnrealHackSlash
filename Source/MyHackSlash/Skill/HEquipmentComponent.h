@@ -62,10 +62,15 @@ public:
 	TArray<UHSupportGem*> GetEquippedSupportGems(int32 InSlotIndex) const;
 
 protected:
+	/** @brief 자동 발동 스킬들의 쿨타임을 체크하고 실행합니다. */
+	void UpdateAutoCast(float InDeltaTime);
+
 	/** @brief 특정 슬롯의 어빌리티 스펙에 보조 젬 효과를 업데이트합니다. */
 	void UpdateAbilitySpec(int32 InSlotIndex);
 
 public:
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
 	/** @brief 장착 상태가 변경될 때 호출되는 델리게이트 */
 	UPROPERTY(BlueprintAssignable, Category = "Gem|Equipment")
 	FOnEquipmentChanged OnEquipmentChanged;
@@ -78,6 +83,9 @@ protected:
 	/** @brief 메인 젬이 없을 때 슬롯에 대기 중인 보조 젬들 (슬롯당 최대 3개) */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Gem|Equipment")
 	TArray<FHSlotSupportGemList> SlotSupportGems;
+
+	/** @brief 슬롯별 자동 발동 남은 쿨타임 (Slot 1~3 사용) */
+	TMap<int32, float> AutoCastTimers;
 
 	/** @brief 장착된 젬들의 어빌리티 핸들을 저장 */
 	TMap<int32, FGameplayAbilitySpecHandle> EquippedAbilityHandles;

@@ -8,6 +8,11 @@
 UHGA_MonsterMeleeAttack::UHGA_MonsterMeleeAttack()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+
+	FGameplayTagContainer AssetTags;
+	AssetTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Monster.Attack")));
+	SetAssetTags(AssetTags);
+	ActivationOwnedTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Character.State.IsAttacking")));
 }
 
 void UHGA_MonsterMeleeAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -27,8 +32,13 @@ void UHGA_MonsterMeleeAttack::ActivateAbility(const FGameplayAbilitySpecHandle H
 		return;
 	}
 
-	// 1. 캐릭터 상태 업데이트 (공격 중임을 알림)
-	Character->ProcessAttack();
+	// 1. 캐릭터 공격 상태 업데이트. 몽타주 재생은 이 어빌리티가 단독으로 담당합니다.
+	if (!Character->BeginAttackState(false))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+	bAttackStateStarted = true;
 
 	// 2. 몬스터 캐릭터가 소유한 공격 몽타주 가져오기
 	UAnimMontage* AttackMontage = Character->GetAttackMontage();
@@ -75,13 +85,14 @@ void UHGA_MonsterMeleeAttack::OnMontageEnded()
 void UHGA_MonsterMeleeAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
 	// 어빌리티 종료 시 캐릭터에게 공격이 끝났음을 알림 (AI 태스크 종료 유도)
-	if (ActorInfo && ActorInfo->AvatarActor.IsValid())
+	if (bAttackStateStarted && ActorInfo && ActorInfo->AvatarActor.IsValid())
 	{
 		if (AHBaseCharacter* Character = Cast<AHBaseCharacter>(ActorInfo->AvatarActor.Get()))
 		{
-			Character->AttackEnd(nullptr, bWasCancelled);
+			Character->EndAttackState();
 		}
 	}
+	bAttackStateStarted = false;
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }

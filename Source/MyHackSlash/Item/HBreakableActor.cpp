@@ -7,6 +7,7 @@
 #include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
+#include "System/HSoundManager.h"
 #include "AbilitySystemComponent.h"
 #include "Attribute/HCharacterAttributeSet.h"
 #include "DataAsset/HBreakableRewardDataAsset.h"
@@ -115,7 +116,10 @@ void AHBreakableActor::OnBreak()
 	}
 	if (BreakSound)
 	{
-		UGameplayStatics::PlaySoundAtLocation(this, BreakSound, GetActorLocation());
+		if (UHSoundManager* SoundManager = GetWorld()->GetSubsystem<UHSoundManager>())
+		{
+			SoundManager->PlaySoundAtLocationThrottled(BreakSound, GetActorLocation());
+		}
 	}
 
 	// 2. 보상 드랍

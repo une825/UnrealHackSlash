@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "System/HObjectPoolManager.h"
+#include "System/HSoundManager.h"
 #include "Unit/Player/HPlayerCharacter.h"
 
 AHMagnetItem::AHMagnetItem()
@@ -139,7 +140,10 @@ void AHMagnetItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AAct
 
 			if (PickupSound)
 			{
-				UGameplayStatics::PlaySoundAtLocation(this, PickupSound, GetActorLocation());
+				if (UHSoundManager* SoundManager = GetWorld()->GetSubsystem<UHSoundManager>())
+				{
+					SoundManager->PlaySoundAtLocationThrottled(PickupSound, GetActorLocation());
+				}
 			}
 
 			ReturnToPool();

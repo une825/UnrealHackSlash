@@ -1,21 +1,21 @@
-// Source/MyHackSlash/GA/TA/HTA_HitCheckTrace.h
+// Source/MyHackSlash/GAS/GA/TargetActor/HTargetActor_HitCheckTrace.h
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbilityTargetActor.h"
-#include "HTA_HitCheckTrace.generated.h"
+#include "HTargetActor_HitCheckTrace.generated.h"
 
 /**
  * 트레이스를 통해 타겟(적) 정보를 수집하는 타겟 액터 클래스입니다.
  */
 UCLASS()
-class MYHACKSLASH_API AHTA_HitCheckTrace : public AGameplayAbilityTargetActor
+class MYHACKSLASH_API AHTargetActor_HitCheckTrace : public AGameplayAbilityTargetActor
 {
 	GENERATED_BODY()
 
 public:
-	AHTA_HitCheckTrace();
+	AHTargetActor_HitCheckTrace();
 
 	/** 타겟팅을 시작할 때 호출됩니다. */
 	virtual void StartTargeting(UGameplayAbility* Ability) override;

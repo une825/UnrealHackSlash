@@ -9,7 +9,7 @@
 
 UHEquipmentComponent::UHEquipmentComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
 	EquippedMainGems.Init(nullptr, 4); // 4개 슬롯 초기화
 	SlotSupportGems.SetNum(4);         // 4개 슬롯 보조 젬 리스트 초기화
 }
@@ -18,6 +18,13 @@ void UHEquipmentComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner());
+}
+
+void UHEquipmentComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	UpdateAutoCast(DeltaTime);
 }
 
 bool UHEquipmentComponent::EquipGem(int32 InSlotIndex, UHMainGem* InGem)
@@ -54,7 +61,13 @@ bool UHEquipmentComponent::EquipGem(int32 InSlotIndex, UHMainGem* InGem)
 	// 4. 새 메인 젬 장착
 	EquippedMainGems[InSlotIndex] = InGem;
 
-	// 5. 슬롯에 남아있던 보조 젬들을 새 메인 젬에 연결 시도
+	// 5. 자동 발동 타이머 초기화 (슬롯 1~3인 경우)
+	if (InSlotIndex > 0)
+	{
+		AutoCastTimers.Add(InSlotIndex, 0.0f); // 즉시 첫 발사 시도
+	}
+
+	// 6. 슬롯에 남아있던 보조 젬들을 새 메인 젬에 연결 시도
 	// 호환되지 않는 보조 젬은 자동으로 인벤토리로 반환 처리
 	TArray<UHSupportGem*> IncompatibleGems;
 	for (UHSupportGem* SupportGem : SlotSupportGems[InSlotIndex].SupportGems)
@@ -75,7 +88,7 @@ bool UHEquipmentComponent::EquipGem(int32 InSlotIndex, UHMainGem* InGem)
 		UnequipSupportGem(InSlotIndex, IncompatibleGem, true);
 	}
 
-	// 6. GAS 어빌리티 부여
+	// 7. GAS 어빌리티 부여
 	if (AMyHackSlashGameMode* GameMode = Cast<AMyHackSlashGameMode>(GetWorld()->GetAuthGameMode()))
 	{
 		if (UHGemDataAsset* GemCollection = GameMode->GetGemCollectionDataAsset())
@@ -95,6 +108,54 @@ bool UHEquipmentComponent::EquipGem(int32 InSlotIndex, UHMainGem* InGem)
 
 	OnEquipmentChanged.Broadcast();
 	return true;
+}
+
+void UHEquipmentComponent::UpdateAutoCast(float InDeltaTime)
+{
+	if (!ASC) return;
+
+	// 슬롯 1부터 3까지 자동 발동 체크
+	for (int32 i = 1; i <= 3; ++i)
+	{
+		UHMainGem* MainGem = GetEquippedGem(i);
+		if (!MainGem)
+		{
+			AutoCastTimers.Remove(i);
+			continue;
+		}
+
+		if (!AutoCastTimers.Contains(i))
+		{
+			AutoCastTimers.Add(i, 0.0f);
+		}
+
+		AutoCastTimers[i] -= InDeltaTime;
+
+		if (AutoCastTimers[i] <= 0.0f)
+		{
+			if (EquippedAbilityHandles.Contains(i))
+			{
+				FGameplayAbilitySpecHandle Handle = EquippedAbilityHandles[i];
+				
+				// 어빌리티 실행 시도
+				if (ASC->TryActivateAbility(Handle))
+				{
+					// 발동 성공 시 쿨타임 갱신 (AttackSpeedRate 적용)
+					float BaseCoolDown = MainGem->GetGemData().CoolDown;
+					
+					// 플레이어의 공격 속도 속성 가져오기
+					float AttackSpeedRate = 1.0f;
+					if (AHBaseCharacter* Character = Cast<AHBaseCharacter>(GetOwner()))
+					{
+						AttackSpeedRate = Character->GetAttackSpeedRate();
+					}
+
+					// 쿨타임 = 기본 쿨타임 / 공격 속도 배율
+					AutoCastTimers[i] = BaseCoolDown / FMath::Max(0.1f, AttackSpeedRate);
+				}
+			}
+		}
+	}
 }
 
 bool UHEquipmentComponent::EquipSupportGem(int32 InSlotIndex, UHSupportGem* InSupportGem)
@@ -189,6 +250,7 @@ void UHEquipmentComponent::UnequipGem(int32 InSlotIndex, bool bInReturnToInvento
 
 	// 3. 장착 해제
 	EquippedMainGems[InSlotIndex] = nullptr;
+	AutoCastTimers.Remove(InSlotIndex);
 
 	// 4. 인벤토리로 반환
 	if (bInReturnToInventory)

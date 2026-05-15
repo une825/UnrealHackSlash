@@ -2,6 +2,26 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Unit/HBaseCharacter.h"
+#include "System/HGlobalTextManager.h"
+
+namespace
+{
+FText GetGlobalText(const UUserWidget* InWidget, FName InTextKey)
+{
+	if (InWidget)
+	{
+		if (const UGameInstance* GameInstance = InWidget->GetGameInstance())
+		{
+			if (UHGlobalTextManager* TextManager = GameInstance->GetSubsystem<UHGlobalTextManager>())
+			{
+				return TextManager->GetText(InTextKey);
+			}
+		}
+	}
+
+	return FText::FromName(InTextKey);
+}
+}
 
 void UHHPBarUI::NativeConstruct()
 {
@@ -44,7 +64,7 @@ void UHHPBarUI::UpdateHPBar(float InCurrentHP, float InMaxHP)
 
 	if (HPText)
 	{
-		FText HPDisplayText = FText::Format(NSLOCTEXT("UI", "HPFormat", "{0} / {1}"), FText::AsNumber(FMath::RoundToInt(InCurrentHP)), FText::AsNumber(FMath::RoundToInt(InMaxHP)));
+		FText HPDisplayText = FText::Format(GetGlobalText(this, TEXT("UI.Common.ValuePairFormat")), FText::AsNumber(FMath::RoundToInt(InCurrentHP)), FText::AsNumber(FMath::RoundToInt(InMaxHP)));
 		HPText->SetText(HPDisplayText);
 	}
 }

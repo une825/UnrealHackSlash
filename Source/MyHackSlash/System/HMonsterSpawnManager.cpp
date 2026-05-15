@@ -57,6 +57,9 @@ void UHMonsterSpawnManager::ExecuteSpawnTick()
                 // 중복 바인딩 방지를 위해 먼저 제거 후 추가 (오브젝트 풀링 대응)
                 Monster->OnMonsterDead.RemoveDynamic(this, &UHMonsterSpawnManager::OnMonsterDied);
                 Monster->OnMonsterDead.AddDynamic(this, &UHMonsterSpawnManager::OnMonsterDied);
+
+                // 스폰 알림 브로드캐스트
+                OnMonsterSpawned.Broadcast(Monster);
             }
         }
     }

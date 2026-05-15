@@ -7,7 +7,10 @@
 class UTextBlock;
 class UProgressBar;
 class UImage;
+class UOverlay;
+class UButton;
 class UWidgetAnimation;
+class UHEquipGemSlotUI;
 
 /**
  * 게임의 메인 HUD를 담당하는 기본 C++ 클래스입니다.
@@ -28,6 +31,12 @@ public:
 	/** @brief 피격 시 블러드 이펙트 애니메이션을 재생합니다. */
 	void PlayDamageEffectAnim();
 
+	/** @brief 알림 텍스트를 화면에 표시합니다. */
+	void ShowNotifyText(const FText& InText, const FLinearColor& InColor = FLinearColor::White, bool bPlayAnim = true);
+
+	/** @brief 알림 텍스트를 숨깁니다. */
+	void HideNotifyText();
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> GoldText;
@@ -47,8 +56,34 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UImage> BloodEffectImage;
 
+	UPROPERTY(meta = (BindWidget, OptionalWidget))
+	TObjectPtr<UButton> SettingButton;
+
+	// 젬 장착 슬롯 위젯 (BindWidget)
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UHEquipGemSlotUI> EquipGemSlot_0;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UHEquipGemSlotUI> EquipGemSlot_1;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UHEquipGemSlotUI> EquipGemSlot_2;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UHEquipGemSlotUI> EquipGemSlot_3;
+
 	UPROPERTY(meta = (BindWidgetAnim), Transient)
 	TObjectPtr<UWidgetAnimation> PlayDamageEffect;
+
+	// --- Notification UI ---
+	UPROPERTY(meta = (BindWidget, OptionalWidget))
+	TObjectPtr<UOverlay> NotifyTextOverlay;
+
+	UPROPERTY(meta = (BindWidget, OptionalWidget))
+	TObjectPtr<UTextBlock> NotifyText;
+
+	UPROPERTY(meta = (BindWidgetAnim, OptionalWidget), Transient)
+	TObjectPtr<UWidgetAnimation> NotifyAnim;
 
 protected:
 	UFUNCTION()
@@ -59,4 +94,13 @@ protected:
 
 	UFUNCTION()
 	void OnWaveCompleted(int32 InWaveIndex);
+
+	/** @brief 핑크 안개 상태 변경 시 UI 연출 처리 */
+	UFUNCTION()
+	void HandlePinkFogStateChanged(EHPinkFogState NewState);
+
+	UFUNCTION()
+	void OnSettingButtonClicked();
+
+	FText GetGlobalText(FName InTextKey) const;
 };
