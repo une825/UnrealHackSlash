@@ -3,6 +3,8 @@
 #include "Components/TextBlock.h"
 #include "Components/ListView.h"
 #include "Components/Button.h"
+#include "Mode/HGameState.h"
+#include "Mode/MyHackSlashPlayerController.h"
 #include "System/HSelectAbilityManager.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -19,12 +21,38 @@ void UHSelectAbilityPopupUI::NativeConstruct()
 		RefreshButton->OnClicked.AddDynamic(this, &UHSelectAbilityPopupUI::OnRefreshButtonClicked);
 	}
 
+	if (UHSelectAbilityManager* Manager = GetGameInstance()->GetSubsystem<UHSelectAbilityManager>())
+	{
+		if (!Manager->IsRewardDataReady())
+		{
+			if (AHGameState* HGameState = GetWorld() ? GetWorld()->GetGameState<AHGameState>() : nullptr)
+			{
+				Manager->InitializeManager(
+					HGameState->GetSelectAbilityGradeDataAsset(),
+					HGameState->GetSelectAbilityRewardDataTable(),
+					HGameState->GetGemCollectionDataAsset(),
+					nullptr
+				);
+			}
+		}
+	}
+
+	if (AMyHackSlashPlayerController* PC = Cast<AMyHackSlashPlayerController>(GetOwningPlayer()))
+	{
+		OptionsChangedHandle = PC->OnSelectAbilityOptionsChanged.AddUObject(this, &UHSelectAbilityPopupUI::HandleSelectAbilityOptionsChanged);
+	}
+
 	// 3. 보상 옵션 갱신
 	RefreshOptions();
 }
 
 void UHSelectAbilityPopupUI::NativeDestruct()
 {
+	if (AMyHackSlashPlayerController* PC = Cast<AMyHackSlashPlayerController>(GetOwningPlayer()))
+	{
+		PC->OnSelectAbilityOptionsChanged.Remove(OptionsChangedHandle);
+	}
+
 	// 4. 게임 일시정지 해제
 	UGameplayStatics::SetGamePaused(GetWorld(), false);
 
@@ -33,13 +61,9 @@ void UHSelectAbilityPopupUI::NativeDestruct()
 
 void UHSelectAbilityPopupUI::OnRefreshButtonClicked()
 {
-	if (UHSelectAbilityManager* Manager = GetGameInstance()->GetSubsystem<UHSelectAbilityManager>())
+	if (AMyHackSlashPlayerController* PC = Cast<AMyHackSlashPlayerController>(GetOwningPlayer()))
 	{
-		if (Manager->CanRefresh())
-		{
-			Manager->ConsumeRefresh();
-			RefreshOptions();
-		}
+		PC->RequestRefreshSelectAbilityOptions();
 	}
 }
 
@@ -49,32 +73,34 @@ void UHSelectAbilityPopupUI::RefreshOptions()
 
 	AbilityListView->ClearListItems();
 
-	UHSelectAbilityManager* Manager = GetGameInstance()->GetSubsystem<UHSelectAbilityManager>();
-	if (!Manager) return;
+	AMyHackSlashPlayerController* PC = Cast<AMyHackSlashPlayerController>(GetOwningPlayer());
+	if (!PC) return;
 
 	// 1. 보상 선택지 생성 및 리스트 갱신
-	TArray<FHRewardOptionData> SelectedOptions;
-	if (Manager->GetRandomRewardOptions(SelectedOptions))
+	const TArray<FHRewardOptionEntry>& SelectedOptions = PC->GetSelectAbilityOptions();
+	for (const FHRewardOptionEntry& OptionEntry : SelectedOptions)
 	{
-		for (const FHRewardOptionData& OptionData : SelectedOptions)
+		UHSelectAbilityData* NewData = NewObject<UHSelectAbilityData>(this);
+		if (NewData)
 		{
-			UHSelectAbilityData* NewData = NewObject<UHSelectAbilityData>(this);
-			if (NewData)
-			{
-				NewData->SetRewardOptionData(OptionData);
-				AbilityListView->AddItem(NewData);
-			}
+			NewData->SetRewardOptionEntry(OptionEntry);
+			AbilityListView->AddItem(NewData);
 		}
 	}
 
 	// 2. 새로고침 관련 UI 갱신
 	if (RefreshCountText)
 	{
-		RefreshCountText->SetText(FText::AsNumber(Manager->GetCurrentRefreshCount()));
+		RefreshCountText->SetText(FText::AsNumber(PC->GetSelectAbilityRefreshCount()));
 	}
 
 	if (RefreshButton)
 	{
-		RefreshButton->SetIsEnabled(Manager->CanRefresh());
+		RefreshButton->SetIsEnabled(PC->CanRefreshSelectAbilityOptions());
 	}
+}
+
+void UHSelectAbilityPopupUI::HandleSelectAbilityOptionsChanged()
+{
+	RefreshOptions();
 }

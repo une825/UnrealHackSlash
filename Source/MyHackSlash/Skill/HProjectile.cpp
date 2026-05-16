@@ -10,9 +10,13 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GameplayEffect.h"
+#include "Net/UnrealNetwork.h"
 
 AHProjectile::AHProjectile()
 {
+	bReplicates = true;
+	SetReplicateMovement(true);
+
 	PrimaryActorTick.bCanEverTick = false;
 
 	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
@@ -31,6 +35,17 @@ AHProjectile::AHProjectile()
 	ProjectileMovement->bShouldBounce = false;
 
 	// InitialLifeSpan = LifeSpan; // 생성 시 수명 관리 대신 타이머로 관리할 것이므로 주석 처리하거나 제거 가능
+}
+
+void AHProjectile::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AHProjectile, DamageAmount);
+	DOREPLIFETIME(AHProjectile, Element);
+	DOREPLIFETIME(AHProjectile, ExplosionRadius);
+	DOREPLIFETIME(AHProjectile, LifeSpan);
+	DOREPLIFETIME(AHProjectile, OwningUnitType);
 }
 
 void AHProjectile::BeginPlay()
@@ -99,6 +114,7 @@ void AHProjectile::ResetProjectile(FVector InLocation, FRotator InRotation)
 void AHProjectile::OnLifeSpanExpired()
 {
 	if (!bIsActive) return;
+	if (!HasAuthority()) return;
 
 	// 수명이 다하면 풀에 반납
 	if (UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>())
@@ -123,6 +139,8 @@ void AHProjectile::OnLifeSpanExpired()
 
 void AHProjectile::OnHit(UPrimitiveComponent* InHitComp, AActor* InOtherActor, UPrimitiveComponent* InOtherComp, FVector InNormalImpulse, const FHitResult& InHit)
 {
+	if (!HasAuthority()) return;
+
 	if (bIsActive && (InOtherActor != nullptr) && (InOtherActor != this) && (InOtherComp != nullptr))
 	{
 		// 투사체끼리의 충돌은 무시
@@ -134,6 +152,8 @@ void AHProjectile::OnHit(UPrimitiveComponent* InHitComp, AActor* InOtherActor, U
 
 void AHProjectile::OnOverlap(UPrimitiveComponent* InOverlappedComponent, AActor* InOtherActor, UPrimitiveComponent* InOtherComp, int32 InOtherBodyIndex, bool bInFromSweep, const FHitResult& InSweepResult)
 {
+	if (!HasAuthority()) return;
+
 	if (bIsActive && (InOtherActor != nullptr) && (InOtherActor != this) && (InOtherComp != nullptr))
 	{
 		// 투사체끼리의 충돌은 무시
@@ -155,6 +175,8 @@ void AHProjectile::OnOverlap(UPrimitiveComponent* InOverlappedComponent, AActor*
 void AHProjectile::Explode()
 {
 	if (!bIsActive) return;
+	if (!HasAuthority()) return;
+
 	bIsActive = false;
 
 	// 타이머 해제

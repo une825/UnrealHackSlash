@@ -34,6 +34,24 @@ void UBTS_Detect::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory,
     UWorld* World = ControllingPawn->GetWorld();
     if (nullptr == World) return;
 
+    UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
+    if (nullptr == BlackboardComp) return;
+
+    APawn* CurrentTarget = Cast<APawn>(BlackboardComp->GetValueAsObject(TEXT("Target")));
+    if (CurrentTarget && CurrentTarget->GetController() && CurrentTarget->GetController()->IsPlayerController())
+    {
+        const float CurrentDistanceSq = FVector::DistSquared(Center, CurrentTarget->GetActorLocation());
+        if (CurrentDistanceSq <= FMath::Square(DetectRadius))
+        {
+            UE_LOG(LogTemp, Verbose, TEXT("[MonsterAI] Detect keep target. Pawn=%s Target=%s Dist=%.1f Radius=%.1f"),
+                *GetNameSafe(ControllingPawn),
+                *GetNameSafe(CurrentTarget),
+                FMath::Sqrt(CurrentDistanceSq),
+                DetectRadius);
+            return;
+        }
+    }
+
     TArray<FOverlapResult> OverlapResults;
     FCollisionQueryParams CollisionQueryParam(SCENE_QUERY_STAT(Detect), false, ControllingPawn);
     bool bResult = World->OverlapMultiByChannel(
@@ -47,16 +65,42 @@ void UBTS_Detect::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory,
 
     if (bResult)
     {
+        APawn* BestTarget = nullptr;
+        float BestDistanceSq = TNumericLimits<float>::Max();
+
         for (const auto& OverlapResult : OverlapResults)
         {
             APawn* TargetPawn = Cast<APawn>(OverlapResult.GetActor());
             if (TargetPawn && TargetPawn->GetController() && TargetPawn->GetController()->IsPlayerController())
             {
-                OwnerComp.GetBlackboardComponent()->SetValueAsObject(TEXT("Target"), TargetPawn);
-                return;
+                const float TargetDistanceSq = FVector::DistSquared(Center, TargetPawn->GetActorLocation());
+                if (TargetDistanceSq < BestDistanceSq)
+                {
+                    BestDistanceSq = TargetDistanceSq;
+                    BestTarget = TargetPawn;
+                }
             }
+        }
+
+        if (BestTarget)
+        {
+            UE_LOG(LogTemp, Log, TEXT("[MonsterAI] Detect set target. Pawn=%s Target=%s Dist=%.1f Radius=%.1f"),
+                *GetNameSafe(ControllingPawn),
+                *GetNameSafe(BestTarget),
+                FMath::Sqrt(BestDistanceSq),
+                DetectRadius);
+            BlackboardComp->SetValueAsObject(TEXT("Target"), BestTarget);
+            return;
         }
     }
 
-    OwnerComp.GetBlackboardComponent()->SetValueAsObject(TEXT("Target"), nullptr);
+    if (CurrentTarget)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[MonsterAI] Detect clear target. Pawn=%s OldTarget=%s Radius=%.1f"),
+            *GetNameSafe(ControllingPawn),
+            *GetNameSafe(CurrentTarget),
+            DetectRadius);
+    }
+
+    BlackboardComp->SetValueAsObject(TEXT("Target"), nullptr);
 }

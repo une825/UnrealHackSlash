@@ -2,7 +2,7 @@
 #include "AbilitySystemComponent.h"
 #include "Unit/HBaseCharacter.h"
 #include "Attribute/HCharacterAttributeSet.h"
-#include "System/HUIManager.h"
+#include "Mode/MyHackSlashPlayerController.h"
 #include "System/HSoundManager.h"
 
 UHGA_LevelUp::UHGA_LevelUp()
@@ -70,9 +70,12 @@ void UHGA_LevelUp::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 		// 4. UI 시스템 연동 (레벨업 팝업)
 		if (Character->IsPlayerControlled())
 		{
-			if (UHUIManager* UIManager = Character->GetGameInstance()->GetSubsystem<UHUIManager>())
+			if (Character->HasAuthority())
 			{
-				UIManager->ShowWidgetByName(TEXT("SelectAbilityPopupUI"));
+				if (AMyHackSlashPlayerController* PC = Cast<AMyHackSlashPlayerController>(Character->GetController()))
+				{
+					PC->BeginSelectAbilitySelection();
+				}
 			}
 
 			if (UHSoundManager* SoundManager = Character->GetWorld()->GetSubsystem<UHSoundManager>())

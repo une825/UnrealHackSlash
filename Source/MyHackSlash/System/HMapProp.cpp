@@ -5,6 +5,9 @@
 
 AHMapProp::AHMapProp()
 {
+	bReplicates = true;
+	SetReplicateMovement(true);
+
 	PrimaryActorTick.bCanEverTick = false;
 
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
@@ -26,4 +29,5 @@ void AHMapProp::InitializeProp(UStaticMesh* InMesh, FName InCollisionProfile)
 	// 가시성 및 활성화
 	SetActorHiddenInGame(false);
 	SetActorEnableCollision(InCollisionProfile != TEXT("NoCollision"));
+	ForceNetUpdate();
 }

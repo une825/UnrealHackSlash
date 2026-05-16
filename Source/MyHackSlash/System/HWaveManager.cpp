@@ -6,7 +6,8 @@
 #include "Unit/Player/HPlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "System/HUIManager.h"
-#include "UI/HWaveResultUI.h"
+#include "Mode/HGameState.h"
+#include "Mode/MyHackSlashPlayerController.h"
 
 void UHWaveManager::InitializeWaveSystem(UHWaveConfigDataAsset* InConfig)
 {
@@ -15,6 +16,7 @@ void UHWaveManager::InitializeWaveSystem(UHWaveConfigDataAsset* InConfig)
 	WaveConfig = InConfig;
 	CurrentWaveIndex = 0;
 	CurrentState = EHWaveState::Ready;
+	UpdateReplicatedWaveState(0.0f, 0.0f, 0.0f);
 }
 
 void UHWaveManager::StartWave()
@@ -54,6 +56,8 @@ void UHWaveManager::StartWave()
 
 	// 상태 체크 타이머 시작 (1초 간격)
 	GetWorld()->GetTimerManager().SetTimer(WaveUpdateTimerHandle, this, &UHWaveManager::UpdateWaveProgress, 1.0f, true);
+
+	UpdateReplicatedWaveState(0.0f, 0.0f, WaveData.ClearValue);
 
 	// 이벤트 호출
 	OnWaveStarted.Broadcast(WaveData.WaveIndex, WaveData.WaveType, WaveData.ClearType);
@@ -99,6 +103,7 @@ void UHWaveManager::UpdateWaveProgress()
 	}
 
 	OnWaveProgressUpdated.Broadcast(Progress, CurrentValue, WaveData.ClearValue);
+	UpdateReplicatedWaveState(Progress, CurrentValue, WaveData.ClearValue);
 }
 
 void UHWaveManager::EndWave()
@@ -107,6 +112,12 @@ void UHWaveManager::EndWave()
 
 	GetWorld()->GetTimerManager().ClearTimer(WaveUpdateTimerHandle);
 	CurrentState = EHWaveState::Completed;
+
+	float CurrentValue = 0.0f;
+	float TargetValue = 0.0f;
+	GetCurrentWaveProgress(CurrentValue, TargetValue);
+	const float Progress = TargetValue > 0.0f ? FMath::Clamp(CurrentValue / TargetValue, 0.0f, 1.0f) : 1.0f;
+	UpdateReplicatedWaveState(Progress, CurrentValue, TargetValue);
 
 	// 몬스터 스폰 중지
 	if (UHMonsterSpawnManager* SpawnManager = GetWorld()->GetSubsystem<UHMonsterSpawnManager>())
@@ -134,6 +145,13 @@ void UHWaveManager::PrepareNextWave()
 
 	CurrentWaveIndex++;
 	CurrentState = EHWaveState::Ready;
+
+	float TargetValue = 0.0f;
+	if (WaveConfig && WaveConfig->WaveList.IsValidIndex(CurrentWaveIndex))
+	{
+		TargetValue = WaveConfig->WaveList[CurrentWaveIndex].ClearValue;
+	}
+	UpdateReplicatedWaveState(0.0f, 0.0f, TargetValue);
 }
 
 void UHWaveManager::ReportMonsterDeath()
@@ -216,30 +234,47 @@ void UHWaveManager::CalculateInterest()
 {
 	if (!WaveConfig) return;
 
-	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-	if (!PC) return;
-
-	AHPlayerState* PS = PC->GetPlayerState<AHPlayerState>();
-	if (!PS) return;
-
-	int32 CurrentGold = PS->GetCurrentGold();
-	int32 EarnedInterest = FMath::Min(FMath::FloorToInt(static_cast<float>(CurrentGold) * WaveConfig->DefaultInterestRate), WaveConfig->MaxInterest);
-
-	if (EarnedInterest > 0)
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		PS->AddGold(EarnedInterest);
-		UE_LOG(LogTemp, Log, TEXT("Interest Earned: %d (Current Gold: %d)"), EarnedInterest, CurrentGold);
-	}
+		AMyHackSlashPlayerController* PC = Cast<AMyHackSlashPlayerController>(It->Get());
+		if (!PC) continue;
 
-	// 결과 UI 표시
-	if (GetWorld() && GetWorld()->GetGameInstance())
-	{
-		if (UHUIManager* UIManager = GetWorld()->GetGameInstance()->GetSubsystem<UHUIManager>())
+		AHPlayerState* PS = PC->GetPlayerState<AHPlayerState>();
+		if (!PS) continue;
+
+		int32 CurrentGold = PS->GetCurrentGold();
+		int32 EarnedInterest = FMath::Min(FMath::FloorToInt(static_cast<float>(CurrentGold) * WaveConfig->DefaultInterestRate), WaveConfig->MaxInterest);
+
+		if (EarnedInterest > 0)
 		{
-			if (UHWaveResultUI* ResultUI = Cast<UHWaveResultUI>(UIManager->ShowWidgetByName(TEXT("WaveResultUI"))))
-			{
-				ResultUI->SetResultData(GetCurrentWaveDisplayIndex(), GetCurrentWaveType(), EarnedInterest, PS->GetCurrentGold());
-			}
+			PS->AddGold(EarnedInterest);
+			UE_LOG(LogTemp, Log, TEXT("Interest Earned: %d (Current Gold: %d)"), EarnedInterest, CurrentGold);
 		}
+
+		PC->ClientShowWaveResult(GetCurrentWaveDisplayIndex(), GetCurrentWaveType(), EarnedInterest, PS->GetCurrentGold());
 	}
+}
+
+void UHWaveManager::UpdateReplicatedWaveState(float InProgressPercent, float InCurrentValue, float InTargetValue)
+{
+	if (!GetWorld() || GetWorld()->GetNetMode() == NM_Client) return;
+
+	AHGameState* HGameState = GetWorld()->GetGameState<AHGameState>();
+	if (!HGameState) return;
+
+	FHReplicatedWaveState NewWaveState;
+	NewWaveState.WaveState = CurrentState;
+	NewWaveState.ProgressPercent = InProgressPercent;
+	NewWaveState.CurrentValue = InCurrentValue;
+	NewWaveState.TargetValue = InTargetValue;
+
+	if (WaveConfig && WaveConfig->WaveList.IsValidIndex(CurrentWaveIndex))
+	{
+		const FHWaveData& WaveData = WaveConfig->WaveList[CurrentWaveIndex];
+		NewWaveState.WaveIndex = WaveData.WaveIndex;
+		NewWaveState.WaveType = WaveData.WaveType;
+		NewWaveState.ClearType = WaveData.ClearType;
+	}
+
+	HGameState->SetReplicatedWaveState(NewWaveState);
 }

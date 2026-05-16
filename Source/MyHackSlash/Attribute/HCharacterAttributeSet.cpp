@@ -1,6 +1,9 @@
 #include "Attribute/HCharacterAttributeSet.h"
 #include "GameplayEffectExtension.h"
 #include "Unit/HBaseCharacter.h"
+#include "Net/UnrealNetwork.h"
+
+#define H_DOREPLIFETIME_ATTRIBUTE(PropertyName) DOREPLIFETIME_CONDITION_NOTIFY(UHCharacterAttributeSet, PropertyName, COND_None, REPNOTIFY_Always)
 
 UHCharacterAttributeSet::UHCharacterAttributeSet()
 	: Level(1.0f)
@@ -28,6 +31,38 @@ UHCharacterAttributeSet::UHCharacterAttributeSet()
 	, Gold(0.0f)
 	, MaxGold(999999.0f)
 {
+}
+
+void UHCharacterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	H_DOREPLIFETIME_ATTRIBUTE(Level);
+	H_DOREPLIFETIME_ATTRIBUTE(MaxLevel);
+	H_DOREPLIFETIME_ATTRIBUTE(Health);
+	H_DOREPLIFETIME_ATTRIBUTE(MaxHealth);
+	H_DOREPLIFETIME_ATTRIBUTE(Hunger);
+	H_DOREPLIFETIME_ATTRIBUTE(MaxHunger);
+	H_DOREPLIFETIME_ATTRIBUTE(AttackDamage);
+	H_DOREPLIFETIME_ATTRIBUTE(MaxAttackDamage);
+	H_DOREPLIFETIME_ATTRIBUTE(AttackRange);
+	H_DOREPLIFETIME_ATTRIBUTE(MaxAttackRange);
+	H_DOREPLIFETIME_ATTRIBUTE(AttackRadius);
+	H_DOREPLIFETIME_ATTRIBUTE(MaxAttackRadius);
+	H_DOREPLIFETIME_ATTRIBUTE(AttackSpeedRate);
+	H_DOREPLIFETIME_ATTRIBUTE(MaxAttackSpeedRate);
+	H_DOREPLIFETIME_ATTRIBUTE(MovementSpeed);
+	H_DOREPLIFETIME_ATTRIBUTE(MaxMovementSpeed);
+	H_DOREPLIFETIME_ATTRIBUTE(CriticalRate);
+	H_DOREPLIFETIME_ATTRIBUTE(MaxCriticalRate);
+	H_DOREPLIFETIME_ATTRIBUTE(CriticalMultiplier);
+	H_DOREPLIFETIME_ATTRIBUTE(MaxCriticalMultiplier);
+	H_DOREPLIFETIME_ATTRIBUTE(Experience);
+	H_DOREPLIFETIME_ATTRIBUTE(MaxExperience);
+	H_DOREPLIFETIME_ATTRIBUTE(Gold);
+	H_DOREPLIFETIME_ATTRIBUTE(MaxGold);
+	H_DOREPLIFETIME_ATTRIBUTE(ExpReward);
+	H_DOREPLIFETIME_ATTRIBUTE(GoldReward);
 }
 
 void UHCharacterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -220,3 +255,135 @@ void UHCharacterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMod
 		}
 	}
 }
+
+void UHCharacterAttributeSet::OnRep_Level(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, Level, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MaxLevel(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MaxLevel, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_Health(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, Health, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MaxHealth(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MaxHealth, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_Hunger(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, Hunger, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MaxHunger(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MaxHunger, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_AttackDamage(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, AttackDamage, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MaxAttackDamage(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MaxAttackDamage, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_AttackRange(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, AttackRange, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MaxAttackRange(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MaxAttackRange, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_AttackRadius(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, AttackRadius, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MaxAttackRadius(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MaxAttackRadius, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_AttackSpeedRate(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, AttackSpeedRate, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MaxAttackSpeedRate(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MaxAttackSpeedRate, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MovementSpeed(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MovementSpeed, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MaxMovementSpeed(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MaxMovementSpeed, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_CriticalRate(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, CriticalRate, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MaxCriticalRate(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MaxCriticalRate, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_CriticalMultiplier(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, CriticalMultiplier, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MaxCriticalMultiplier(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MaxCriticalMultiplier, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_Experience(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, Experience, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MaxExperience(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MaxExperience, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_Gold(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, Gold, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_MaxGold(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, MaxGold, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_ExpReward(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, ExpReward, OldValue);
+}
+
+void UHCharacterAttributeSet::OnRep_GoldReward(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHCharacterAttributeSet, GoldReward, OldValue);
+}
+
+#undef H_DOREPLIFETIME_ATTRIBUTE

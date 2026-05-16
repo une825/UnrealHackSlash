@@ -7,7 +7,13 @@
 AHPlayerState::AHPlayerState()
 {
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+
 	AttributeSet = CreateDefaultSubobject<UHCharacterAttributeSet>(TEXT("AttributeSet"));
+
+	SetNetUpdateFrequency(100.0f);
+	SetMinNetUpdateFrequency(30.0f);
 }
 
 UAbilitySystemComponent* AHPlayerState::GetAbilitySystemComponent() const
@@ -39,6 +45,7 @@ int32 AHPlayerState::GetCurrentGold() const
 
 void AHPlayerState::AddGold(int32 InAmount)
 {
+	if (!HasAuthority()) return;
 	if (InAmount <= 0 || !AttributeSet) return;
 
 	float CurrentGold = AttributeSet->GetGold();
@@ -48,6 +55,7 @@ void AHPlayerState::AddGold(int32 InAmount)
 
 bool AHPlayerState::ConsumeGold(int32 InAmount)
 {
+	if (!HasAuthority()) return false;
 	if (InAmount <= 0 || !AttributeSet) return false;
 
 	float CurrentGold = AttributeSet->GetGold();

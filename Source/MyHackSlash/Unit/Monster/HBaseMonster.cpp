@@ -10,11 +10,22 @@
 #include "System/HPinkFogManager.h"
 #include "DataAsset/HUnitProfileData.h"
 #include "Engine/EngineTypes.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "TimerManager.h"
 
 AHBaseMonster::AHBaseMonster()
 {
+	SetNetUpdateFrequency(30.0f);
+	SetMinNetUpdateFrequency(15.0f);
+	NetPriority = 2.0f;
+
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 360.0f, 0.0f);
+	GetCharacterMovement()->bRequestedMoveUseAcceleration = true;
+
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+
 	AttributeSet = CreateDefaultSubobject<UHCharacterAttributeSet>(TEXT("AttributeSet"));
 }
 
@@ -48,24 +59,35 @@ void AHBaseMonster::ResetCharacter()
 {
 	Super::ResetCharacter();
 
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 360.0f, 0.0f);
+	GetCharacterMovement()->bRequestedMoveUseAcceleration = true;
+
 	// AI를 다시 연결하여 동작하게 함
 	SpawnDefaultController();
 }
 
 void AHBaseMonster::SetDead()
 {
+	if (!HasAuthority()) return;
+
+	const bool bWasDead = IsDead;
 	Super::SetDead();
+	if (bWasDead || !IsDead) return;
 
 	// AI 로직 완전히 중지 및 포커스 해제
 	if (auto* AICon = Cast<AAIController>(GetController()))
 	{
 		AICon->StopMovement();
 		AICon->ClearFocus(EAIFocusPriority::Gameplay); // 모든 우선순위 포커스 해제
-		AICon->UnPossess(); // 컨트롤러와 폰 연결 끊기 (AI 로직 완전 정지)
+
+		if (AHMonsterAIController* MonsterAICon = Cast<AHMonsterAIController>(AICon))
+		{
+			MonsterAICon->StopAI();
+		}
 	}
 
 	// 가해자에게 사망 이벤트 전송 (GAS 기반 경험치 및 퀘스트 처리)
-	if (LastDamageCauser.IsValid())
+	if (LastDamageCauser)
 	{
 		AActor* Killer = LastDamageCauser.Get();
 		

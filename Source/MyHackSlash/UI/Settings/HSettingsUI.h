@@ -59,6 +59,7 @@ private:
 	FText GetGlobalText(FName InTextKey) const;
 	FString GetLanguageOptionText(EHTextLanguage InLanguage) const;
 	bool TryGetLanguageFromOption(const FString& InOption, EHTextLanguage& OutLanguage) const;
+	bool ShouldPauseGameOnOpen() const;
 
 private:
 	UPROPERTY(meta = (BindWidget, OptionalWidget = true))
@@ -119,5 +120,6 @@ private:
 	FHGameSettings PendingSettings;
 
 	bool bWasGamePausedBeforeOpen = false;
+	bool bShouldRestoreGamePause = false;
 	bool bRefreshingUI = false;
 };

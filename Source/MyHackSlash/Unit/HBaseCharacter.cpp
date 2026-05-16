@@ -23,9 +23,13 @@
 #include "UI/MainHud/HMainHudUI.h"
 #include "Item/HBreakableActor.h"
 #include "Attribute/HCharacterAttributeSet.h"
+#include "Net/UnrealNetwork.h"
 
 AHBaseCharacter::AHBaseCharacter()
 {
+	bReplicates = true;
+	SetReplicateMovement(true);
+
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("HCapsule"));
 
@@ -75,9 +79,18 @@ void AHBaseCharacter::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 }
 
+void AHBaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AHBaseCharacter, IsDead);
+	DOREPLIFETIME(AHBaseCharacter, LastDamageCauser);
+	DOREPLIFETIME(AHBaseCharacter, Attackable);
+}
+
 void AHBaseCharacter::OnDeadTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
 {
-	if (NewCount > 0 && !IsDead)
+	if (HasAuthority() && NewCount > 0 && !IsDead)
 	{
 		SetDead();
 	}
@@ -189,23 +202,44 @@ void AHBaseCharacter::ResetCharacter()
 		AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(AllCharacterTags);
 	}
 
-	InitializeStat(GetLevel());
+	InitializeStat(FMath::Max(1, GetLevel()));
+	ApplyAliveState();
+
+	if (HasAuthority())
+	{
+		ForceNetUpdate();
+	}
+}
+
+void AHBaseCharacter::ApplyAliveState()
+{
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+	SetActorTickEnabled(true);
 
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 	GetCharacterMovement()->SetComponentTickEnabled(true);
+	GetCharacterMovement()->SetAvoidanceEnabled(false);
+	GetCharacterMovement()->MaxWalkSpeed = FMath::Max(1.0f, GetMovementSpeed());
+	GetCharacterMovement()->StopMovementImmediately();
 	
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("HCapsule"));
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Ignore);
+	GetCapsuleComponent()->SetCanEverAffectNavigation(false);
 
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 640.f, 0.f);
 	GetCharacterMovement()->bConstrainToPlane = true;
 	GetCharacterMovement()->bSnapToPlaneAtStart = true;
+	GetCharacterMovement()->SetCanEverAffectNavigation(false);
 
 	GetMesh()->SetSimulatePhysics(false);
+	GetMesh()->SetAllBodiesSimulatePhysics(false);
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); // 충돌 명시적으로 복구
 	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh"));
+	GetMesh()->SetCanEverAffectNavigation(false);
+	GetMesh()->SetHiddenInGame(false, true);
 	GetMesh()->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 	GetMesh()->SetRelativeLocation(FVector(0, 0, -GetCapsuleComponent()->GetScaledCapsuleHalfHeight()));
 	GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
@@ -331,6 +365,8 @@ void AHBaseCharacter::ShowDamageText(float InActualDamage, bool bInIsCritical, A
 
 void AHBaseCharacter::HandleHUDDamageEffect()
 {
+	if (!IsLocallyControlled()) return;
+
 	if (UnitProfileData && UnitProfileData->UnitType == EHUnitType::Player)
 	{
 		if (UHUIManager* UIManager = GetGameInstance()->GetSubsystem<UHUIManager>())
@@ -454,12 +490,33 @@ void AHBaseCharacter::UpdateWalkSpeed(const float InNewWalkSpeed)
 
 void AHBaseCharacter::SetDead()
 {
+	if (!HasAuthority()) return;
 	if (IsDead) return;
+
 	IsDead = true;
+	ApplyDeathState();
+	ForceNetUpdate();
+}
+
+void AHBaseCharacter::ApplyDeathState()
+{
+	if (!IsDead) return;
 
 	GetCharacterMovement()->DisableMovement();
 	EnableRagdoll();
 	SetDeadImpulse();
+}
+
+void AHBaseCharacter::OnRep_IsDead()
+{
+	if (IsDead)
+	{
+		ApplyDeathState();
+	}
+	else
+	{
+		ApplyAliveState();
+	}
 }
 
 void AHBaseCharacter::AttackHitCheck()
@@ -533,9 +590,9 @@ void AHBaseCharacter::SetDeadImpulse()
 	float FinalImpulseForce = 5000.0f;
 	FVector ImpulseDir = -GetActorForwardVector();
 
-	if (LastDamageCauser.IsValid())
+	if (LastDamageCauser)
 	{
-		AActor* ActualCauser = LastDamageCauser.Get();
+		AActor* ActualCauser = LastDamageCauser;
 		if (APlayerState* PS = Cast<APlayerState>(LastDamageCauser))
 		{
 			ActualCauser = PS->GetPawn();

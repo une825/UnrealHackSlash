@@ -24,8 +24,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability")
 	FHRewardOptionData RewardOptionData;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability")
+	FName RewardRowName = NAME_None;
+
 	/** @brief 보상 데이터 설정을 위한 헬퍼 함수 */
 	void SetRewardOptionData(const FHRewardOptionData& InData) { RewardOptionData = InData; }
+	void SetRewardOptionEntry(const FHRewardOptionEntry& InEntry)
+	{
+		RewardRowName = InEntry.RowName;
+		RewardOptionData = InEntry.OptionData;
+	}
 };
 
 /**

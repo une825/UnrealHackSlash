@@ -12,6 +12,7 @@
 #include "System/HGlobalTextManager.h"
 #include "System/HUIManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "Mode/HGameState.h"
 
 void UHMainHudUI::NativeConstruct()
 {
@@ -54,22 +55,50 @@ void UHMainHudUI::NativeConstruct()
 		}
 	}
 
-	// 2. 웨이브 매니저 델리게이트 바인딩
-	if (UHWaveManager* WaveManager = GetWorld()->GetSubsystem<UHWaveManager>())
+	// 2. 복제된 GameState 웨이브 상태 바인딩
+	bool bBoundReplicatedWaveState = false;
+	if (AHGameState* HGameState = GetWorld()->GetGameState<AHGameState>())
 	{
-		WaveManager->OnWaveStarted.AddDynamic(this, &UHMainHudUI::UpdateWaveInfo);
-		WaveManager->OnWaveProgressUpdated.AddDynamic(this, &UHMainHudUI::UpdateWaveProgress);
-		WaveManager->OnWaveCompleted.AddDynamic(this, &UHMainHudUI::OnWaveCompleted);
-
-		// [추가] 이미 웨이브가 진행 중인 경우를 위해 현재 상태로 초기화
-		if (WaveManager->IsWaveInProgress())
+		auto ApplyReplicatedWaveState = [this](const FHReplicatedWaveState& InWaveState)
 		{
-			UpdateWaveInfo(WaveManager->GetCurrentWaveDisplayIndex(), WaveManager->GetCurrentWaveType(), WaveManager->GetCurrentWaveClearType());
-			
-			float Cur, Tar;
-			WaveManager->GetCurrentWaveProgress(Cur, Tar);
-			float Percent = Tar > 0 ? Cur / Tar : 0.0f;
-			UpdateWaveProgress(Percent, Cur, Tar);
+			if (InWaveState.WaveIndex <= 0)
+			{
+				return;
+			}
+
+			if (InWaveState.WaveState == EHWaveState::Completed)
+			{
+				OnWaveCompleted(InWaveState.WaveIndex);
+				return;
+			}
+
+			UpdateWaveInfo(InWaveState.WaveIndex, InWaveState.WaveType, InWaveState.ClearType);
+			UpdateWaveProgress(InWaveState.ProgressPercent, InWaveState.CurrentValue, InWaveState.TargetValue);
+		};
+
+		HGameState->OnReplicatedWaveStateChanged.AddWeakLambda(this, ApplyReplicatedWaveState);
+		ApplyReplicatedWaveState(HGameState->GetReplicatedWaveState());
+		bBoundReplicatedWaveState = true;
+	}
+
+	// GameState를 아직 얻지 못한 초기 타이밍에서는 기존 서버 로컬 델리게이트로 보완합니다.
+	if (!bBoundReplicatedWaveState)
+	{
+		if (UHWaveManager* WaveManager = GetWorld()->GetSubsystem<UHWaveManager>())
+		{
+			WaveManager->OnWaveStarted.AddDynamic(this, &UHMainHudUI::UpdateWaveInfo);
+			WaveManager->OnWaveProgressUpdated.AddDynamic(this, &UHMainHudUI::UpdateWaveProgress);
+			WaveManager->OnWaveCompleted.AddDynamic(this, &UHMainHudUI::OnWaveCompleted);
+
+			if (WaveManager->IsWaveInProgress())
+			{
+				UpdateWaveInfo(WaveManager->GetCurrentWaveDisplayIndex(), WaveManager->GetCurrentWaveType(), WaveManager->GetCurrentWaveClearType());
+
+				float Cur, Tar;
+				WaveManager->GetCurrentWaveProgress(Cur, Tar);
+				float Percent = Tar > 0 ? Cur / Tar : 0.0f;
+				UpdateWaveProgress(Percent, Cur, Tar);
+			}
 		}
 	}
 

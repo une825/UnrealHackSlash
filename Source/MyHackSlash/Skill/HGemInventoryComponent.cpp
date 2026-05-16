@@ -1,4 +1,5 @@
 #include "Skill/HGemInventoryComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "Skill/SkillGem/HGemBase.h"
 #include "Skill/SkillGem/HMainGem.h"
 #include "Skill/SkillGem/HSupportGem.h"
@@ -9,6 +10,7 @@
 
 UHGemInventoryComponent::UHGemInventoryComponent()
 {
+	SetIsReplicatedByDefault(true);
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
@@ -18,8 +20,17 @@ void UHGemInventoryComponent::BeginPlay()
 	InventoryGems.Empty();
 }
 
+void UHGemInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UHGemInventoryComponent, InventoryGemData);
+}
+
 UHGemBase* UHGemInventoryComponent::AddGem(const FHGemData& InGemData)
 {
+	AActor* Owner = GetOwner();
+	if (!Owner || !Owner->HasAuthority()) return nullptr;
 	if (InGemData.GemID == NAME_None) return nullptr;
 
 	// 카테고리에 맞는 클래스 결정
@@ -36,6 +47,8 @@ UHGemBase* UHGemInventoryComponent::AddGem(const FHGemData& InGemData)
 	// 자동 업그레이드 체크
 	CheckAndUpgradeGems();
 
+	SyncInventoryGemDataFromInstances();
+
 	OnGemInventoryUpdated.Broadcast();
 
 	return NewGem;
@@ -43,6 +56,9 @@ UHGemBase* UHGemInventoryComponent::AddGem(const FHGemData& InGemData)
 
 void UHGemInventoryComponent::AddGemInstance(UHGemBase* InGemInstance)
 {
+	AActor* Owner = GetOwner();
+	if (!Owner || !Owner->HasAuthority()) return;
+
 	if (InGemInstance && !InventoryGems.Contains(InGemInstance))
 	{
 		InventoryGems.Add(InGemInstance);
@@ -50,21 +66,65 @@ void UHGemInventoryComponent::AddGemInstance(UHGemBase* InGemInstance)
 		// 자동 업그레이드 체크
 		CheckAndUpgradeGems();
 
+		SyncInventoryGemDataFromInstances();
+
 		OnGemInventoryUpdated.Broadcast();
 	}
 }
 
 void UHGemInventoryComponent::RemoveGemInstance(UHGemBase* InGemInstance)
 {
+	AActor* Owner = GetOwner();
+	if (!Owner || !Owner->HasAuthority()) return;
+
 	if (InGemInstance && InventoryGems.Contains(InGemInstance))
 	{
 		InventoryGems.Remove(InGemInstance);
+		SyncInventoryGemDataFromInstances();
 		OnGemInventoryUpdated.Broadcast();
 	}
 }
 
+void UHGemInventoryComponent::SyncInventoryGemDataFromInstances()
+{
+	AActor* Owner = GetOwner();
+	if (!Owner || !Owner->HasAuthority()) return;
+
+	InventoryGemData.Empty();
+	for (UHGemBase* Gem : InventoryGems)
+	{
+		if (Gem)
+		{
+			InventoryGemData.Add(FHGemInstanceData::FromGemData(Gem->GetGemData(), Gem->GetInstanceId()));
+		}
+	}
+}
+
+void UHGemInventoryComponent::OnRep_InventoryGemData()
+{
+	InventoryGems.Empty();
+
+	for (const FHGemInstanceData& GemData : InventoryGemData)
+	{
+		if (!GemData.IsValid()) continue;
+
+		TSubclassOf<UHGemBase> GemClass = (GemData.GemCategory == HEGemCategory::Main)
+			? UHMainGem::StaticClass() : UHSupportGem::StaticClass();
+
+		UHGemBase* NewGem = NewObject<UHGemBase>(this, GemClass);
+		NewGem->SetInstanceId(GemData.InstanceId);
+		NewGem->Initialize(GemData.ToDisplayGemData());
+		InventoryGems.Add(NewGem);
+	}
+
+	OnGemInventoryUpdated.Broadcast();
+}
+
 void UHGemInventoryComponent::CheckAndUpgradeGems()
 {
+	AActor* Owner = GetOwner();
+	if (!Owner || !Owner->HasAuthority()) return;
+
 	UHGemDataAsset* GemCollection = nullptr;
 	if (AMyHackSlashGameMode* GameMode = Cast<AMyHackSlashGameMode>(GetWorld()->GetAuthGameMode()))
 	{
@@ -144,12 +204,20 @@ bool UHGemInventoryComponent::TryUpgradeSingleGroup(UHGemDataAsset* GemCollectio
 	{
 		TArray<UHGemBase*>& Group = Pair.Value;
 		if (Group.Num() < 3) continue;
+		if (!Group[0]) continue;
 
 		const FHGemData& CurrentData = Group[0]->GetGemData();
+		if (CurrentData.GemID.IsNone() || CurrentData.Tier <= 0) continue;
+
 		FHGemData NextTierData;
 
 		if (GemCollection->FindNextTierGemData(CurrentData, NextTierData))
 		{
+			if (NextTierData.GemID.IsNone() || NextTierData.GemCategory != CurrentData.GemCategory)
+			{
+				continue;
+			}
+
 			// 1. 업그레이드 대상 식별 (전체 그룹에서 장착 중인 것을 최우선으로 찾음)
 			UHGemBase* SourceGem = nullptr;
 			for (UHGemBase* Gem : Group)
@@ -167,15 +235,16 @@ bool UHGemInventoryComponent::TryUpgradeSingleGroup(UHGemDataAsset* GemCollectio
 			for (UHGemBase* Gem : Group)
 			{
 				if (Ingredients.Num() >= 3) break;
-				if (Gem != SourceGem) Ingredients.Add(Gem);
+				if (Gem && Gem != SourceGem && !Ingredients.Contains(Gem)) Ingredients.Add(Gem);
 			}
+			if (Ingredients.Num() != 3) continue;
 
 			// 3. 데이터 캡처 (Distribution에 필요)
 			int32 MainSlot = SourceGem ? MainSlotMap.FindRef(SourceGem, -1) : -1;
 			int32 SupportSlot = SourceGem ? SupportSlotMap.FindRef(SourceGem, -1) : -1;
 
 			// 4. 하위 젬 3개 제거
-			ConsumeGems(Ingredients, SupportSlotMap, EquipComp);
+			ConsumeGems(Ingredients, SourceGem, MainSlotMap, SupportSlotMap, EquipComp);
 
 			// 5. 상위 젬 생성
 			TSubclassOf<UHGemBase> GemClass = (NextTierData.GemCategory == HEGemCategory::Main)
@@ -187,6 +256,7 @@ bool UHGemInventoryComponent::TryUpgradeSingleGroup(UHGemDataAsset* GemCollectio
 			DistributeUpgradedGem(NewTierGem, SourceGem, EquipComp, MainSlot, SupportSlot);
 
 			OnGemUpgraded.Broadcast(NewTierGem);
+			SyncInventoryGemDataFromInstances();
 			OnGemInventoryUpdated.Broadcast();
 
 			return true;
@@ -196,13 +266,20 @@ bool UHGemInventoryComponent::TryUpgradeSingleGroup(UHGemDataAsset* GemCollectio
 	return false;
 }
 
-void UHGemInventoryComponent::ConsumeGems(const TArray<UHGemBase*>& InGems, const TMap<UHGemBase*, int32>& InSupportSlotMap, UHEquipmentComponent* EquipComp)
+void UHGemInventoryComponent::ConsumeGems(const TArray<UHGemBase*>& InGems, UHGemBase* InSourceGem, const TMap<UHGemBase*, int32>& InMainSlotMap, const TMap<UHGemBase*, int32>& InSupportSlotMap, UHEquipmentComponent* EquipComp)
 {
 	for (UHGemBase* Gem : InGems)
 	{
+		if (!Gem) continue;
+
 		if (InventoryGems.Contains(Gem))
 		{
 			InventoryGems.Remove(Gem);
+		}
+		else if (EquipComp && InMainSlotMap.Contains(Gem) && Gem != InSourceGem)
+		{
+			const int32 SlotIdx = InMainSlotMap.FindRef(Gem);
+			EquipComp->UnequipGem(SlotIdx, false);
 		}
 		else if (EquipComp && InSupportSlotMap.Contains(Gem))
 		{
@@ -210,7 +287,7 @@ void UHGemInventoryComponent::ConsumeGems(const TArray<UHGemBase*>& InGems, cons
 			int32 SlotIdx = InSupportSlotMap.FindRef(Gem);
 			EquipComp->UnequipSupportGem(SlotIdx, Cast<UHSupportGem>(Gem), false);
 		}
-		// 메인 젬은 DistributeUpgradedGem에서 Unequip을 통해 교체되므로 여기서 제거하지 않음
+		// 업그레이드 기준 메인 젬은 DistributeUpgradedGem에서 보조 젬 전이를 위해 마지막에 교체합니다.
 	}
 }
 
@@ -252,4 +329,5 @@ void UHGemInventoryComponent::DistributeUpgradedGem(UHGemBase* NewGem, UHGemBase
 
 	// 장착된 것이 없거나 배치 실패 시 인벤토리에 추가
 	InventoryGems.Add(NewGem);
+	SyncInventoryGemDataFromInstances();
 }

@@ -52,6 +52,7 @@ void UHGA_ProjectileBase::SpawnProjectiles()
 
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	if (!Avatar) return;
+	if (!Avatar->HasAuthority()) return;
 
 	int32 ProjectileCount = GetProjectileCount();
 	FVector BaseLocation = Avatar->GetActorLocation() + Avatar->GetActorForwardVector() * 50.0f;

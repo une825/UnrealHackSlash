@@ -6,7 +6,7 @@
 
 namespace
 {
-FText GetGlobalText(const UUserWidget* InWidget, FName InTextKey)
+FText GetStarvingBarGlobalText(const UUserWidget* InWidget, FName InTextKey)
 {
 	if (InWidget)
 	{
@@ -66,7 +66,7 @@ void UHStarvingBarUI::UpdateHungerBar(float InCurrentHunger, float InMaxHunger)
 	if (HungerText)
 	{
 		// "현재 / 최대" 형식으로 텍스트 설정
-		FText HungerDisplayText = FText::Format(GetGlobalText(this, TEXT("UI.Common.ValuePairFormat")),
+		FText HungerDisplayText = FText::Format(GetStarvingBarGlobalText(this, TEXT("UI.Common.ValuePairFormat")),
 			FText::AsNumber(FMath::RoundToInt(InCurrentHunger)), 
 			FText::AsNumber(FMath::RoundToInt(InMaxHunger)));
 		HungerText->SetText(HungerDisplayText);

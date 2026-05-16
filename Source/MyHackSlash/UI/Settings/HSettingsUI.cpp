@@ -12,8 +12,12 @@ void UHSettingsUI::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	bWasGamePausedBeforeOpen = UGameplayStatics::IsGamePaused(GetWorld());
-	UGameplayStatics::SetGamePaused(GetWorld(), true);
+	bShouldRestoreGamePause = ShouldPauseGameOnOpen();
+	if (bShouldRestoreGamePause)
+	{
+		bWasGamePausedBeforeOpen = UGameplayStatics::IsGamePaused(GetWorld());
+		UGameplayStatics::SetGamePaused(GetWorld(), true);
+	}
 
 	PopulateLanguageOptions();
 
@@ -61,7 +65,10 @@ void UHSettingsUI::NativeConstruct()
 
 void UHSettingsUI::NativeDestruct()
 {
-	UGameplayStatics::SetGamePaused(GetWorld(), bWasGamePausedBeforeOpen);
+	if (bShouldRestoreGamePause)
+	{
+		UGameplayStatics::SetGamePaused(GetWorld(), bWasGamePausedBeforeOpen);
+	}
 
 	if (UHSettingsManager* SettingsManager = GetSettingsManager())
 	{
@@ -285,4 +292,10 @@ bool UHSettingsUI::TryGetLanguageFromOption(const FString& InOption, EHTextLangu
 	}
 
 	return false;
+}
+
+bool UHSettingsUI::ShouldPauseGameOnOpen() const
+{
+	const UWorld* World = GetWorld();
+	return World && World->GetNetMode() == NM_Standalone;
 }

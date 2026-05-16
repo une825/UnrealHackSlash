@@ -60,6 +60,19 @@
 6. **Execute Reward (보상 지급):**
    * 유저가 UI에서 옵션을 선택하면 `UHSelectAbilityManager::ExecuteReward()`를 호출하여 실제 보상 효과를 적용합니다.
 
+### 3.1 Multiplayer Selection Flow
+
+멀티플레이에서는 레벨업으로 인한 능력 선택을 모든 플레이어가 동시에 처리합니다.
+
+1. 서버가 공유 경험치 증가로 레벨업을 판정합니다.
+2. 서버는 게임을 일시정지하고 모든 플레이어에게 능력 선택 UI를 표시하도록 알립니다.
+3. 각 플레이어는 10초 안에 선택지를 고릅니다.
+4. 선택한 플레이어의 보상은 서버 검증 후 즉시 적용하되, 게임 재개는 전체 선택 단계가 종료될 때까지 대기합니다.
+5. 10초가 지나도 선택하지 않은 플레이어는 서버가 해당 플레이어의 선택지 중 하나를 자동 선택합니다.
+6. 모든 플레이어의 선택 처리가 끝나면 서버가 일시정지를 해제하고 게임을 재개합니다.
+
+자동 선택 정책은 최초 구현에서는 첫 번째 선택지를 기본값으로 사용합니다. 이후 기획 필요에 따라 최고 등급 우선, 무작위 선택, 이전 선호 타입 우선 등으로 확장할 수 있습니다.
+
 ---
 
 ## 4. UI Specification (`UHSelectAbilityPopupUI`)
@@ -70,9 +83,11 @@
   * `AbilityListView` (`UListView`): 3개의 선택지를 리스트 항목으로 표시.
   * `UHSelectAbilityEntryUI`: 개별 선택지 항목 UI. `UHSelectAbilityData` (UObject)를 통해 데이터를 전달받음.
 * **Logic:**
-  * **On Show:** `NativeConstruct` 시점에 `UGameplayStatics::SetGamePaused(true)`를 호출하여 게임을 일시정지. (마우스 커서 등 입력 처리는 외부 시스템에서 관리)
+  * **On Show (Solo):** `NativeConstruct` 시점에 `UGameplayStatics::SetGamePaused(true)`를 호출하여 게임을 일시정지. (마우스 커서 등 입력 처리는 외부 시스템에서 관리)
+  * **On Show (Multiplayer):** 서버가 선택 단계를 시작할 때 모든 클라이언트에 UI를 표시합니다. 일시정지와 10초 타이머는 서버 상태를 기준으로 관리하며, UI는 남은 시간을 표시하고 선택 요청만 서버에 전송합니다.
   * **On Select:** 유저가 항목의 `SelectButton`을 클릭하면 `UHSelectAbilityManager::ExecuteReward()`를 호출하여 보상을 지급하고, `RemoveFromParent()`를 통해 UI를 닫음.
-  * **On Close:** `NativeDestruct` 시점에 `SetGamePaused(false)`를 호출하여 게임을 재개.
+  * **On Close (Solo):** `NativeDestruct` 시점에 `SetGamePaused(false)`를 호출하여 게임을 재개.
+  * **On Close (Multiplayer):** 개별 UI가 닫혀도 게임은 즉시 재개하지 않습니다. 서버가 모든 플레이어의 선택 완료 또는 10초 타임아웃을 확인한 뒤 일괄 재개합니다.
 
 ---
 

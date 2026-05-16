@@ -1,6 +1,7 @@
 #include "UI/CommonUI/HGemIconUI.h"
 #include "Components/Image.h"
 #include "DataAsset/HGemDataAsset.h"
+#include "Mode/HGameState.h"
 #include "Mode/MyHackSlashGameMode.h"
 
 void UHGemIconUI::SetGemInfo(FName GemID, int32 Tier)
@@ -10,6 +11,10 @@ void UHGemIconUI::SetGemInfo(FName GemID, int32 Tier)
 	if (AMyHackSlashGameMode* GM = Cast<AMyHackSlashGameMode>(GetWorld()->GetAuthGameMode()))
 	{
 		GemCollection = GM->GetGemCollectionDataAsset();
+	}
+	else if (AHGameState* HGameState = GetWorld()->GetGameState<AHGameState>())
+	{
+		GemCollection = HGameState->GetGemCollectionDataAsset();
 	}
 
 	if (GemCollection)

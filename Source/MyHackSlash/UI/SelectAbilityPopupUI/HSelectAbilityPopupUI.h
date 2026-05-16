@@ -29,6 +29,8 @@ protected:
 	UFUNCTION()
 	void OnRefreshButtonClicked();
 
+	void HandleSelectAbilityOptionsChanged();
+
 protected:
 	// 블루프린트 위젯 바인딩
 	UPROPERTY(meta = (BindWidget))
@@ -45,4 +47,6 @@ protected:
 
 	UPROPERTY(meta = (BindWidget, OptionalWidget = true))
 	TObjectPtr<UTextBlock> RefreshCountText;
+
+	FDelegateHandle OptionsChangedHandle;
 };

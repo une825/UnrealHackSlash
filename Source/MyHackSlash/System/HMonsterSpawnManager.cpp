@@ -11,6 +11,7 @@
 
 void UHMonsterSpawnManager::StartMonsterWave(UHMonsterSpawnerDataAsset* InConfig)
 {
+    if (!GetWorld() || !GetWorld()->GetAuthGameMode()) return;
     if (!InConfig) return;
 
     CurrentConfig = InConfig;
@@ -21,12 +22,15 @@ void UHMonsterSpawnManager::StartMonsterWave(UHMonsterSpawnerDataAsset* InConfig
 
 void UHMonsterSpawnManager::StopMonsterWave()
 {
+    if (!GetWorld() || !GetWorld()->GetAuthGameMode()) return;
+
     GetWorld()->GetTimerManager().ClearTimer(SpawnTimerHandle);
     CurrentConfig = nullptr;
 }
 
 void UHMonsterSpawnManager::ExecuteSpawnTick()
 {
+    if (!GetWorld() || !GetWorld()->GetAuthGameMode()) return;
     if (!CurrentConfig || !CurrentConfig->MonsterClass) return;
 
     UHObjectPoolManager* Pool = GetWorld()->GetSubsystem<UHObjectPoolManager>();
@@ -67,6 +71,8 @@ void UHMonsterSpawnManager::ExecuteSpawnTick()
 
 void UHMonsterSpawnManager::OnMonsterDied(AActor* InAttacker, AHBaseMonster* InDeadMonster)
 {
+    if (!GetWorld() || !GetWorld()->GetAuthGameMode()) return;
+
     // 1. 퀘스트 매니저 알림
     if (UHQuestManager* QuestManager = GetWorld()->GetGameInstance()->GetSubsystem<UHQuestManager>())
     {

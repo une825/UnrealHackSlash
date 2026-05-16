@@ -89,6 +89,7 @@ protected:
 	void GASInputReleased(const int32 InInputID);
 
 	virtual void SetDead() override;
+	virtual void ApplyDeathState() override;
 
 	virtual void BindAttributeCallbacks() override;
 

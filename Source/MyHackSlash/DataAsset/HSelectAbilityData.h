@@ -92,6 +92,18 @@ private:
 	TSoftObjectPtr<UTexture2D> Icon;
 };
 
+USTRUCT(BlueprintType)
+struct FHRewardOptionEntry
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Select Ability")
+	FName RowName = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Select Ability")
+	FHRewardOptionData OptionData;
+};
+
 /**
  * @brief 전체 등급 확률 설정을 저장하는 DataAsset 클래스입니다.
  */

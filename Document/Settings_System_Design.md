@@ -26,7 +26,9 @@
 6. `UHSettingsUI`는 위젯 입력을 `PendingSettings`에 보관하고, Apply 버튼에서 `UHSettingsManager::ApplySettings()`를 호출합니다.
 7. 설정이 변경되면 `OnSettingsChanged`가 브로드캐스트되어 열려 있는 설정 UI가 다시 갱신됩니다.
 8. `UHMainHudUI`의 `SettingButton`을 클릭하면 `UHUIManager::ShowWidgetByName(TEXT("SettingsUI"), 100)`로 설정창을 엽니다.
-9. `UHSettingsUI`는 열릴 때 현재 pause 상태를 저장하고 게임을 일시정지합니다. 닫힐 때는 열리기 전 pause 상태로 복원합니다.
+9. 솔로 플레이에서는 `UHSettingsUI`가 열릴 때 현재 pause 상태를 저장하고 게임을 일시정지합니다. 닫힐 때는 열리기 전 pause 상태로 복원합니다.
+10. 멀티플레이에서는 설정창을 열어도 서버 게임을 일시정지하지 않습니다. 설정 UI는 해당 로컬 클라이언트의 입력 모드와 위젯 표시만 처리하며, 다른 플레이어와 몬스터/웨이브 진행에는 영향을 주지 않습니다.
+    * 구현 기준은 `UWorld::GetNetMode() == NM_Standalone`입니다. Listen Server와 Client에서는 설정 UI가 `SetGamePaused()`를 호출하지 않습니다.
 
 ---
 

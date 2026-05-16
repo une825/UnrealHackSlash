@@ -23,6 +23,14 @@ void UHUIManager::Initialize(FSubsystemCollectionBase& Collection)
 
 UUserWidget* UHUIManager::ShowWidgetByName(FName InWidgetName, int32 InZOrder)
 {
+	if (const UWorld* World = GetWorld())
+	{
+		if (World->GetNetMode() == NM_DedicatedServer)
+		{
+			return nullptr;
+		}
+	}
+
 	// 1. 이미 떠 있는 위젯이 있는지 맵에서 확인 (O(1))
 	if (TObjectPtr<UUserWidget>* FoundWidget = ActiveWidgets.Find(InWidgetName))
 	{
@@ -63,6 +71,14 @@ UUserWidget* UHUIManager::GetWidgetByName(FName InWidgetName) const
 UUserWidget* UHUIManager::ShowWidget(TSubclassOf<UUserWidget> WidgetClass, int32 ZOrder)
 {
 	if (!WidgetClass) return nullptr;
+
+	if (const UWorld* World = GetWorld())
+	{
+		if (World->GetNetMode() == NM_DedicatedServer)
+		{
+			return nullptr;
+		}
+	}
 
 	UUserWidget* NewWidget = CreateWidget<UUserWidget>(GetWorld(), WidgetClass);
 	if (NewWidget)

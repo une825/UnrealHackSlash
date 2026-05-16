@@ -27,12 +27,15 @@ void UHGA_Attack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 
 	if (!IsPrimarySlotAbility())
 	{
-		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		if (Character->HasAuthority())
 		{
-			FGameplayEventData Payload;
-			Payload.Instigator = Character;
-			Payload.EventTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Action.AttackHitCheck"));
-			ASC->HandleGameplayEvent(Payload.EventTag, &Payload);
+			if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+			{
+				FGameplayEventData Payload;
+				Payload.Instigator = Character;
+				Payload.EventTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Action.AttackHitCheck"));
+				ASC->HandleGameplayEvent(Payload.EventTag, &Payload);
+			}
 		}
 
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);

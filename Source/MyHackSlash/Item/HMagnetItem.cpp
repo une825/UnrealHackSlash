@@ -11,6 +11,9 @@
 
 AHMagnetItem::AHMagnetItem()
 {
+	bReplicates = true;
+	SetReplicateMovement(true);
+
 	PrimaryActorTick.bCanEverTick = false;
 
 	MeshVisualOffset = FVector(0.0f, 0.0f, 15.0f);
@@ -50,6 +53,8 @@ void AHMagnetItem::BeginPlay()
 
 void AHMagnetItem::PrepareFromPool()
 {
+	if (!HasAuthority()) return;
+
 	SetActorHiddenInGame(false);
 	
 	// 1. 상태 초기화를 위해 물리/충돌 명시적으로 끄기
@@ -83,11 +88,14 @@ void AHMagnetItem::PrepareFromPool()
 		float PopForce = FMath::FRandRange(MinPopForce, MaxPopForce);
 		
 		SphereComp->SetPhysicsLinearVelocity(PopDirection * PopForce);
+		ForceNetUpdate();
 	}
 }
 
 void AHMagnetItem::ReturnToPool()
 {
+	if (!HasAuthority()) return;
+
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
 	
@@ -97,6 +105,7 @@ void AHMagnetItem::ReturnToPool()
 		SphereComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		SphereComp->SetAllPhysicsLinearVelocity(FVector::ZeroVector);
 	}
+	ForceNetUpdate();
 
 	if (UHObjectPoolManager* PoolManager = GetWorld()->GetSubsystem<UHObjectPoolManager>())
 	{
@@ -110,6 +119,8 @@ void AHMagnetItem::ReturnToPool()
 
 void AHMagnetItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	if (!HasAuthority()) return;
+
 	if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(OtherActor))
 	{
 		if (UAbilitySystemComponent* ASC = Player->GetAbilitySystemComponent())

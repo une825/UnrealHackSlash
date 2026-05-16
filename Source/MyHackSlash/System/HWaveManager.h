@@ -86,6 +86,9 @@ protected:
 	/** @brief 웨이브 종료 시 이자를 계산하여 지급합니다. */
 	void CalculateInterest();
 
+	/** @brief 서버 웨이브 상태를 GameState 복제 스냅샷에 반영합니다. */
+	void UpdateReplicatedWaveState(float InProgressPercent, float InCurrentValue, float InTargetValue);
+
 private:
 	UPROPERTY()
 	TObjectPtr<UHWaveConfigDataAsset> WaveConfig;

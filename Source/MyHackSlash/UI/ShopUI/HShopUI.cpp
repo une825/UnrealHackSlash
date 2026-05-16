@@ -15,7 +15,7 @@
 
 namespace
 {
-FText GetGlobalText(const UUserWidget* InWidget, FName InTextKey)
+FText GetShopGlobalText(const UUserWidget* InWidget, FName InTextKey)
 {
 	if (InWidget)
 	{
@@ -101,13 +101,13 @@ void UHShopUI::InitWaveInfo()
 	{
 		if (WaveText)
 		{
-			WaveText->SetText(FText::Format(GetGlobalText(this, TEXT("UI.Common.WaveFormat")), FText::AsNumber(WaveManager->GetCurrentWaveDisplayIndex())));
+			WaveText->SetText(FText::Format(GetShopGlobalText(this, TEXT("UI.Common.WaveFormat")), FText::AsNumber(WaveManager->GetCurrentWaveDisplayIndex())));
 		}
 
 		if (WaveTypeText)
 		{
 			// 웨이브 타입에 따른 설명 설정 (예: 일반, 보스 등)
-			WaveTypeText->SetText(GetGlobalText(this, TEXT("UI.Shop.WaveType.Preparation")));
+			WaveTypeText->SetText(GetShopGlobalText(this, TEXT("UI.Shop.WaveType.Preparation")));
 		}
 	}
 }

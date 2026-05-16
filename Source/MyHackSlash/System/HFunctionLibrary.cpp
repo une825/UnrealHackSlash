@@ -1,5 +1,6 @@
 #include "System/HFunctionLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "Mode/HGameState.h"
 #include "Mode/MyHackSlashGameMode.h"
 #include "DataAsset/HGemDataAsset.h"
 #include "Engine/Texture2D.h"
@@ -14,10 +15,16 @@ class UTexture2D* UHFunctionLibrary::GetGemIcon(const UObject* WorldContextObjec
 {
 	if (nullptr == WorldContextObject || InGemID.IsNone()) return nullptr;
 
-	AMyHackSlashGameMode* GameMode = Cast<AMyHackSlashGameMode>(UGameplayStatics::GetGameMode(WorldContextObject));
-	if (nullptr == GameMode) return nullptr;
+	UHGemDataAsset* GemCollection = nullptr;
+	if (AMyHackSlashGameMode* GameMode = Cast<AMyHackSlashGameMode>(UGameplayStatics::GetGameMode(WorldContextObject)))
+	{
+		GemCollection = GameMode->GetGemCollectionDataAsset();
+	}
+	else if (AHGameState* HGameState = Cast<AHGameState>(UGameplayStatics::GetGameState(WorldContextObject)))
+	{
+		GemCollection = HGameState->GetGemCollectionDataAsset();
+	}
 
-	UHGemDataAsset* GemCollection = GameMode->GetGemCollectionDataAsset();
 	if (nullptr == GemCollection) return nullptr;
 
 	// FullID 생성 (예: FireBall_T1)

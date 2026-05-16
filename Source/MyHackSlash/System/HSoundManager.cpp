@@ -4,6 +4,7 @@
 #include "Components/AudioComponent.h"
 #include "DataAsset/HSoundDataAsset.h"
 #include "System/HSettingsManager.h"
+#include "Engine/World.h"
 
 void UHSoundManager::InitializeManager(UHSoundDataAsset* InConfig)
 {
@@ -16,6 +17,13 @@ void UHSoundManager::InitializeManager(UHSoundDataAsset* InConfig)
 void UHSoundManager::PlaySoundAtLocationThrottled(USoundBase* InSound, FVector InLocation, float InVolumeMultiplier, float InPitchMultiplier, float InStartTime)
 {
 	if (!InSound) return;
+	if (const UWorld* World = GetWorld())
+	{
+		if (World->GetNetMode() == NM_DedicatedServer)
+		{
+			return;
+		}
+	}
 
 	float CurrentTime = GetWorld()->GetTimeSeconds();
 
@@ -39,6 +47,13 @@ void UHSoundManager::PlaySoundAtLocationThrottled(USoundBase* InSound, FVector I
 void UHSoundManager::PlaySFXByKey(FName InKey, FVector InLocation, float InVolumeMultiplier, bool bIsUI)
 {
 	if (!SoundConfig) return;
+	if (const UWorld* World = GetWorld())
+	{
+		if (World->GetNetMode() == NM_DedicatedServer)
+		{
+			return;
+		}
+	}
 
 	if (USoundBase* SFX = SoundConfig->GetSFX(InKey))
 	{
@@ -60,6 +75,13 @@ void UHSoundManager::PlaySFXByKey(FName InKey, FVector InLocation, float InVolum
 void UHSoundManager::PlaySFX(FGameplayTag InTag, FVector InLocation, float InVolumeMultiplier, bool bIsUI)
 {
 	if (!SoundConfig) return;
+	if (const UWorld* World = GetWorld())
+	{
+		if (World->GetNetMode() == NM_DedicatedServer)
+		{
+			return;
+		}
+	}
 
 	if (USoundBase* SFX = SoundConfig->GetSound(InTag))
 	{
@@ -80,6 +102,13 @@ void UHSoundManager::PlaySFX(FGameplayTag InTag, FVector InLocation, float InVol
 void UHSoundManager::PlayBGM(USoundBase* InBGM, float InFadeInTime, float InFadeOutTime, bool bIsUI)
 {
 	if (!InBGM) return;
+	if (const UWorld* World = GetWorld())
+	{
+		if (World->GetNetMode() == NM_DedicatedServer)
+		{
+			return;
+		}
+	}
 
 	// 이미 동일한 BGM이 재생 중이라면 무시
 	if (CurrentBGMAsset == InBGM && CurrentBGMComponent && CurrentBGMComponent->IsPlaying())

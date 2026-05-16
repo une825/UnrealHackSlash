@@ -2,6 +2,7 @@
 
 #include "Mode/HIntroGameMode.h"
 #include "Blueprint/UserWidget.h"
+#include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 
 AHIntroGameMode::AHIntroGameMode()
@@ -13,6 +14,11 @@ AHIntroGameMode::AHIntroGameMode()
 void AHIntroGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
 
 	// 1. 인트로 UI 위젯 생성 및 표시
 	if (IntroUIClass)

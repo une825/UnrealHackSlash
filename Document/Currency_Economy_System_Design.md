@@ -23,9 +23,13 @@
     *   **팝콘 효과**: 코인 생성 시 임의의 상단 대각선 방향으로 물리 속도(`SetPhysicsLinearVelocity`)를 부여하여 튀어 오르는 연출을 수행.
     *   **회전 효과**: `URotatingMovementComponent`를 활용하여 메쉬가 Z축(Yaw)을 기준으로 팽이처럼 지속적으로 회전.
     *   **물리 고정**: 물리 엔진에 의해 쓰러지지 않도록 모든 회전축을 잠금(`bLockX/Y/ZRotation`) 처리.
+    *   **획득 판정**: 물리 이동용 루트 `SphereComponent`와 별도로 QueryOnly `PickupSphereComponent`를 사용하여 서버에서 플레이어 overlap을 안정적으로 감지.
+    *   **획득 후 숨김**: 획득을 요청한 클라이언트는 로컬 overlap 시 즉시 코인 표시와 collision을 끄고, 서버가 획득을 확정하면 `bPickupActive` 복제와 `MulticastSetPickupActive(false)`로 다른 클라이언트 상태도 정리합니다.
     *   **풀링 연동**: 획득 즉시 오브젝트 풀로 반납되며, 재사용 시 물리 상태와 충돌 설정을 초기화.
 *   **사용처**: 상점 구매, 업그레이드 (추후 확장 예정).
 *   **데이터 동기화**: `FOnGoldChanged` 델리게이트를 통해 UI(`UHMainHudUI`)에 실시간 반영.
+*   **멀티플레이 권한**: 골드 증감은 서버 `AHPlayerState`에서만 수행합니다. `AHCoin`, `AHPotionItem`, `AHMagnetItem` 같은 월드 아이템은 서버 overlap에서만 게임플레이 효과를 적용하고, actor/movement replication으로 클라이언트에 표시합니다.
+    * `AHCoin`은 클라이언트가 보는 코인과 서버 물리 위치가 어긋날 수 있으므로, 로컬 pickup trigger overlap 시 owning `AMyHackSlashPlayerController`가 `ServerPickupCoin()`을 요청합니다. 서버는 현재 pawn과 코인 사이의 거리를 검증한 뒤 `AHCoin::TryPickup()`으로 골드를 지급합니다.
 
 ### 2.2 새로고침 횟수 (Refresh Count / Reroll)
 *   **성격**: 보상 선택 시 무작위성을 제어하기 위한 세션 한정형 자원.
@@ -51,9 +55,18 @@
 1.  **Reward Trigger**: 유저가 보상 선택지에서 특정 보상(골드, 리롤 등)을 클릭.
 2.  **Manager Execution**: `UHSelectAbilityManager::ExecuteReward()` 호출.
 3.  **Data Update**:
-    *   **Gold**: `PlayerState->AddGold()` 호출 -> 델리게이트 브로드캐스트.
+    *   **Gold**: 서버가 `PlayerState->AddGold()` 호출 -> 델리게이트 브로드캐스트.
     *   **Reroll**: `Manager->CurrentRefreshCount` 증가.
 4.  **UI Feedback**: `MainHud` 또는 `PopupUI`가 변경된 데이터를 감지하여 텍스트 갱신.
+
+보상 선택 UI는 서버가 owning `AMyHackSlashPlayerController`에 복제한 `FHRewardOptionEntry` 목록만 표시합니다. 선택 시 UI는 `RowName`만 서버에 전달하고, 서버는 현재 선택지 목록에 포함된 행인지 검증한 뒤 `UHSelectAbilityManager::FindRewardOptionByRowName()`으로 보상 테이블을 재조회하여 `ExecuteRewardForPlayer()`로 해당 플레이어에게만 골드/젬/리롤 보상을 적용합니다.
+
+### 3.3 상점 구매 워크플로우 (Shop Purchase Workflow)
+1.  클라이언트 상점 UI는 선택한 상품의 `RowName`만 `AMyHackSlashPlayerController`에 전달합니다.
+2.  `ServerPurchaseShopItem()`은 서버의 현재 웨이브가 `Shop`인지 확인하고, 현재 웨이브의 `ShopRewardTable`에서 해당 행을 다시 조회합니다.
+3.  서버가 `AHPlayerState::ConsumeGold()`로 비용을 검증하고 차감합니다.
+4.  서버가 상품 타입에 따라 스탯 효과, 즉시 효과, 젬 지급을 적용합니다.
+5.  골드/젬/Attribute 복제 결과로 클라이언트 UI가 갱신됩니다.
 
 ---
 

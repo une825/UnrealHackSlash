@@ -7,6 +7,9 @@
 
 AHMapTile::AHMapTile()
 {
+	bReplicates = true;
+	SetReplicateMovement(true);
+
 	PrimaryActorTick.bCanEverTick = false;
 
 	FloorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FloorMesh"));
@@ -27,6 +30,7 @@ void AHMapTile::PrepareFromPool(const FIntPoint& InGridPos, float InTileSize, co
 	
 	SetActorHiddenInGame(false);
 	SetActorEnableCollision(true);
+	ForceNetUpdate();
 
 	// 이전 프롭 정리 후 새로 생성
 	ClearProps();

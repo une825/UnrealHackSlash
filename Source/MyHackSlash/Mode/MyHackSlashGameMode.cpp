@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Mode/MyHackSlashGameMode.h"
+#include "Mode/HGameState.h"
 #include "MyHackSlashPlayerController.h"
 #include "Unit/Player/HPlayerState.h"
 #include "UObject/ConstructorHelpers.h"
@@ -39,6 +40,7 @@ AMyHackSlashGameMode::AMyHackSlashGameMode()
 	}
 
 	PlayerStateClass = AHPlayerState::StaticClass();
+	GameStateClass = AHGameState::StaticClass();
 }
 
 void AMyHackSlashGameMode::BeginPlay()
@@ -46,6 +48,12 @@ void AMyHackSlashGameMode::BeginPlay()
 	Super::BeginPlay();
 
 	// SetMonsterSpawnManager(); // 이제 WaveManager가 담당하므로 직접 호출하지 않음
+	if (AHGameState* HGameState = GetGameState<AHGameState>())
+	{
+		HGameState->SetGemCollectionDataAsset(GemCollectionDataAsset);
+		HGameState->SetSelectAbilityDataAssets(SelectAbilityGradeDataAsset, SelectAbilityRewardTable);
+	}
+
 	SetSelectAbilityManager();
 
 	// Infinite Map 초기화 (DataAsset 사용)

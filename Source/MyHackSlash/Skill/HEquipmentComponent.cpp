@@ -1,4 +1,5 @@
 #include "Skill/HEquipmentComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "Skill/SkillGem/HMainGem.h"
 #include "Skill/SkillGem/HSupportGem.h"
 #include "AbilitySystemComponent.h"
@@ -9,15 +10,26 @@
 
 UHEquipmentComponent::UHEquipmentComponent()
 {
+	SetIsReplicatedByDefault(true);
 	PrimaryComponentTick.bCanEverTick = true;
 	EquippedMainGems.Init(nullptr, 4); // 4개 슬롯 초기화
+	EquippedMainGemData.SetNum(4);
 	SlotSupportGems.SetNum(4);         // 4개 슬롯 보조 젬 리스트 초기화
+	SlotSupportGemData.SetNum(4);
 }
 
 void UHEquipmentComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner());
+}
+
+void UHEquipmentComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UHEquipmentComponent, EquippedMainGemData);
+	DOREPLIFETIME(UHEquipmentComponent, SlotSupportGemData);
 }
 
 void UHEquipmentComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -30,6 +42,15 @@ void UHEquipmentComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 bool UHEquipmentComponent::EquipGem(int32 InSlotIndex, UHMainGem* InGem)
 {
 	if (!EquippedMainGems.IsValidIndex(InSlotIndex) || !InGem) return false;
+
+	if (AActor* Owner = GetOwner())
+	{
+		if (!Owner->HasAuthority())
+		{
+			ServerEquipGemById(InSlotIndex, InGem->GetInstanceId());
+			return true;
+		}
+	}
 
 	if (nullptr == ASC)
 	{
@@ -107,12 +128,14 @@ bool UHEquipmentComponent::EquipGem(int32 InSlotIndex, UHMainGem* InGem)
 	}
 
 	OnEquipmentChanged.Broadcast();
+	SyncEquippedGemDataFromInstances();
 	return true;
 }
 
 void UHEquipmentComponent::UpdateAutoCast(float InDeltaTime)
 {
 	if (!ASC) return;
+	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
 
 	// 슬롯 1부터 3까지 자동 발동 체크
 	for (int32 i = 1; i <= 3; ++i)
@@ -162,6 +185,15 @@ bool UHEquipmentComponent::EquipSupportGem(int32 InSlotIndex, UHSupportGem* InSu
 {
 	if (!SlotSupportGems.IsValidIndex(InSlotIndex) || !InSupportGem) return false;
 
+	if (AActor* Owner = GetOwner())
+	{
+		if (!Owner->HasAuthority())
+		{
+			ServerEquipSupportGemById(InSlotIndex, InSupportGem->GetInstanceId());
+			return true;
+		}
+	}
+
 	// 1. 이미 다른 슬롯에 장착되어 있었다면 해제 (이동 처리)
 	for (int32 i = 0; i < SlotSupportGems.Num(); ++i)
 	{
@@ -194,6 +226,7 @@ bool UHEquipmentComponent::EquipSupportGem(int32 InSlotIndex, UHSupportGem* InSu
 	}
 
 	OnEquipmentChanged.Broadcast();
+	SyncEquippedGemDataFromInstances();
 	return true;
 }
 
@@ -201,9 +234,163 @@ void UHEquipmentComponent::UpdateAbilitySpec(int32 InSlotIndex)
 {
 }
 
+void UHEquipmentComponent::SyncEquippedGemDataFromInstances()
+{
+	AActor* Owner = GetOwner();
+	if (!Owner || !Owner->HasAuthority()) return;
+
+	EquippedMainGemData.SetNum(EquippedMainGems.Num());
+	for (int32 i = 0; i < EquippedMainGems.Num(); ++i)
+	{
+		EquippedMainGemData[i] = EquippedMainGems[i]
+			? FHGemInstanceData::FromGemData(EquippedMainGems[i]->GetGemData(), EquippedMainGems[i]->GetInstanceId())
+			: FHGemInstanceData();
+	}
+
+	SlotSupportGemData.SetNum(SlotSupportGems.Num());
+	for (int32 i = 0; i < SlotSupportGems.Num(); ++i)
+	{
+		SlotSupportGemData[i].SupportGems.Empty();
+		for (UHSupportGem* SupportGem : SlotSupportGems[i].SupportGems)
+		{
+			if (SupportGem)
+			{
+				SlotSupportGemData[i].SupportGems.Add(FHGemInstanceData::FromGemData(SupportGem->GetGemData(), SupportGem->GetInstanceId()));
+			}
+		}
+	}
+}
+
+void UHEquipmentComponent::OnRep_EquippedMainGemData()
+{
+	RebuildReplicatedDisplayGems();
+}
+
+void UHEquipmentComponent::OnRep_SlotSupportGemData()
+{
+	RebuildReplicatedDisplayGems();
+}
+
+void UHEquipmentComponent::RebuildReplicatedDisplayGems()
+{
+	EquippedMainGems.SetNum(EquippedMainGemData.Num());
+	for (int32 i = 0; i < EquippedMainGemData.Num(); ++i)
+	{
+		const FHGemInstanceData& GemData = EquippedMainGemData[i];
+		if (!GemData.IsValid() || GemData.GemCategory != HEGemCategory::Main)
+		{
+			EquippedMainGems[i] = nullptr;
+			continue;
+		}
+
+		UHMainGem* NewGem = NewObject<UHMainGem>(this);
+		NewGem->SetInstanceId(GemData.InstanceId);
+		NewGem->Initialize(GemData.ToDisplayGemData());
+		EquippedMainGems[i] = NewGem;
+	}
+
+	SlotSupportGems.SetNum(SlotSupportGemData.Num());
+	for (int32 i = 0; i < SlotSupportGemData.Num(); ++i)
+	{
+		SlotSupportGems[i].SupportGems.Empty();
+		for (const FHGemInstanceData& SupportGemData : SlotSupportGemData[i].SupportGems)
+		{
+			if (!SupportGemData.IsValid() || SupportGemData.GemCategory != HEGemCategory::Support) continue;
+
+			UHSupportGem* NewSupportGem = NewObject<UHSupportGem>(this);
+			NewSupportGem->SetInstanceId(SupportGemData.InstanceId);
+			NewSupportGem->Initialize(SupportGemData.ToDisplayGemData());
+			SlotSupportGems[i].SupportGems.Add(NewSupportGem);
+
+			if (EquippedMainGems.IsValidIndex(i) && EquippedMainGems[i])
+			{
+				EquippedMainGems[i]->AddSupportGem(NewSupportGem);
+			}
+		}
+	}
+
+	OnEquipmentChanged.Broadcast();
+}
+
+void UHEquipmentComponent::ServerEquipGemById_Implementation(int32 InSlotIndex, FGuid InGemInstanceId)
+{
+	if (!EquippedMainGems.IsValidIndex(InSlotIndex) || !InGemInstanceId.IsValid()) return;
+
+	if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner()))
+	{
+		if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
+		{
+			for (UHGemBase* Gem : InvComp->GetInventoryGems())
+			{
+				if (Gem && Gem->GetInstanceId() == InGemInstanceId)
+				{
+					EquipGem(InSlotIndex, Cast<UHMainGem>(Gem));
+					return;
+				}
+			}
+		}
+	}
+
+	if (UHMainGem* MainGem = FindMainGemByInstanceId(InGemInstanceId))
+	{
+		EquipGem(InSlotIndex, MainGem);
+	}
+}
+
+void UHEquipmentComponent::ServerEquipSupportGemById_Implementation(int32 InSlotIndex, FGuid InGemInstanceId)
+{
+	if (!SlotSupportGems.IsValidIndex(InSlotIndex) || !InGemInstanceId.IsValid()) return;
+
+	if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner()))
+	{
+		if (UHGemInventoryComponent* InvComp = Player->GetGemInventoryComponent())
+		{
+			for (UHGemBase* Gem : InvComp->GetInventoryGems())
+			{
+				if (Gem && Gem->GetInstanceId() == InGemInstanceId)
+				{
+					EquipSupportGem(InSlotIndex, Cast<UHSupportGem>(Gem));
+					return;
+				}
+			}
+		}
+	}
+
+	if (UHSupportGem* SupportGem = FindSupportGemByInstanceId(InGemInstanceId))
+	{
+		EquipSupportGem(InSlotIndex, SupportGem);
+	}
+}
+
+void UHEquipmentComponent::ServerUnequipGem_Implementation(int32 InSlotIndex)
+{
+	if (!EquippedMainGems.IsValidIndex(InSlotIndex)) return;
+
+	UnequipGem(InSlotIndex);
+}
+
+void UHEquipmentComponent::ServerUnequipSupportGem_Implementation(int32 InSlotIndex, FGuid InGemInstanceId)
+{
+	if (!SlotSupportGems.IsValidIndex(InSlotIndex) || !InGemInstanceId.IsValid()) return;
+
+	UHSupportGem* SupportGem = FindSupportGemByInstanceId(InGemInstanceId);
+	if (!SupportGem || !SlotSupportGems[InSlotIndex].SupportGems.Contains(SupportGem)) return;
+
+	UnequipSupportGem(InSlotIndex, SupportGem);
+}
+
 void UHEquipmentComponent::UnequipSupportGem(int32 InSlotIndex, UHSupportGem* InSupportGem, bool bInReturnToInventory)
 {
 	if (!SlotSupportGems.IsValidIndex(InSlotIndex) || !InSupportGem) return;
+
+	if (AActor* Owner = GetOwner())
+	{
+		if (!Owner->HasAuthority())
+		{
+			ServerUnequipSupportGem(InSlotIndex, InSupportGem->GetInstanceId());
+			return;
+		}
+	}
 
 	// 1. 슬롯 보조 젬 리스트에서 제거
 	SlotSupportGems[InSlotIndex].SupportGems.Remove(InSupportGem);
@@ -227,11 +414,21 @@ void UHEquipmentComponent::UnequipSupportGem(int32 InSlotIndex, UHSupportGem* In
 	}
 
 	OnEquipmentChanged.Broadcast();
+	SyncEquippedGemDataFromInstances();
 }
 
 void UHEquipmentComponent::UnequipGem(int32 InSlotIndex, bool bInReturnToInventory)
 {
 	if (!EquippedMainGems.IsValidIndex(InSlotIndex) || !EquippedMainGems[InSlotIndex]) return;
+
+	if (AActor* Owner = GetOwner())
+	{
+		if (!Owner->HasAuthority())
+		{
+			ServerUnequipGem(InSlotIndex);
+			return;
+		}
+	}
 
 	UHMainGem* RemovedGem = EquippedMainGems[InSlotIndex];
 
@@ -265,6 +462,7 @@ void UHEquipmentComponent::UnequipGem(int32 InSlotIndex, bool bInReturnToInvento
 	}
 
 	OnEquipmentChanged.Broadcast();
+	SyncEquippedGemDataFromInstances();
 }
 
 UHMainGem* UHEquipmentComponent::GetEquippedGem(int32 InSlotIndex) const
@@ -287,4 +485,37 @@ TArray<UHSupportGem*> UHEquipmentComponent::GetEquippedSupportGems(int32 InSlotI
 		}
 	}
 	return Result;
+}
+
+UHMainGem* UHEquipmentComponent::FindMainGemByInstanceId(const FGuid& InInstanceId) const
+{
+	if (!InInstanceId.IsValid()) return nullptr;
+
+	for (UHMainGem* MainGem : EquippedMainGems)
+	{
+		if (MainGem && MainGem->GetInstanceId() == InInstanceId)
+		{
+			return MainGem;
+		}
+	}
+
+	return nullptr;
+}
+
+UHSupportGem* UHEquipmentComponent::FindSupportGemByInstanceId(const FGuid& InInstanceId) const
+{
+	if (!InInstanceId.IsValid()) return nullptr;
+
+	for (const FHSlotSupportGemList& SupportGemList : SlotSupportGems)
+	{
+		for (UHSupportGem* SupportGem : SupportGemList.SupportGems)
+		{
+			if (SupportGem && SupportGem->GetInstanceId() == InInstanceId)
+			{
+				return SupportGem;
+			}
+		}
+	}
+
+	return nullptr;
 }

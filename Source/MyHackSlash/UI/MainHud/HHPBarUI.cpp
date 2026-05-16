@@ -6,7 +6,7 @@
 
 namespace
 {
-FText GetGlobalText(const UUserWidget* InWidget, FName InTextKey)
+FText GetHPBarGlobalText(const UUserWidget* InWidget, FName InTextKey)
 {
 	if (InWidget)
 	{
@@ -64,7 +64,7 @@ void UHHPBarUI::UpdateHPBar(float InCurrentHP, float InMaxHP)
 
 	if (HPText)
 	{
-		FText HPDisplayText = FText::Format(GetGlobalText(this, TEXT("UI.Common.ValuePairFormat")), FText::AsNumber(FMath::RoundToInt(InCurrentHP)), FText::AsNumber(FMath::RoundToInt(InMaxHP)));
+		FText HPDisplayText = FText::Format(GetHPBarGlobalText(this, TEXT("UI.Common.ValuePairFormat")), FText::AsNumber(FMath::RoundToInt(InCurrentHP)), FText::AsNumber(FMath::RoundToInt(InMaxHP)));
 		HPText->SetText(HPDisplayText);
 	}
 }

@@ -88,6 +88,9 @@ void UHObjectPoolManager::ReturnToPool(AActor* InActor)
 	// NiagaraActor인 경우 시스템 에셋별로 관리
 	if (ANiagaraActor* NiagaraActor = Cast<ANiagaraActor>(InActor))
 	{
+		NiagaraActor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+		NiagaraActor->GetNiagaraComponent()->DeactivateImmediate();
+
 		UNiagaraSystem* SystemAsset = NiagaraActor->GetNiagaraComponent()->GetAsset();
 		if (SystemAsset)
 		{
@@ -102,6 +105,12 @@ void UHObjectPoolManager::ReturnToPool(AActor* InActor)
 
 void UHObjectPoolManager::ActivateActor(AActor* InActor, FVector InLocation, FRotator InRotation)
 {
+	if (InActor->GetIsReplicated())
+	{
+		InActor->SetNetDormancy(DORM_Awake);
+		InActor->FlushNetDormancy();
+	}
+
 	InActor->SetActorLocationAndRotation(InLocation, InRotation);
 
 	// 1. 기본 액터 활성화
@@ -120,10 +129,21 @@ void UHObjectPoolManager::ActivateActor(AActor* InActor, FVector InLocation, FRo
 			AICon->RunAI();
 		}
 	}
+
+	if (InActor->GetIsReplicated())
+	{
+		InActor->ForceNetUpdate();
+	}
 }
 
 void UHObjectPoolManager::DeactivateActor(AActor* InActor)
 {
+	if (InActor->GetIsReplicated())
+	{
+		InActor->SetNetDormancy(DORM_Awake);
+		InActor->FlushNetDormancy();
+	}
+
 	// 1. 캐릭터 특화 비활성화
 	if (AHBaseCharacter* BaseChar = Cast<AHBaseCharacter>(InActor))
 	{
@@ -138,4 +158,9 @@ void UHObjectPoolManager::DeactivateActor(AActor* InActor)
 	InActor->SetActorHiddenInGame(true);
 	InActor->SetActorEnableCollision(false);
 	InActor->SetActorTickEnabled(false);
+
+	if (InActor->GetIsReplicated())
+	{
+		InActor->ForceNetUpdate();
+	}
 }

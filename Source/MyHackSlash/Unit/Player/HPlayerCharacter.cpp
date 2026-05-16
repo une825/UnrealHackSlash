@@ -6,7 +6,6 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "DataAsset/HUnitProfileData.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include <Kismet/GameplayStatics.h>
 #include "System/HUIManager.h"
 #include "Skill/HGemInventoryComponent.h"
 #include "Skill/HEquipmentComponent.h"
@@ -58,6 +57,8 @@ void AHPlayerCharacter::Tick(float InDeltaTime)
 	Super::Tick(InDeltaTime);
 
 	// 무한 맵 업데이트
+	if (!HasAuthority()) return;
+
 	if (UHInfiniteMapManager* MapManager = GetWorld()->GetSubsystem<UHInfiniteMapManager>())
 	{
 		MapManager->UpdateMap(GetActorLocation());
@@ -231,15 +232,16 @@ float AHPlayerCharacter::GetMaxExp() const
 void AHPlayerCharacter::SetDead()
 {
 	Super::SetDead();
+}
+
+void AHPlayerCharacter::ApplyDeathState()
+{
+	Super::ApplyDeathState();
+
+	if (!IsLocallyControlled()) return;
 
 	FAttachmentTransformRules AttachmentRules(EAttachmentRule::KeepWorld, false);
 	CameraBoom->AttachToComponent(GetMesh(), AttachmentRules, TEXT("Pelvis"));
-	
-	// 1. 아주 짧은 정지 (강한 타격감)
-	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.01f);
-
-	// 2. 잠시 후 슬로우 모션으로 전환 (Timer 사용)
-	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.2f);
 
 	// BGM 속도도 함께 느리게 조절
 	if (UHSoundManager* SoundManager = GetWorld()->GetSubsystem<UHSoundManager>())

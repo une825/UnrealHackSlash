@@ -86,6 +86,7 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void PostInitializeComponents() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	/** @brief ASC가 유효해진 시점에 어트리뷰트 변경 콜백을 바인딩합니다. */
 	virtual void BindAttributeCallbacks();
@@ -107,6 +108,12 @@ protected:
 	void UpdateWalkSpeed(const float InNewWalkSpeed);
 
 	virtual void SetDead();
+	virtual void ApplyAliveState();
+	virtual void ApplyDeathState();
+
+	UFUNCTION()
+	void OnRep_IsDead();
+
 	virtual void OnDeadTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
 	virtual void AttackHitCheck() override;
 
@@ -137,7 +144,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = DataAsset)
 	TObjectPtr<class UHUnitProfileData> UnitProfileData;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = "true"))
 	bool Attackable = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = "true"))
@@ -146,14 +153,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = "true"))
 	FName WeaponSocketName = TEXT("Hand_R_Socket");
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Dead, Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_IsDead, EditAnywhere, BlueprintReadOnly, Category = Dead, Meta = (AllowPrivateAccess = "true"))
 	bool IsDead = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Dead, Meta = (AllowPrivateAccess = "true"))
 	float DeadEventDelayTime = 5.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Dead, Meta = (AllowPrivateAccess = "true"))
-	TWeakObjectPtr<AActor> LastDamageCauser;
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = Dead, Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<AActor> LastDamageCauser;
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effect")

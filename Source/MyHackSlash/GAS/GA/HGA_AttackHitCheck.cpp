@@ -26,6 +26,12 @@ void UHGA_AttackHitCheck::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 		return;
 	}
 
+	if (!ActorInfo->AvatarActor->HasAuthority())
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
+
 	// 1. 공격자 레벨 캡처 (TriggerEventData의 Instigator로부터)
 	AttackerLevel = 1.0f; // 기본값
 	if (TriggerEventData && TriggerEventData->Instigator)
@@ -56,6 +62,15 @@ void UHGA_AttackHitCheck::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 }
 void UHGA_AttackHitCheck::OnTraceResultCallback(const FGameplayAbilityTargetDataHandle& TargetDataHandle)
 {
+	if (AActor* Avatar = GetAvatarActorFromActorInfo())
+	{
+		if (!Avatar->HasAuthority())
+		{
+			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+			return;
+		}
+	}
+
 	// 1. 공격자(Source)의 어빌리티 시스템 및 어트리뷰트 가져오기
 	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
 	const UHCharacterAttributeSet* SourceAttribute = SourceASC ? SourceASC->GetSet<UHCharacterAttributeSet>() : nullptr;

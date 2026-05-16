@@ -20,6 +20,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UFUNCTION()
 	virtual void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
@@ -74,18 +75,18 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effect")
 	TObjectPtr<UNiagaraSystem> ExplosionEffect;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stat")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = "Stat")
 	float DamageAmount = 10.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stat")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = "Stat")
 	HEElement Element = HEElement::Physical;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stat")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = "Stat")
 	float ExplosionRadius = 50.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stat")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = "Stat")
 	float LifeSpan = 5.0f;
 
-	UPROPERTY(VisibleInstanceOnly, Category = "Stat")
+	UPROPERTY(VisibleInstanceOnly, Replicated, Category = "Stat")
 	EHUnitType OwningUnitType = EHUnitType::Player;
 };

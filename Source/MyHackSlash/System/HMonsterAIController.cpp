@@ -11,13 +11,30 @@ AHMonsterAIController::AHMonsterAIController()
 
 void AHMonsterAIController::RunAI()
 {
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn || !BBAsset || !BTAsset)
+	{
+		return;
+	}
+
 	UBlackboardComponent* BlackboardPtr = Blackboard.Get();
 	if (UseBlackboard(BBAsset, BlackboardPtr))
 	{
-		Blackboard->SetValueAsVector(TEXT("HomePos"), GetPawn()->GetActorLocation());
+		StopAI();
+
+		Blackboard->SetValueAsVector(TEXT("HomePos"), ControlledPawn->GetActorLocation());
+		Blackboard->ClearValue(TEXT("Target"));
+		Blackboard->ClearValue(TEXT("PatrolPos"));
 
 		bool RunResult = RunBehaviorTree(BTAsset);
 		ensure(RunResult);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[MonsterAI] UseBlackboard failed. Controller=%s Pawn=%s BB=%s"),
+			*GetNameSafe(this),
+			*GetNameSafe(ControlledPawn),
+			*GetNameSafe(BBAsset));
 	}
 }
 

@@ -68,6 +68,7 @@
 `Projectile` 타입의 메인 젬은 `AHProjectile` 클래스를 사용하여 투사체를 생성합니다.
 *   **Faction Check**: 시전자의 `UnitType`을 투사체에 전달하여 아군(같은 타입)에게는 데미지를 입히지 않도록 판별합니다.
 *   **VFX Integration**: 나이아가라 시스템을 사용하여 비행 효과 및 충돌 폭발 효과를 표현하며, 오브젝트 풀링을 통해 최적화합니다.
+*   **Multiplayer Authority**: 멀티플레이에서는 자동 발동 슬롯과 투사체 생성이 서버에서만 실행됩니다. 클라이언트는 복제된 투사체와 Attribute 변경 결과를 표시합니다.
 
 ### 4.3 젬 공명 시스템 (Resonance)
 슬롯에 장착된 젬들의 동일 속성(HEElement) 개수를 체크하여 패시브 효과를 발동합니다.
@@ -77,6 +78,17 @@
 *   **합성 조건**: 인벤토리에 동일한 `GemID`를 가진 젬 인스턴스가 3개 모일 경우.
 *   **자동 합성**: `UHGemInventoryComponent`에서 젬이 추가될 때마다 자동으로 체크하여 상위 젬 1개로 변환합니다.
 *   **데이터 정의**: `FHGemData`의 `Tier`와 `NextTierGemID` 필드를 통해 업그레이드 경로를 정의합니다.
+
+### 4.5 멀티플레이 표시 상태 복제
+`UHGemBase` UObject 인스턴스는 직접 네트워크 복제 대상으로 사용하지 않습니다. 현재 단계에서는 `FHGemInstanceData`를 통해 `InstanceId`, `GemID`, `Tier`, `GemCategory`를 표시용으로 복제하고, 클라이언트는 `OnRep`에서 UI 표시용 임시 젬 객체를 재구성합니다.
+
+*   `UHGemInventoryComponent`: 인벤토리 표시 배열을 복제하고 `OnGemInventoryUpdated`를 브로드캐스트합니다.
+*   `UHEquipmentComponent`: 메인 젬 슬롯 및 보조 젬 슬롯 표시 배열을 복제하고 `OnEquipmentChanged`를 브로드캐스트합니다.
+*   `AHGameState`: 클라이언트 UI가 아이콘 조회에 사용할 `UHGemDataAsset` 참조를 복제합니다.
+*   장착/해제 요청: 클라이언트 UI 호출은 서버 RPC로 전달되고, 서버가 `InstanceId`를 기준으로 해당 플레이어의 실제 인벤토리/장착 슬롯에서 젬을 다시 찾은 뒤 슬롯 범위와 소유 상태를 검증해 변경합니다.
+*   상점/보상 진입점: 상점 구매와 보상 선택은 서버 RPC로 전달되며, 서버가 데이터 테이블 행을 재조회해 젬 지급을 처리합니다.
+*   합성 진입점: 인벤토리 변경과 자동 합성은 서버 권한에서만 실행되며, 합성 재료는 서버가 보유/장착 중인 실제 인스턴스 3개를 다시 검증해 소비합니다.
+*   남은 작업: PIE Listen Server에서 클라이언트 드래그/드롭 장착과 합성 표시 동기화 검증이 필요합니다.
 
 ---
 

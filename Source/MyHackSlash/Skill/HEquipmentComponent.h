@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameplayAbilitySpec.h"
+#include "Skill/HGemReplicationTypes.h"
 #include "HEquipmentComponent.generated.h"
 
 class UHMainGem;
@@ -22,6 +23,15 @@ struct FHSlotSupportGemList
 	TArray<TObjectPtr<UHSupportGem>> SupportGems;
 };
 
+USTRUCT(BlueprintType)
+struct FHSlotSupportGemDataList
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Gem")
+	TArray<FHGemInstanceData> SupportGems;
+};
+
 /**
  * 젬 장착 및 GAS 능력 부여를 전담하는 컴포넌트입니다.
  */
@@ -35,6 +45,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
 	/** @brief 특정 슬롯에 메인 젬을 장착합니다. */
@@ -61,12 +72,35 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Gem|Equipment")
 	TArray<UHSupportGem*> GetEquippedSupportGems(int32 InSlotIndex) const;
 
+	UHMainGem* FindMainGemByInstanceId(const FGuid& InInstanceId) const;
+	UHSupportGem* FindSupportGemByInstanceId(const FGuid& InInstanceId) const;
+
 protected:
 	/** @brief 자동 발동 스킬들의 쿨타임을 체크하고 실행합니다. */
 	void UpdateAutoCast(float InDeltaTime);
 
 	/** @brief 특정 슬롯의 어빌리티 스펙에 보조 젬 효과를 업데이트합니다. */
 	void UpdateAbilitySpec(int32 InSlotIndex);
+	void SyncEquippedGemDataFromInstances();
+	void RebuildReplicatedDisplayGems();
+
+	UFUNCTION()
+	void OnRep_EquippedMainGemData();
+
+	UFUNCTION()
+	void OnRep_SlotSupportGemData();
+
+	UFUNCTION(Server, Reliable)
+	void ServerEquipGemById(int32 InSlotIndex, FGuid InGemInstanceId);
+
+	UFUNCTION(Server, Reliable)
+	void ServerEquipSupportGemById(int32 InSlotIndex, FGuid InGemInstanceId);
+
+	UFUNCTION(Server, Reliable)
+	void ServerUnequipGem(int32 InSlotIndex);
+
+	UFUNCTION(Server, Reliable)
+	void ServerUnequipSupportGem(int32 InSlotIndex, FGuid InGemInstanceId);
 
 public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -80,9 +114,15 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Gem|Equipment")
 	TArray<TObjectPtr<UHMainGem>> EquippedMainGems;
 
+	UPROPERTY(ReplicatedUsing = OnRep_EquippedMainGemData)
+	TArray<FHGemInstanceData> EquippedMainGemData;
+
 	/** @brief 메인 젬이 없을 때 슬롯에 대기 중인 보조 젬들 (슬롯당 최대 3개) */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Gem|Equipment")
 	TArray<FHSlotSupportGemList> SlotSupportGems;
+
+	UPROPERTY(ReplicatedUsing = OnRep_SlotSupportGemData)
+	TArray<FHSlotSupportGemDataList> SlotSupportGemData;
 
 	/** @brief 슬롯별 자동 발동 남은 쿨타임 (Slot 1~3 사용) */
 	TMap<int32, float> AutoCastTimers;

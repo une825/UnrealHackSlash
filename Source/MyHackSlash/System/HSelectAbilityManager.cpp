@@ -5,6 +5,7 @@
 #include "Skill/HGemInventoryComponent.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "Unit/Player/HPlayerCharacter.h"
 #include <Unit/Player/HPlayerState.h>
 #include "System/HFunctionLibrary.h"
 
@@ -21,6 +22,23 @@ void UHSelectAbilityManager::InitializeManager(UHSelectAbilityGradeDataAsset* In
 
 bool UHSelectAbilityManager::GetRandomRewardOptions(TArray<FHRewardOptionData>& OutOptions)
 {
+	TArray<FHRewardOptionEntry> OptionEntries;
+	if (!GetRandomRewardOptionEntries(OptionEntries))
+	{
+		return false;
+	}
+
+	OutOptions.Empty();
+	for (const FHRewardOptionEntry& Entry : OptionEntries)
+	{
+		OutOptions.Add(Entry.OptionData);
+	}
+
+	return OutOptions.Num() > 0;
+}
+
+bool UHSelectAbilityManager::GetRandomRewardOptionEntries(TArray<FHRewardOptionEntry>& OutOptions)
+{
 	if (!GradeDataAsset || !RewardDataTable)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("UHSelectAbilityManager: DataAsset or DataTable is not set."));
@@ -31,15 +49,16 @@ bool UHSelectAbilityManager::GetRandomRewardOptions(TArray<FHRewardOptionData>& 
 	EHAbilityGrade TargetGrade = RollGrade();
 
 	// 2. DataTable에서 해당 등급에 맞는 모든 옵션 필터링
-	TArray<FHRewardOptionData*> AllMatchingOptions;
-	RewardDataTable->GetAllRows<FHRewardOptionData>(TEXT("HSelectAbilityManager::GetRandomRewardOptions"), AllMatchingOptions);
-
-	TArray<FHRewardOptionData> FilteredPool;
-	for (auto* Option : AllMatchingOptions)
+	TArray<FHRewardOptionEntry> FilteredPool;
+	for (const FName& RowName : RewardDataTable->GetRowNames())
 	{
+		FHRewardOptionData* Option = RewardDataTable->FindRow<FHRewardOptionData>(RowName, TEXT("HSelectAbilityManager::GetRandomRewardOptionEntries"));
 		if (Option && Option->Grade == TargetGrade)
 		{
-			FilteredPool.Add(*Option);
+			FHRewardOptionEntry Entry;
+			Entry.RowName = RowName;
+			Entry.OptionData = *Option;
+			FilteredPool.Add(Entry);
 		}
 	}
 
@@ -78,6 +97,7 @@ void UHSelectAbilityManager::ExecuteReward(const FHRewardOptionData& InSelectedO
 		*InSelectedOption.Description.ToString(), (int32)InSelectedOption.RewardType, *InSelectedOption.TargetID.ToString(), InSelectedOption.Amount);
 
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	AHPlayerCharacter* PlayerCharacter = Cast<AHPlayerCharacter>(PlayerPawn);
 	IAbilitySystemInterface* ASCInterface = Cast<IAbilitySystemInterface>(PlayerPawn);
 	if (!ASCInterface)
 	{
@@ -88,7 +108,23 @@ void UHSelectAbilityManager::ExecuteReward(const FHRewardOptionData& InSelectedO
 		}
 	}
 
-	UAbilitySystemComponent* TargetASC = ASCInterface ? ASCInterface->GetAbilitySystemComponent() : nullptr;
+	AHPlayerState* HPlayerState = nullptr;
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
+	{
+		HPlayerState = PC->GetPlayerState<AHPlayerState>();
+	}
+
+	ExecuteRewardForPlayer(PlayerCharacter, HPlayerState, InSelectedOption);
+}
+
+void UHSelectAbilityManager::ExecuteRewardForPlayer(AHPlayerCharacter* InPlayerCharacter, AHPlayerState* InPlayerState, const FHRewardOptionData& InSelectedOption)
+{
+	if (!InPlayerCharacter || !InPlayerState || !InPlayerState->HasAuthority())
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* TargetASC = InPlayerState->GetAbilitySystemComponent();
 	if (!TargetASC)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UHSelectAbilityManager: Could not find Target ASC for reward execution!"));
@@ -103,8 +139,8 @@ void UHSelectAbilityManager::ExecuteReward(const FHRewardOptionData& InSelectedO
 		FGameplayEventData Payload;
 		Payload.EventTag = FGameplayTag::RequestGameplayTag(TEXT("Event.Character.Reward.GetGem"));
 		Payload.OptionalObject = GemCollection; // 컬렉션 전달
-		Payload.Instigator = PlayerPawn;
-		Payload.Target = PlayerPawn;
+		Payload.Instigator = InPlayerCharacter;
+		Payload.Target = InPlayerCharacter;
 		Payload.EventMagnitude = static_cast<float>(InSelectedOption.Amount);
 		Payload.TargetData.Add(new FGameplayAbilityTargetData_ActorArray()); // 빈 타겟 데이터라도 추가 (안전용)
 		
@@ -162,11 +198,8 @@ void UHSelectAbilityManager::ExecuteReward(const FHRewardOptionData& InSelectedO
 		else
 		{
 			// 폴백: 클래스가 지정되지 않은 경우 기존 방식 유지 (또는 경고)
-			if (AHPlayerState* PS = Cast<AHPlayerState>(TargetASC->GetOwnerActor()))
-			{
-				PS->AddGold(InSelectedOption.Amount);
-				UE_LOG(LogTemp, Warning, TEXT("AddGoldEffectClass is NULL. Falling back to direct call."));
-			}
+			InPlayerState->AddGold(InSelectedOption.Amount);
+			UE_LOG(LogTemp, Warning, TEXT("AddGoldEffectClass is NULL. Falling back to direct call."));
 		}
 		break;
 	}
@@ -179,6 +212,17 @@ void UHSelectAbilityManager::ExecuteReward(const FHRewardOptionData& InSelectedO
 	default:
 		break;
 	}
+}
+
+bool UHSelectAbilityManager::FindRewardOptionByRowName(FName InRowName, FHRewardOptionData& OutOption) const
+{
+	if (InRowName.IsNone() || !RewardDataTable) return false;
+
+	FHRewardOptionData* FoundOption = RewardDataTable->FindRow<FHRewardOptionData>(InRowName, TEXT("UHSelectAbilityManager::FindRewardOptionByRowName"));
+	if (!FoundOption) return false;
+
+	OutOption = *FoundOption;
+	return true;
 }
 
 EHAbilityGrade UHSelectAbilityManager::RollGrade() const

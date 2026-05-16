@@ -1,10 +1,8 @@
 #include "UI/HWaveResultUI.h"
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
-#include "Kismet/GameplayStatics.h"
-#include "System/HUIManager.h"
-#include "System/HWaveManager.h"
 #include "System/HGlobalTextManager.h"
+#include "Mode/MyHackSlashPlayerController.h"
 
 void UHWaveResultUI::NativeConstruct()
 {
@@ -59,20 +57,9 @@ void UHWaveResultUI::SetResultData(int32 InWaveIndex, EHWaveType InWaveType, int
 
 void UHWaveResultUI::OnClickBackground()
 {
-	// 게임 일시정지 해제
-	UGameplayStatics::SetGamePaused(GetWorld(), false);
-
-	// 이 UI 숨기기
-	if (UHUIManager* UIManager = GetGameInstance()->GetSubsystem<UHUIManager>())
+	if (AMyHackSlashPlayerController* PC = Cast<AMyHackSlashPlayerController>(GetOwningPlayer()))
 	{
-		UIManager->HideWidget(this);
-	}
-
-	// 다음 Wave 시작 로직
-	if (UHWaveManager* WaveManager = GetWorld()->GetSubsystem<UHWaveManager>())
-	{
-		WaveManager->PrepareNextWave();
-		WaveManager->StartWave();
+		PC->RequestContinueWaveFromResult();
 	}
 }
 

@@ -11,6 +11,9 @@
 
 AHPotionItem::AHPotionItem()
 {
+	bReplicates = true;
+	SetReplicateMovement(true);
+
 	PrimaryActorTick.bCanEverTick = false;
 
 	MeshVisualOffset = FVector(0.0f, 0.0f, 15.0f);
@@ -51,6 +54,8 @@ void AHPotionItem::BeginPlay()
 
 void AHPotionItem::PrepareFromPool()
 {
+	if (!HasAuthority()) return;
+
 	SetActorHiddenInGame(false);
 	
 	if (SphereComp)
@@ -84,11 +89,14 @@ void AHPotionItem::PrepareFromPool()
 		float PopForce = FMath::FRandRange(MinPopForce, MaxPopForce);
 		
 		SphereComp->SetPhysicsLinearVelocity(PopDirection * PopForce);
+		ForceNetUpdate();
 	}
 }
 
 void AHPotionItem::ReturnToPool()
 {
+	if (!HasAuthority()) return;
+
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
 	
@@ -98,6 +106,7 @@ void AHPotionItem::ReturnToPool()
 		SphereComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		SphereComp->SetAllPhysicsLinearVelocity(FVector::ZeroVector);
 	}
+	ForceNetUpdate();
 
 	if (UHObjectPoolManager* PoolManager = GetWorld()->GetSubsystem<UHObjectPoolManager>())
 	{
@@ -111,6 +120,8 @@ void AHPotionItem::ReturnToPool()
 
 void AHPotionItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	if (!HasAuthority()) return;
+
 	if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(OtherActor))
 	{
 		if (UAbilitySystemComponent* ASC = Player->GetAbilitySystemComponent())

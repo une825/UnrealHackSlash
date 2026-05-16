@@ -21,6 +21,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Gem")
 	virtual void Initialize(const FHGemData& InGemData);
 
+	const FGuid& GetInstanceId() const { return InstanceId; }
+	void SetInstanceId(const FGuid& InInstanceId) { InstanceId = InInstanceId; }
+
 	/** 젬의 카테고리를 반환합니다. */
 	UFUNCTION(BlueprintPure, Category = "Gem")
 	HEGemCategory GetGemCategory() const { return GemData.GemCategory; }
@@ -41,4 +44,7 @@ protected:
 	/** 젬의 상세 데이터 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gem")
 	FHGemData GemData;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gem")
+	FGuid InstanceId;
 };

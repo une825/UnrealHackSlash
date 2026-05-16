@@ -3,6 +3,7 @@
 #include "Components/Button.h"
 #include "Components/Image.h"
 #include "Components/Overlay.h"
+#include "Mode/MyHackSlashPlayerController.h"
 #include "System/HSelectAbilityManager.h"
 #include "System/HUIManager.h"
 #include "UI/CommonUI/HGemIconUI.h"
@@ -92,10 +93,10 @@ void UHSelectAbilityEntryUI::OnSelectButtonClicked()
 {
 	if (!CurrentData.IsValid()) return;
 
-	if (UHSelectAbilityManager* Manager = GetGameInstance()->GetSubsystem<UHSelectAbilityManager>())
+	if (AMyHackSlashPlayerController* PC = Cast<AMyHackSlashPlayerController>(GetOwningPlayer()))
 	{
 		// 1. 보상 실행
-		Manager->ExecuteReward(CurrentData->RewardOptionData);
+		PC->RequestSelectAbilityReward(CurrentData->RewardRowName);
 
 		// 2. 팝업 닫기
 		if (UUserWidget* ParentPopup = GetTypedOuter<UUserWidget>())
