@@ -32,6 +32,17 @@ EBTNodeResult::Type UBTT_Attack::ExecuteTask(UBehaviorTreeComponent& OwnerComp, 
 	if (BB)
 	{
 		BB->SetValueAsBool(TEXT("IsAttacking"), true);
+		if (APawn* TargetPawn = Cast<APawn>(BB->GetValueAsObject(TEXT("Target"))))
+		{
+			FVector Direction = TargetPawn->GetActorLocation() - ControllingPawn->GetActorLocation();
+			Direction.Z = 0.0f;
+			if (!Direction.IsNearlyZero())
+			{
+				const FRotator TargetRotation(0.0f, Direction.Rotation().Yaw, 0.0f);
+				ControllingPawn->SetActorRotation(TargetRotation);
+				AIController->SetControlRotation(TargetRotation);
+			}
+		}
 	}
 
 	// 공격 시작 시 AI 이동을 즉시 중단
