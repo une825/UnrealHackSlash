@@ -24,12 +24,12 @@
     *   **회전 효과**: `URotatingMovementComponent`를 활용하여 메쉬가 Z축(Yaw)을 기준으로 팽이처럼 지속적으로 회전.
     *   **물리 고정**: 물리 엔진에 의해 쓰러지지 않도록 모든 회전축을 잠금(`bLockX/Y/ZRotation`) 처리.
     *   **획득 판정**: 물리 이동용 루트 `SphereComponent`와 별도로 QueryOnly `PickupSphereComponent`를 사용하여 서버에서 플레이어 overlap을 안정적으로 감지.
-    *   **획득 후 숨김**: 획득을 요청한 클라이언트는 로컬 overlap 시 즉시 코인 표시와 collision을 끄고, 서버가 획득을 확정하면 `bPickupActive` 복제와 `MulticastSetPickupActive(false)`로 다른 클라이언트 상태도 정리합니다.
-    *   **풀링 연동**: 획득 즉시 오브젝트 풀로 반납되며, 재사용 시 물리 상태와 충돌 설정을 초기화.
+    *   **획득 후 숨김**: 서버 overlap에서 획득을 확정하면 `bPickupActive` 복제와 `MulticastSetPickupActive(false, Location, Velocity)`로 모든 클라이언트 상태를 정리합니다. 클라이언트 로컬 overlap은 획득 RPC를 보내거나 선제 숨김을 수행하지 않습니다.
+    *   **풀링 연동**: 획득 시 즉시 비활성화하되 짧은 지연 후 오브젝트 풀로 반납합니다. 재사용 시 서버 위치와 팝콘 초기 속도를 활성화 multicast에 포함하여 클라이언트가 이전 위치에서 코인을 다시 표시하거나 서버와 다른 궤적으로 보는 문제를 줄입니다.
 *   **사용처**: 상점 구매, 업그레이드 (추후 확장 예정).
 *   **데이터 동기화**: `FOnGoldChanged` 델리게이트를 통해 UI(`UHMainHudUI`)에 실시간 반영.
 *   **멀티플레이 권한**: 골드 증감은 서버 `AHPlayerState`에서만 수행합니다. `AHCoin`, `AHPotionItem`, `AHMagnetItem` 같은 월드 아이템은 서버 overlap에서만 게임플레이 효과를 적용하고, actor/movement replication으로 클라이언트에 표시합니다.
-    * `AHCoin`은 클라이언트가 보는 코인과 서버 물리 위치가 어긋날 수 있으므로, 로컬 pickup trigger overlap 시 owning `AMyHackSlashPlayerController`가 `ServerPickupCoin()`을 요청합니다. 서버는 현재 pawn과 코인 사이의 거리를 검증한 뒤 `AHCoin::TryPickup()`으로 골드를 지급합니다.
+    * `AHCoin`은 클라이언트가 보는 코인과 서버 물리 위치가 어긋날 수 있으므로, 클라이언트 로컬 pickup trigger overlap에서 서버 RPC를 보내지 않습니다. 서버의 `PickupSphereComponent` overlap만 `AHCoin::TryPickup()`을 호출하며, 서버 기준 거리 검증 후 골드를 지급합니다.
 
 ### 2.2 새로고침 횟수 (Refresh Count / Reroll)
 *   **성격**: 보상 선택 시 무작위성을 제어하기 위한 세션 한정형 자원.

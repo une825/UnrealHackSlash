@@ -24,7 +24,6 @@
 #include "Unit/Player/HPlayerCharacter.h"
 #include "Unit/Player/HPlayerState.h"
 #include "UI/HWaveResultUI.h"
-#include "Item/HCoin.h"
 #include <Unit/HBaseCharacter.h>
 #include <Kismet/KismetMathLibrary.h>
 #include <Kismet/GameplayStatics.h>
@@ -209,13 +208,6 @@ void AMyHackSlashPlayerController::RequestRefreshSelectAbilityOptions()
 void AMyHackSlashPlayerController::RequestContinueWaveFromResult()
 {
 	ServerContinueWaveFromResult();
-}
-
-void AMyHackSlashPlayerController::RequestPickupCoin(AHCoin* InCoin)
-{
-	if (!InCoin) return;
-
-	ServerPickupCoin(InCoin);
 }
 
 void AMyHackSlashPlayerController::BeginSelectAbilitySelection()
@@ -424,16 +416,6 @@ void AMyHackSlashPlayerController::ServerContinueWaveFromResult_Implementation()
 			}
 		}
 	}
-}
-
-void AMyHackSlashPlayerController::ServerPickupCoin_Implementation(AHCoin* InCoin)
-{
-	if (!InCoin) return;
-
-	AHPlayerCharacter* PlayerCharacter = Cast<AHPlayerCharacter>(GetPawn());
-	if (!PlayerCharacter) return;
-
-	InCoin->TryPickup(PlayerCharacter);
 }
 
 void AMyHackSlashPlayerController::OnRep_SelectAbilityOptions()

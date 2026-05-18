@@ -5,12 +5,14 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "System/HWaveManager.h"
+#include "TimerManager.h"
 #include "HShopUI.generated.h"
 
 class UTileView;
 class UTextBlock;
 class UImage;
 class UButton;
+class AHPlayerState;
 
 /**
  * 상점 메인 화면을 담당하는 위젯 클래스입니다.
@@ -22,6 +24,7 @@ class MYHACKSLASH_API UHShopUI : public UUserWidget
 
 public:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 	/** @brief 현재 보유 중인 재화 수치를 갱신합니다. */
 	void RefreshCurrency(int32 InNewCurrency);
@@ -55,4 +58,10 @@ protected:
 	/** @brief 다음 웨이브 진행 버튼 클릭 시 호출됩니다. */
 	UFUNCTION()
 	void OnClickNextWave();
+
+	bool TryBindGoldChanged();
+	void RetryBindGoldChanged();
+
+	FTimerHandle GoldBindRetryTimerHandle;
+	TWeakObjectPtr<AHPlayerState> BoundGoldPlayerState;
 };

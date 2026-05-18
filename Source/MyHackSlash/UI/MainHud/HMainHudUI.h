@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "TimerManager.h"
 #include "HMainHudUI.generated.h"
 
 class UTextBlock;
@@ -11,6 +12,7 @@ class UOverlay;
 class UButton;
 class UWidgetAnimation;
 class UHEquipGemSlotUI;
+class AHPlayerState;
 
 /**
  * 게임의 메인 HUD를 담당하는 기본 C++ 클래스입니다.
@@ -24,6 +26,7 @@ class MYHACKSLASH_API UHMainHudUI : public UUserWidget
 public:
 	// 초기화 로직이 필요할 경우 여기에 추가합니다.
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 	/** @brief 현재 골드 텍스트를 최신 정보로 갱신합니다. */
 	void RefreshGold(int32 InNewGold);
@@ -102,5 +105,11 @@ protected:
 	UFUNCTION()
 	void OnSettingButtonClicked();
 
+	bool TryBindGoldChanged();
+	void RetryBindGoldChanged();
+
 	FText GetGlobalText(FName InTextKey) const;
+
+	FTimerHandle GoldBindRetryTimerHandle;
+	TWeakObjectPtr<AHPlayerState> BoundGoldPlayerState;
 };

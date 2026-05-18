@@ -15,7 +15,6 @@
 class UNiagaraSystem;
 class UInputMappingContext;
 class UInputAction;
-class AHCoin;
 struct FHShopRow;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -33,7 +32,6 @@ public:
 	void RequestSelectAbilityReward(FName InRewardRowName);
 	void RequestRefreshSelectAbilityOptions();
 	void RequestContinueWaveFromResult();
-	void RequestPickupCoin(AHCoin* InCoin);
 	void BeginSelectAbilitySelection();
 
 	UFUNCTION(Client, Reliable)
@@ -98,9 +96,6 @@ protected:
 
 	UFUNCTION(Server, Reliable)
 	void ServerContinueWaveFromResult();
-
-	UFUNCTION(Server, Reliable)
-	void ServerPickupCoin(AHCoin* InCoin);
 
 	UFUNCTION()
 	void OnRep_SelectAbilityOptions();

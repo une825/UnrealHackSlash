@@ -41,7 +41,10 @@ void UHEquipmentComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 
 bool UHEquipmentComponent::EquipGem(int32 InSlotIndex, UHMainGem* InGem)
 {
-	if (!EquippedMainGems.IsValidIndex(InSlotIndex) || !InGem) return false;
+	if (!EquippedMainGems.IsValidIndex(InSlotIndex) || !InGem)
+	{
+		return false;
+	}
 
 	if (AActor* Owner = GetOwner())
 	{
@@ -183,7 +186,10 @@ void UHEquipmentComponent::UpdateAutoCast(float InDeltaTime)
 
 bool UHEquipmentComponent::EquipSupportGem(int32 InSlotIndex, UHSupportGem* InSupportGem)
 {
-	if (!SlotSupportGems.IsValidIndex(InSlotIndex) || !InSupportGem) return false;
+	if (!SlotSupportGems.IsValidIndex(InSlotIndex) || !InSupportGem)
+	{
+		return false;
+	}
 
 	if (AActor* Owner = GetOwner())
 	{
@@ -205,7 +211,10 @@ bool UHEquipmentComponent::EquipSupportGem(int32 InSlotIndex, UHSupportGem* InSu
 	}
 
 	// 2. 최대 3개 제한 체크
-	if (SlotSupportGems[InSlotIndex].SupportGems.Num() >= 3) return false;
+	if (SlotSupportGems[InSlotIndex].SupportGems.Num() >= 3)
+	{
+		return false;
+	}
 
 	// 3. 슬롯 보조 젬 리스트에 추가
 	SlotSupportGems[InSlotIndex].SupportGems.AddUnique(InSupportGem);
@@ -314,7 +323,10 @@ void UHEquipmentComponent::RebuildReplicatedDisplayGems()
 
 void UHEquipmentComponent::ServerEquipGemById_Implementation(int32 InSlotIndex, FGuid InGemInstanceId)
 {
-	if (!EquippedMainGems.IsValidIndex(InSlotIndex) || !InGemInstanceId.IsValid()) return;
+	if (!EquippedMainGems.IsValidIndex(InSlotIndex) || !InGemInstanceId.IsValid())
+	{
+		return;
+	}
 
 	if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner()))
 	{
@@ -334,12 +346,16 @@ void UHEquipmentComponent::ServerEquipGemById_Implementation(int32 InSlotIndex, 
 	if (UHMainGem* MainGem = FindMainGemByInstanceId(InGemInstanceId))
 	{
 		EquipGem(InSlotIndex, MainGem);
+		return;
 	}
 }
 
 void UHEquipmentComponent::ServerEquipSupportGemById_Implementation(int32 InSlotIndex, FGuid InGemInstanceId)
 {
-	if (!SlotSupportGems.IsValidIndex(InSlotIndex) || !InGemInstanceId.IsValid()) return;
+	if (!SlotSupportGems.IsValidIndex(InSlotIndex) || !InGemInstanceId.IsValid())
+	{
+		return;
+	}
 
 	if (AHPlayerCharacter* Player = Cast<AHPlayerCharacter>(GetOwner()))
 	{
@@ -359,22 +375,32 @@ void UHEquipmentComponent::ServerEquipSupportGemById_Implementation(int32 InSlot
 	if (UHSupportGem* SupportGem = FindSupportGemByInstanceId(InGemInstanceId))
 	{
 		EquipSupportGem(InSlotIndex, SupportGem);
+		return;
 	}
 }
 
 void UHEquipmentComponent::ServerUnequipGem_Implementation(int32 InSlotIndex)
 {
-	if (!EquippedMainGems.IsValidIndex(InSlotIndex)) return;
+	if (!EquippedMainGems.IsValidIndex(InSlotIndex))
+	{
+		return;
+	}
 
 	UnequipGem(InSlotIndex);
 }
 
 void UHEquipmentComponent::ServerUnequipSupportGem_Implementation(int32 InSlotIndex, FGuid InGemInstanceId)
 {
-	if (!SlotSupportGems.IsValidIndex(InSlotIndex) || !InGemInstanceId.IsValid()) return;
+	if (!SlotSupportGems.IsValidIndex(InSlotIndex) || !InGemInstanceId.IsValid())
+	{
+		return;
+	}
 
 	UHSupportGem* SupportGem = FindSupportGemByInstanceId(InGemInstanceId);
-	if (!SupportGem || !SlotSupportGems[InSlotIndex].SupportGems.Contains(SupportGem)) return;
+	if (!SupportGem || !SlotSupportGems[InSlotIndex].SupportGems.Contains(SupportGem))
+	{
+		return;
+	}
 
 	UnequipSupportGem(InSlotIndex, SupportGem);
 }

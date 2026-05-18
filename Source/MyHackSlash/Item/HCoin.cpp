@@ -12,7 +12,6 @@
 #include "System/HObjectPoolManager.h"
 #include "System/HSoundManager.h"
 #include "Engine/EngineTypes.h"
-#include "Mode/MyHackSlashPlayerController.h"
 #include "Net/UnrealNetwork.h"
 
 AHCoin::AHCoin()
@@ -87,6 +86,8 @@ void AHCoin::PrepareFromPool(int32 InGoldAmount)
 {
 	if (!HasAuthority()) return;
 
+	GetWorldTimerManager().ClearTimer(PoolReturnTimerHandle);
+
 	GoldAmount = InGoldAmount;
 	bPickupActive = true;
 	
@@ -113,13 +114,25 @@ void AHCoin::PrepareFromPool(int32 InGoldAmount)
 	PickupSphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	ApplyPickupActiveState();
 
+	// 픽업 충돌을 켜는 순간 이미 플레이어와 겹쳐 있으면 TryPickup()이 즉시 성공할 수 있습니다.
+	// 그 경우 아래 초기화가 코인을 다시 활성화하지 않도록 여기서 중단합니다.
+	if (!bPickupActive)
+	{
+		return;
+	}
+
 	// 5. 팝콘 효과 적용 (SetPhysicsLinearVelocity는 내부적으로 힘을 가하므로 충돌이 켜져있어야 함)
 	FVector PopDirection = FVector(FMath::FRandRange(-1.0f, 1.0f), FMath::FRandRange(-1.0f, 1.0f), 1.5f);
 	PopDirection.Normalize();
 	float PopForce = FMath::FRandRange(MinPopForce, MaxPopForce);
+	const FVector PopVelocity = PopDirection * PopForce;
 	
-	SphereComponent->SetPhysicsLinearVelocity(PopDirection * PopForce);
-	MulticastSetPickupActive(true);
+	SphereComponent->SetPhysicsLinearVelocity(PopVelocity);
+	if (!bPickupActive)
+	{
+		return;
+	}
+	MulticastSetPickupActive(true, GetActorLocation(), PopVelocity);
 	ForceNetUpdate();
 }
 
@@ -131,15 +144,6 @@ void AHCoin::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* Ot
 		{
 			TryPickup(Player);
 			return;
-		}
-
-		if (AMyHackSlashPlayerController* PC = Cast<AMyHackSlashPlayerController>(Player->GetController()))
-		{
-			if (PC->IsLocalController())
-			{
-				ApplyPickupVisualState(false);
-				PC->RequestPickupCoin(this);
-			}
 		}
 	}
 }
@@ -159,7 +163,7 @@ bool AHCoin::TryPickup(AHPlayerCharacter* InPlayer)
 
 	bPickupActive = false;
 	ApplyPickupActiveState();
-	MulticastSetPickupActive(false);
+	MulticastSetPickupActive(false, GetActorLocation(), FVector::ZeroVector);
 
 	PS->AddGold(GoldAmount);
 
@@ -184,6 +188,8 @@ void AHCoin::ReturnToPool()
 {
 	if (!HasAuthority()) return;
 
+	GetWorldTimerManager().ClearTimer(PoolReturnTimerHandle);
+
 	// 풀에 들어가기 전에 물리와 충돌을 확실히 끔
 	bPickupActive = false;
 	SetActorHiddenInGame(true);
@@ -199,8 +205,15 @@ void AHCoin::ReturnToPool()
 		PickupSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 	ApplyPickupActiveState();
-	MulticastSetPickupActive(false);
+	MulticastSetPickupActive(false, GetActorLocation(), FVector::ZeroVector);
 	ForceNetUpdate();
+
+	GetWorldTimerManager().SetTimer(PoolReturnTimerHandle, this, &AHCoin::CompleteReturnToPool, PoolReturnDelay, false);
+}
+
+void AHCoin::CompleteReturnToPool()
+{
+	if (!HasAuthority()) return;
 
 	if (UHObjectPoolManager* PoolManager = GetWorld()->GetSubsystem<UHObjectPoolManager>())
 	{
@@ -227,11 +240,22 @@ void AHCoin::ApplyPickupVisualState(bool bInPickupActive)
 		PickupSphereComponent->SetCollisionEnabled(bInPickupActive ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
 	}
 
-	if (SphereComponent && !bInPickupActive)
+	if (SphereComponent)
 	{
-		SphereComponent->SetSimulatePhysics(false);
-		SphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		SphereComponent->SetAllPhysicsLinearVelocity(FVector::ZeroVector);
+		if (bInPickupActive)
+		{
+			SphereComponent->SetCollisionProfileName(TEXT("PhysicsActor"));
+			SphereComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+			SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+			SphereComponent->SetSimulatePhysics(true);
+			SphereComponent->WakeRigidBody();
+		}
+		else
+		{
+			SphereComponent->SetSimulatePhysics(false);
+			SphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			SphereComponent->SetAllPhysicsLinearVelocity(FVector::ZeroVector);
+		}
 	}
 
 	if (MeshComponent)
@@ -245,8 +269,18 @@ void AHCoin::OnRep_PickupActive()
 	ApplyPickupActiveState();
 }
 
-void AHCoin::MulticastSetPickupActive_Implementation(bool bInPickupActive)
+void AHCoin::MulticastSetPickupActive_Implementation(bool bInPickupActive, FVector InActorLocation, FVector InLinearVelocity)
 {
+	if (!HasAuthority() && bInPickupActive)
+	{
+		SetActorLocation(InActorLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	}
 	bPickupActive = bInPickupActive;
 	ApplyPickupActiveState();
+
+	if (bInPickupActive && SphereComponent)
+	{
+		SphereComponent->SetPhysicsLinearVelocity(InLinearVelocity);
+		SphereComponent->WakeRigidBody();
+	}
 }

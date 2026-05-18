@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "TimerManager.h"
 #include "HCoin.generated.h"
 
 /**
@@ -41,6 +42,8 @@ protected:
 	/** @brief 풀로 반납합니다. */
 	void ReturnToPool();
 
+	void CompleteReturnToPool();
+
 	void ApplyPickupActiveState();
 	void ApplyPickupVisualState(bool bInPickupActive);
 
@@ -48,7 +51,7 @@ protected:
 	void OnRep_PickupActive();
 
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastSetPickupActive(bool bInPickupActive);
+	void MulticastSetPickupActive(bool bInPickupActive, FVector InActorLocation, FVector InLinearVelocity);
 
 protected:
 	/** @brief 충돌 영역 */
@@ -78,12 +81,17 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "H|Item")
 	int32 GoldAmount = 10;
 
-	/** @brief 클라이언트 요청을 허용할 서버 거리 검증 반경 */
+	/** @brief 서버 거리 검증 반경 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "H|Item")
 	float PickupValidationDistance = 180.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "H|Item")
+	float PoolReturnDelay = 0.2f;
+
 	UPROPERTY(ReplicatedUsing = OnRep_PickupActive)
 	bool bPickupActive = false;
+
+	FTimerHandle PoolReturnTimerHandle;
 
 	/** @brief 획득 이펙트 (선택 사항) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "H|Item")

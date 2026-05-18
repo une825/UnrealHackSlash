@@ -37,12 +37,11 @@ void UHShopUI::NativeConstruct()
 	Super::NativeConstruct();
 
 	// 보유 재화 초기화 및 바인딩
-	if (APlayerController* PC = GetOwningPlayer())
+	if (!TryBindGoldChanged())
 	{
-		if (AHPlayerState* PS = PC->GetPlayerState<AHPlayerState>())
+		if (UWorld* World = GetWorld())
 		{
-			RefreshCurrency(PS->GetCurrentGold());
-			PS->OnGoldChanged.AddUObject(this, &UHShopUI::RefreshCurrency);
+			World->GetTimerManager().SetTimer(GoldBindRetryTimerHandle, this, &UHShopUI::RetryBindGoldChanged, 0.1f, true);
 		}
 	}
 
@@ -56,11 +55,68 @@ void UHShopUI::NativeConstruct()
 	PopulateShopItems();
 }
 
+void UHShopUI::NativeDestruct()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(GoldBindRetryTimerHandle);
+	}
+
+	if (AHPlayerState* PS = BoundGoldPlayerState.Get())
+	{
+		PS->OnGoldChanged.RemoveAll(this);
+	}
+	BoundGoldPlayerState.Reset();
+
+	Super::NativeDestruct();
+}
+
 void UHShopUI::RefreshCurrency(int32 InNewCurrency)
 {
 	if (CurrencyText)
 	{
 		CurrencyText->SetText(FText::AsNumber(InNewCurrency));
+	}
+}
+
+bool UHShopUI::TryBindGoldChanged()
+{
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC)
+	{
+		return false;
+	}
+
+	AHPlayerState* PS = PC->GetPlayerState<AHPlayerState>();
+	if (!PS)
+	{
+		return false;
+	}
+
+	if (BoundGoldPlayerState.Get() != PS)
+	{
+		if (AHPlayerState* OldPS = BoundGoldPlayerState.Get())
+		{
+			OldPS->OnGoldChanged.RemoveAll(this);
+		}
+
+		BoundGoldPlayerState = PS;
+		PS->OnGoldChanged.RemoveAll(this);
+		PS->OnGoldChanged.AddUObject(this, &UHShopUI::RefreshCurrency);
+	}
+
+	RefreshCurrency(PS->GetCurrentGold());
+	return true;
+}
+
+void UHShopUI::RetryBindGoldChanged()
+{
+	if (TryBindGoldChanged())
+	{
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(GoldBindRetryTimerHandle);
+		}
 	}
 }
 

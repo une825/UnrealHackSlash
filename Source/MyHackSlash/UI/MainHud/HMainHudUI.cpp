@@ -43,15 +43,11 @@ void UHMainHudUI::NativeConstruct()
 	}
 
 	// 1. 플레이어 스테이트를 찾아서 골드 변경 델리게이트에 바인딩
-	if (APlayerController* PC = GetOwningPlayer())
+	if (!TryBindGoldChanged())
 	{
-		if (AHPlayerState* PS = PC->GetPlayerState<AHPlayerState>())
+		if (UWorld* World = GetWorld())
 		{
-			// 현재 골드 수치로 즉시 초기화
-			RefreshGold(PS->GetCurrentGold());
-
-			// 값이 바뀔 때마다 실행되도록 바인딩
-			PS->OnGoldChanged.AddUObject(this, &UHMainHudUI::RefreshGold);
+			World->GetTimerManager().SetTimer(GoldBindRetryTimerHandle, this, &UHMainHudUI::RetryBindGoldChanged, 0.1f, true);
 		}
 	}
 
@@ -105,11 +101,68 @@ void UHMainHudUI::NativeConstruct()
 	UE_LOG(LogTemp, Log, TEXT("HMainHudUI: Main HUD Widget Constructed and Wave Manager bound!"));
 }
 
+void UHMainHudUI::NativeDestruct()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(GoldBindRetryTimerHandle);
+	}
+
+	if (AHPlayerState* PS = BoundGoldPlayerState.Get())
+	{
+		PS->OnGoldChanged.RemoveAll(this);
+	}
+	BoundGoldPlayerState.Reset();
+
+	Super::NativeDestruct();
+}
+
 void UHMainHudUI::RefreshGold(int32 InNewGold)
 {
 	if (GoldText)
 	{
 		GoldText->SetText(FText::Format(GetGlobalText(TEXT("UI.MainHud.GoldOwnedFormat")), FText::AsNumber(InNewGold)));
+	}
+}
+
+bool UHMainHudUI::TryBindGoldChanged()
+{
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC)
+	{
+		return false;
+	}
+
+	AHPlayerState* PS = PC->GetPlayerState<AHPlayerState>();
+	if (!PS)
+	{
+		return false;
+	}
+
+	if (BoundGoldPlayerState.Get() != PS)
+	{
+		if (AHPlayerState* OldPS = BoundGoldPlayerState.Get())
+		{
+			OldPS->OnGoldChanged.RemoveAll(this);
+		}
+
+		BoundGoldPlayerState = PS;
+		PS->OnGoldChanged.RemoveAll(this);
+		PS->OnGoldChanged.AddUObject(this, &UHMainHudUI::RefreshGold);
+	}
+
+	RefreshGold(PS->GetCurrentGold());
+	return true;
+}
+
+void UHMainHudUI::RetryBindGoldChanged()
+{
+	if (TryBindGoldChanged())
+	{
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(GoldBindRetryTimerHandle);
+		}
 	}
 }
 
